@@ -13,7 +13,7 @@ Using maven, you can run *easy-deposit* with the following command:
 ```
 mvn jetty:run
 ```
-Alternatively, you can deploy the packaged WAR file on your server. The war file is generated at 'target/sword.war'.
+Alternatively, you can deploy the packaged WAR file on your server. The war file is generated at `target/sword.war`.
 
 ## Single deposit example
 ```
