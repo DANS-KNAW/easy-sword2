@@ -12,4 +12,5 @@ target/
 *.swp
 *.iml
 .idea/
+.DS_Store
 
