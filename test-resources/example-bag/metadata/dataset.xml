@@ -1,0 +1,44 @@
+<ddm:DDM
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:dcmitype="http://purl.org/dc/dcmitype/"
+	xmlns:narcis="http://easy.dans.knaw.nl/schemas/vocab/narcis-type/"
+	xmlns:dcx="http://easy.dans.knaw.nl/schemas/dcx/"
+	xmlns:dcx-dai="http://easy.dans.knaw.nl/schemas/dcx/dai/"
+	xmlns:ddm="http://easy.dans.knaw.nl/schemas/md/ddm/"
+	xmlns:dcterms="http://purl.org/dc/terms/"
+	xmlns:dcx-gml="http://easy.dans.knaw.nl/schemas/dcx/gml/"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:abr="http://www.den.nl/standaard/166/Archeologisch-Basisregister/"
+	xsi:schemaLocation="
+		http://www.den.nl/standaard/166/Archeologisch-Basisregister/ http://easy.dans.knaw.nl/schemas/vocab/2012/10/abr-type.xsd
+		http://easy.dans.knaw.nl/schemas/md/ddm/ http://easy.dans.knaw.nl/schemas/md/2014/09/ddm.xsd
+		http://easy.dans.knaw.nl/schemas/dcx/gml/ http://eof12.dans.knaw.nl/schemas/dcx/2012/10/dcx-gml.xsd
+">
+	<ddm:profile>
+        <dc:title>{title VARCHAR(255) The title of the Dataset}</dc:title>
+        <dcterms:description>{abstract VARCHAR(3000) The Dataset abstract}</dcterms:description>
+        <dcx-dai:creatorDetails>
+            <dcx-dai:author>
+                <dcx-dai:titles></dcx-dai:titles>
+                <dcx-dai:initials>{[transformed] first_name VARCHAR(255)}</dcx-dai:initials>
+                <dcx-dai:insertions></dcx-dai:insertions>
+                <dcx-dai:surname>{last_name VARCHAR(255)}</dcx-dai:surname>
+                <dcx-dai:DAI></dcx-dai:DAI>
+                <dcx-dai:organization>
+                    <dcx-dai:name xml:lang="en">{institution VARCHAR(255)}</dcx-dai:name>
+                </dcx-dai:organization>
+            </dcx-dai:author>
+        </dcx-dai:creatorDetails>        
+        <ddm:created>{created_date TIMESTAMP}</ddm:created>
+		<ddm:audience>D41500</ddm:audience>
+		<ddm:accessRights>OPEN_ACCESS</ddm:accessRights>
+	</ddm:profile>
+    <ddm:dcmiMetadata>
+        <dcterms:identifier>{doi VARCHAR(64)}</dcterms:identifier>
+        <dcterms:identifier>{id UUID The unique identifier for the Dataset}</dcterms:identifier>
+        <dcterms:hasVersion>{version BIGINT(19) The version number of the Dataset}</dcterms:hasVersion>
+        <dcterms:modified>{last_modified_date TIMESTAMP}</dcterms:modified>
+        <dcterms:issued>{publish_date TIMESTAMP The date a dataset is made public}</dcterms:issued>
+    </ddm:dcmiMetadata>
+</ddm:DDM>
+
