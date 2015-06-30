@@ -30,7 +30,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
     val sc: SwordCollection = new SwordCollection
     sc.setTitle("DANS EASY Data Collection")
     sc.addAcceptPackaging("http://easy.dans.knaw.nl/schemas/index.xml")
-    sc.setLocation(SwordProps.get("host"))
+    sc.setLocation(SwordProps("host"))
 
     sw.addCollection(sc)
 
