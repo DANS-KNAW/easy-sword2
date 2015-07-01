@@ -17,30 +17,33 @@ package nl.knaw.dans.api.sword2
 
 import org.swordapp.server.SwordError
 
+import scala.util.{Failure, Success, Try}
+
 object SwordID {
-  def generate: String = {
-    val id: Long = System.currentTimeMillis
+  def generate: Try[String] = synchronized {
     try {
+      val id: Long = System.currentTimeMillis
       Thread.sleep(2)
+      Success(id.toString)
     } catch {
-      case e: InterruptedException => e.printStackTrace()
+      case e: InterruptedException => Failure(e)
     }
-    id.toString
   }
 
-  @throws(classOf[SwordError])
-  def extract(IRI: String): String = {
-    val parts: Array[String] = IRI.split("/")
+  def extract(IRI: String): Try[Option[String]] = {
+    val parts = IRI.split("/")
     if (parts.length < 1) {
-      throw new SwordError(404)
+      Failure(new SwordError(404))
+    } else {
+      val lastPart = parts(parts.length - 1)
+      Success(if (lastPart == "collection") None else Some(lastPart))
     }
-    val lastPart: String = parts(parts.length - 1)
-    if (lastPart == "collection") null else lastPart
   }
 
-  @throws(classOf[SwordError])
-  def extractOrGenerate(IRI: String): String = {
-    val id: String = extract(IRI)
-    if (id != null) id else SwordID.generate
+  def extractOrGenerate(IRI: String): Try[String] = {
+    extract(IRI).flatMap {
+      case Some(id) => Success(id)
+      case None => generate
+    }
   }
 }

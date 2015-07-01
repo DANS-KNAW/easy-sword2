@@ -22,6 +22,7 @@ import org.apache.abdera.i18n.iri.IRI
 import org.swordapp.server._
 
 import scala.collection.JavaConversions._
+import scala.util.Success
 
 class ContainerManagerImpl extends ContainerManager {
 
@@ -29,11 +30,15 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    val id: String = SwordID.extract(editIRI)
-    val dir: File = new File(SwordProps.get("data-dir") + "/" + id)
-    if (!dir.exists) {
-      throw new SwordError(404)
+    SwordID.extract(editIRI) match {
+      case Success(Some(id)) =>
+        val dir: File = new File(SwordProps("data-dir") + "/" + id)
+        if (!dir.exists) {
+          throw new SwordError(404)
+        }
+      case _ => throw new SwordError(404)
     }
+
     val dr: DepositReceipt = new DepositReceipt
     dr.setEditIRI(new IRI(editIRI))
     dr.setLocation(new IRI(editIRI))

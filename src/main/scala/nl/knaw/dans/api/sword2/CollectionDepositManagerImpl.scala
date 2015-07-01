@@ -21,6 +21,7 @@ import java.util.Collections
 
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.{Bag, BagFactory}
+import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
@@ -38,63 +39,67 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
 
     implicit val bf = new BagFactory
 
-    val id: String = SwordID.extractOrGenerate(collectionURI)
-    val tempDirPath: Path = Paths.get(SwordProps.get("temp-dir"), id)
-    val inProgressExists: Boolean = Files.exists(tempDirPath)
-    val zipFile: File = Paths.get(SwordProps.get("temp-dir"), id, SwordID.generate + ".zip").toFile
-
-    val copyZipAction = Try {
-      FileUtils.copyInputStreamToFile(deposit.getInputStream, zipFile)
-    }.recoverWith { case e => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", e)) }
-
-    copyZipAction.flatMap(_ => doesHashMatch(zipFile, deposit.getMd5)) match {
-      case Failure(e) =>
-        removeTempDir(id).recover { case err => err.printStackTrace() }
-        throw e
-      case Success(false) =>
-        removeTempDir(id).recover { case err => err.printStackTrace() }
-        throw new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch")
-      case _ => // checksum correct
-    }
-
-    (deposit.isInProgress, inProgressExists) match {
+    val result: Try[String] = for {
+      id <- SwordID.extractOrGenerate(collectionURI)
+      tempDirPath = Paths.get(SwordProps("temp-dir"), id)
+      inProgressExists = Files.exists(tempDirPath)
+      zipFile <- SwordID.generate.map(zipId => Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
+      _ <- copyPayloadToFile(deposit, zipFile)
+      _ <- doesHashMatch(zipFile, deposit.getMd5)
+    } yield (deposit.isInProgress, inProgressExists) match {
       case (false, false) => handleSingleDeposit(id, zipFile)
       case (false, true) => handleLastContinuedDeposit(id)
-      case _ => // in-progress deposit
+      case _ => id // in-progress deposit
     }
 
-    createDepositReceipt(deposit, id)
+    result.map(id => createDepositReceipt(deposit, id)).get
   }
 
-  private def handleSingleDeposit(id: String, zipFile: File)(implicit bf: BagFactory) = {
+  private def cleanup(id: String, zipId: String, isInProgress: Boolean): Try[Unit] =
+    Try {
+      if (!isInProgress)
+        removeTempDir(id).recover { case err => err.printStackTrace() }
+      else
+        FileUtils.deleteQuietly(Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
+    }
+
+  private def copyPayloadToFile(deposit: Deposit, zipFile: File): Try[Unit] =
+    try {
+      Success(FileUtils.copyInputStreamToFile(deposit.getInputStream, zipFile))
+    } catch {
+      case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
+    }
+
+  private def handleSingleDeposit(id: String, zipFile: File)(implicit bf: BagFactory): String = {
     val bag = bf.createBag(zipFile, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
     val checkValid: SimpleResult = bag.verifyValid
-    if (checkValid.isSuccess) storeSingleDeposit(id, bag)
-    else throw new SwordError(checkValid.messagesToString)
+    if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
+    storeSingleDeposit(id, bag)
+    id
   }
 
-  private def handleLastContinuedDeposit(id: String)(implicit bf: BagFactory) = {
+  private def handleLastContinuedDeposit(id: String)(implicit bf: BagFactory): String =
     try {
       finalizeContinuedDeposit(id) match {
         case Success(tempDir) =>
           val bag = bf.createBag(tempDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
           val checkValid: SimpleResult = bag.verifyValid
           try {
-            if (checkValid.isSuccess) moveBagToStorage(id).recover { case e => throw new SwordError("Failed to move dataset to storage") }
-            else throw new SwordError(checkValid.messagesToString)
+            if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
+            moveBagToStorage(id).recover { case e => throw new SwordError("Failed to move dataset to storage") }
+            id
           } finally {
             removeTempDir(id)
           }
-        case Failure(e) => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", e.getMessage)
+        case Failure(e) => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", e)
       }
     } catch {
       case e: IOException => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest")
     }
-  }
 
   private def finalizeContinuedDeposit(id: String): Try[File] =
     Try {
-      val tempDir: File = Paths.get(SwordProps.get("temp-dir"), id).toFile
+      val tempDir: File = Paths.get(SwordProps("temp-dir"), id).toFile
       val files: Array[File] = tempDir.listFiles
       if (files == null) {
         throw new SwordError("Failed to read temporary dataset")
@@ -103,14 +108,14 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
         if (!file.isFile) {
           throw new SwordError("Inconsistent dataset: non-file object found")
         }
-        Bagit.extract(file, Paths.get(SwordProps.get("temp-dir"), id).toString)
+        extract(file, Paths.get(SwordProps("temp-dir"), id).toString)
         FileUtils.deleteQuietly(file)
       })
       tempDir
     }
 
   private def storeSingleDeposit(id: String, bag: Bag): Try[Unit] = {
-    val result = Try { moveZippedBagToStorage(id, bag).foreach(zip => Bagit.extract(zip, zip.getParent)) }
+    val result = Try { moveZippedBagToStorage(id, bag).foreach(zip => extract(zip, zip.getParent)) }
     removeTempDir(id)
     result
   }
@@ -118,32 +123,35 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   private def moveZippedBagToStorage(id: String, bag: Bag): Try[File] =
     Try {
       val tempFile = bag.getFile
-      val storedFile = Paths.get(SwordProps.get("data-dir"), id, tempFile.getName).toFile
+      val storedFile = Paths.get(SwordProps("data-dir"), id, tempFile.getName).toFile
       FileUtils.copyFile(tempFile, storedFile)
       storedFile
     }
 
   private def moveBagToStorage(id: String): Try[File] =
     Try {
-      val tempDir = Paths.get(SwordProps.get("temp-dir"), id).toFile
-      val storageDir = Paths.get(SwordProps.get("data-dir"), id).toFile
+      val tempDir = Paths.get(SwordProps("temp-dir"), id).toFile
+      val storageDir = Paths.get(SwordProps("data-dir"), id).toFile
       FileUtils.copyDirectory(tempDir, storageDir)
       storageDir
     }
 
   private def removeTempDir(id: String): Try[Unit] =
-    Try { FileUtils.deleteDirectory(Paths.get(SwordProps.get("temp-dir"), id).toFile) }
+    Try { FileUtils.deleteDirectory(Paths.get(SwordProps("temp-dir"), id).toFile) }
 
-  private def doesHashMatch(zipFile: File, MD5: String): Try[Boolean] =
+  private def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
+    lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
     try {
-      Success(MD5 == DigestUtils.md5Hex(Files.newInputStream(Paths.get(zipFile.getPath))))
+      if (MD5 == DigestUtils.md5Hex(Files.newInputStream(Paths.get(zipFile.getPath)))) Success(Unit)
+      else fail
     } catch {
-      case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch", t))
+      case _: Throwable => fail
     }
+  }
 
   private def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
     val dr = new DepositReceipt
-    val editIRI = if (deposit.isInProgress) new IRI(SwordProps.get("host") + "/collection/" + id) else new IRI(SwordProps.get("host") + "/container/" + id)
+    val editIRI = if (deposit.isInProgress) new IRI(SwordProps("host") + "/collection/" + id) else new IRI(SwordProps("host") + "/container/" + id)
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editIRI)
@@ -152,5 +160,8 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     dr
   }
+
+  private def extract(file: File, outputPath: String): Unit =
+    new ZipFile(file.getPath).extractAll(outputPath)
 
 }

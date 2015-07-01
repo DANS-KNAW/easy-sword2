@@ -25,7 +25,7 @@ object Authentication {
       throw new SwordError("http://purl.org/net/sword/error/MediationNotAllowed")
     }
     // temporary short-circuit
-    if (!(auth.getUsername == SwordProps.get("user")) || !(auth.getPassword == SwordProps.get("password"))) {
+    if (!(auth.getUsername == SwordProps("user")) || !(auth.getPassword == SwordProps("password"))) {
       throw new SwordAuthException
     }
   }

@@ -38,7 +38,5 @@ object SwordProps {
     }
   }
 
-  def get: Properties = props
-
-  def get(key: String): String = props.getProperty(key)
+  def apply(key: String): String = props.getProperty(key)
 }
