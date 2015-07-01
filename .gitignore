@@ -16,3 +16,8 @@ target/
 data/
 temp/
 
+# Eclipse
+/.project
+/.settings
+/.classpath
+/.cache
