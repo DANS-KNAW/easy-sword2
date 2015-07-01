@@ -21,6 +21,7 @@ import java.util.Collections
 
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.{Bag, BagFactory}
+import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
@@ -90,7 +91,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
           } finally {
             removeTempDir(id)
           }
-        case Failure(e) => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", e.getMessage)
+        case Failure(e) => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", e)
       }
     } catch {
       case e: IOException => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest")
@@ -107,14 +108,14 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
         if (!file.isFile) {
           throw new SwordError("Inconsistent dataset: non-file object found")
         }
-        Bagit.extract(file, Paths.get(SwordProps("temp-dir"), id).toString)
+        extract(file, Paths.get(SwordProps("temp-dir"), id).toString)
         FileUtils.deleteQuietly(file)
       })
       tempDir
     }
 
   private def storeSingleDeposit(id: String, bag: Bag): Try[Unit] = {
-    val result = Try { moveZippedBagToStorage(id, bag).foreach(zip => Bagit.extract(zip, zip.getParent)) }
+    val result = Try { moveZippedBagToStorage(id, bag).foreach(zip => extract(zip, zip.getParent)) }
     removeTempDir(id)
     result
   }
@@ -159,5 +160,8 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     dr
   }
+
+  private def extract(file: File, outputPath: String): Unit =
+    new ZipFile(file.getPath).extractAll(outputPath)
 
 }
