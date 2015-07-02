@@ -17,13 +17,15 @@ package nl.knaw.dans.api.sword2
 
 import java.io.{IOException, FileInputStream, InputStream}
 import java.util.Properties
+import java.io.File
 
 object SwordProps {
   private val props: Properties = new Properties
-
+  private val homedir = System.getenv("EASY_DEPOSIT_HOME")
+  
   var input: InputStream = null
   try {
-    input = new FileInputStream("sword.properties")
+    input = new FileInputStream(new File(homedir, "cfg/application.properties"))
     props.load(input)
   }
   catch {
