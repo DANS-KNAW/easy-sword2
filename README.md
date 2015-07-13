@@ -1,13 +1,13 @@
 easy-deposit
 ============
 
-Receive EASY-bags over a SWORD v2 session
+Receive EASY-bags over a SWORD v2.0 session
 
 
 SYNOPSIS
 --------
 
-easy-deposit
+    easy-deposit [-g]
 
 
 DESCRIPTION
@@ -15,10 +15,13 @@ DESCRIPTION
 
 
 
+
+
+
 ARGUMENTS
 ---------
 
-None
+* -g, --git-repo-enabled: enables the creation of a git-repository per deposit. 
 
 
 EXAMPLES
@@ -91,15 +94,15 @@ INSTALLATION AND CONFIGURATION
 ### Installation steps:
 
 1. Unzip the tarball to a directory of your choice, e.g. /opt/
-2. A new directory called easy-stage-dataset-<version> will be created
-3. Create an environment variabele ``EASY_STAGE_DATASET_HOME`` with the directory from step 2 as its value
-4. Add ``$EASY_STAGE_DATASET_HOME/bin`` to your ``PATH`` environment variable.
-
+2. A new directory called easy-deposit-<version> will be created
+3. Create an environment variabele ``EASY_DEPOSIT_HOME`` with the directory from step 2 as its value
+4. Either deploy the file ``$EASY_DEPOSIT_HOME/bin/easy-deposit.war`` in the Tomcat ``webapps`` directory or use the 
+   deployment descriptor ``$EASY_DEPOSIT_HOME/bin/easy-deposit.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
 
 ### Configuration
 
-General configuration settings can be set in ``EASY_STAGE_DATASET_HOME/cfg/application.properties`` and logging can be
-configured in ``EASY_STAGE_DATASET_HOME/cfg/logback.xml``. The available settings are explained in comments in 
+General configuration settings can be set in ``$EASY_DEPOSIT_HOME/cfg/application.properties`` and logging can be
+configured in ``$EASY_DEPOSIT_HOME/cfg/logback.xml``. The available settings are explained in comments in 
 aforementioned files.
 
 
@@ -123,32 +126,6 @@ Steps:
         git clone https://github.com/DANS-KNAW/easy-deposit.git
         cd easy-deposit
         mvn install
-
-
-
-
-
-
-[easy-deposit]: https://github.com/DANS-KNAW/easy-deposit
-[EASY-bagIt]: 
-[bagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
-[SDO-set]: https://github.com/DANS-KNAW/easy-ingest#staged-digital-object-set
-[easy-ingest]: https://github.com/DANS-KNAW/easy-ingest#easy-ingest
-
-
-# easy-deposit
-
-This is the repository for the EASY deposit service which is based on the [SWORD v2.0 protocol](http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html) and the [BagIt File Packaging Format](https://tools.ietf.org/html/draft-kunze-bagit-08).
-
-
-## Run
-Using maven, you can run *easy-deposit* with the following command:
-```
-mvn jetty:run
-```
-Alternatively, you can deploy the packaged WAR file on your server. The war file is generated at `target/sword.war`.
-
-
 
 [SWORDv2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
