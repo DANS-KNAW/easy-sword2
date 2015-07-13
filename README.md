@@ -1,7 +1,7 @@
 easy-deposit
 ============
 
-Receive EASY-bags over a SWORD v2.0 session
+Receive EASY-bags over a SWORD v2 session
 
 
 SYNOPSIS
@@ -13,15 +13,34 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
+Service that receives [EASY-BagIt] packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
+option of sending the package in one http session or several. The latter case is called a "continued deposit". A 
+continued deposit is in progress as long as the client keeps adding the ``In-Progress: true`` header (see also [SWORD v2]).
 
+After finalizing the deposit with ``In-Progress: false`` the service will merge the received parts and check the resulting
+bag for validity (see [BagIt] for a definition of validity). 
 
+If ``--git-enabled`` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
+an initial commit. ``easy-deposit`` will use the tags in this git-repository to report the current state of the deposit
+to clients. Tags that indicate a state must have a label of the form
 
+        state=<state-name>
+        
+where ``<state-name>`` is one of:
 
+* ``DRAFT``
+* ``SUBMITTED``
+* ``ARCHIVED``
+
+When state is set to ``ARCHIVED`` the working directory is cleared and committed to save space. Also if commit message
+of the ``ARCHIVED`` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
+
+*TODO: decide on the complete set of states and their semantics*
 
 ARGUMENTS
 ---------
 
-* -g, --git-repo-enabled: enables the creation of a git-repository per deposit. 
+* ``-g``, ``--git-enabled`` -- each deposit will be stored in a [git] repository.
 
 
 EXAMPLES
@@ -35,7 +54,7 @@ If a deposit is not too large it can be transferred in one http session
 
     curl -v -H "Content-Type: application/zip" \
         -H "Content-Disposition: attachment; filename=example-bag.zip" \
-        -H "Packaging: http://easy.dans.knaw.nl/schemas/index.xml" \ 
+        -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
         -H "Content-MD5: 2d48ff55b2c745345db1a86694068b84" \ 
         -i -u USER:PASSWORD --data-binary @example-bag.zip http://localhost:8080/collection
 
@@ -51,7 +70,7 @@ be sent in several increments. The status of the deposit is specified in the ``I
 
     curl -v -H "Content-Type: application/zip" \
             -H "Content-Disposition: attachment; filename=part1.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/index.xml" \
+            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \
             -H "Content-MD5: ce17fca299eab53a9622fdf40b7450c1" \
             -H "In-Progress: true" \
             -i -u USER:PASSWORD --data-binary @part1.zip http://localhost:8080/collection
@@ -63,7 +82,7 @@ be sent in several increments. The status of the deposit is specified in the ``I
 
     curl -v -H "Content-Type: application/zip" \
             -H "Content-Disposition: attachment; filename=part2.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/index.xml" \ 
+            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
             -H "Content-MD5: 67c8773a4dfff6d93e12002868c5395d" \
             -H "In-Progress: true" \ 
             -i -u USER:PASSWORD --data-binary @part2.zip http://localhost:8080/collection/1435188185031
@@ -74,7 +93,7 @@ notice "`In-Progress: false`" header)
 
     curl -v -H "Content-Type: application/zip" \ 
             -H "Content-Disposition: attachment; filename=part3.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/index.xml" \
+            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \
             -H "Content-MD5: 6c55ed00d3eadae513e720eb0f0489be" \
             -H "In-Progress: false" \ 
             -i -u USER:PASSWORD --data-binary @part3.zip http://localhost:8080/collection/1435188185031
@@ -127,6 +146,7 @@ Steps:
         cd easy-deposit
         mvn install
 
-[SWORDv2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
+[SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
 [cURL]: https://en.wikipedia.org/wiki/CURL
+[git]: http://www.git-scm.com/
