@@ -151,3 +151,4 @@ Steps:
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
 [cURL]: https://en.wikipedia.org/wiki/CURL
 [git]: http://www.git-scm.com/
+[dans-parent]: https://github.com/DANS-KNAW/dans-parent
