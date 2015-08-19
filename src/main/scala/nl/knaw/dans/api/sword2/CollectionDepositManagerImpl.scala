@@ -16,17 +16,18 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Paths}
 import java.util.Collections
 
+import gov.loc.repository.bagit.BagFactory
 import gov.loc.repository.bagit.utilities.SimpleResult
-import gov.loc.repository.bagit.{Bag, BagFactory}
 import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.swordapp.server._
 
+import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
@@ -46,22 +47,10 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       zipFile <- SwordID.generate.map(zipId => Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
       _ <- copyPayloadToFile(deposit, zipFile)
       _ <- doesHashMatch(zipFile, deposit.getMd5)
-    } yield (deposit.isInProgress, inProgressExists) match {
-      case (false, false) => handleSingleDeposit(id, zipFile)
-      case (false, true) => handleLastContinuedDeposit(id)
-      case _ => id // in-progress deposit
-    }
+    } yield if (!deposit.isInProgress) handleSingleOrLastContinuedDeposit(id) else id
 
     result.map(id => createDepositReceipt(deposit, id)).get
   }
-
-  private def cleanup(id: String, zipId: String, isInProgress: Boolean): Try[Unit] =
-    Try {
-      if (!isInProgress)
-        removeTempDir(id).recover { case err => err.printStackTrace() }
-      else
-        FileUtils.deleteQuietly(Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
-    }
 
   private def copyPayloadToFile(deposit: Deposit, zipFile: File): Try[Unit] =
     try {
@@ -70,19 +59,11 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  private def handleSingleDeposit(id: String, zipFile: File)(implicit bf: BagFactory): String = {
-    val bag = bf.createBag(zipFile, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
-    val checkValid: SimpleResult = bag.verifyValid
-    if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
-    storeSingleDeposit(id, bag)
-    id
-  }
-
-  private def handleLastContinuedDeposit(id: String)(implicit bf: BagFactory): String =
+  private def handleSingleOrLastContinuedDeposit(id: String)(implicit bf: BagFactory): String =
     try {
-      finalizeContinuedDeposit(id) match {
-        case Success(tempDir) =>
-          val bag = bf.createBag(tempDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+      finalizeDeposit(id).flatMap(findBagRoot) match {
+        case Success(bagitDir) =>
+          val bag = bf.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
           val checkValid: SimpleResult = bag.verifyValid
           try {
             if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
@@ -97,14 +78,29 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       case e: IOException => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest")
     }
 
-  private def finalizeContinuedDeposit(id: String): Try[File] =
+  @tailrec
+  private def findBagRoot(f: File): Try[File] =
+    if (f.isDirectory) {
+      val children = f.listFiles
+      if (children.size == 1) {
+        findBagRoot(children.head)
+      } else if (children.size > 1) {
+        Success(f)
+      } else {
+        Failure(new RuntimeException(s"Bagit folder seems to be empty in: ${f.getName}"))
+      }
+    } else {
+      Failure(new RuntimeException(s"Couldn't find bagit folder, instead found: ${f.getName}"))
+    }
+
+  private def finalizeDeposit(id: String): Try[File] =
     Try {
-      val tempDir: File = Paths.get(SwordProps("temp-dir"), id).toFile
+      val tempDir: File = new File(SwordProps("temp-dir"), id)
       val files: Array[File] = tempDir.listFiles
       if (files == null) {
         throw new SwordError("Failed to read temporary dataset")
       }
-      files.foreach(file =>  {
+      files.foreach(file => {
         if (!file.isFile) {
           throw new SwordError("Inconsistent dataset: non-file object found")
         }
@@ -114,30 +110,16 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       tempDir
     }
 
-  private def storeSingleDeposit(id: String, bag: Bag): Try[Unit] = {
-    val result = Try { moveZippedBagToStorage(id, bag).foreach(zip => extract(zip, zip.getParent)) }
-    removeTempDir(id)
-    result
-  }
-
-  private def moveZippedBagToStorage(id: String, bag: Bag): Try[File] =
-    Try {
-      val tempFile = bag.getFile
-      val storedFile = Paths.get(SwordProps("data-dir"), id, tempFile.getName).toFile
-      FileUtils.copyFile(tempFile, storedFile)
-      storedFile
-    }
-
   private def moveBagToStorage(id: String): Try[File] =
     Try {
-      val tempDir = Paths.get(SwordProps("temp-dir"), id).toFile
-      val storageDir = Paths.get(SwordProps("data-dir"), id).toFile
+      val tempDir = new File(SwordProps("temp-dir"), id)
+      val storageDir = new File(SwordProps("data-dir"), id)
       FileUtils.copyDirectory(tempDir, storageDir)
       storageDir
     }
 
   private def removeTempDir(id: String): Try[Unit] =
-    Try { FileUtils.deleteDirectory(Paths.get(SwordProps("temp-dir"), id).toFile) }
+    Try { FileUtils.deleteDirectory(new File(SwordProps("temp-dir"), id)) }
 
   private def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
