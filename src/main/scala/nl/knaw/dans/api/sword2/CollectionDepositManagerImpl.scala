@@ -32,13 +32,13 @@ import scala.util.{Failure, Success, Try}
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
 
+  implicit val bf = new BagFactory
+
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration) = {
     Authentication.checkAuthentication(auth)
-
-    implicit val bf = new BagFactory
 
     val result: Try[String] = for {
       id <- SwordID.extractOrGenerate(collectionURI)
@@ -47,7 +47,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       zipFile <- SwordID.generate.map(zipId => Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
       _ <- copyPayloadToFile(deposit, zipFile)
       _ <- doesHashMatch(zipFile, deposit.getMd5)
-    } yield if (!deposit.isInProgress) handleSingleOrLastContinuedDeposit(id) else id
+    } yield if (!deposit.isInProgress) handleSingleOrLastContinuedDeposit(id, deposit.getMimeType) else id
 
     result.map(id => createDepositReceipt(deposit, id)).get
   }
@@ -59,9 +59,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  private def handleSingleOrLastContinuedDeposit(id: String)(implicit bf: BagFactory): String =
+  private def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): String =
     try {
-      finalizeDeposit(id).flatMap(findBagRoot) match {
+      extractBagit(id, mimeType).flatMap(findBagitRoot) match {
         case Success(bagitDir) =>
           val bag = bf.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
           val checkValid: SimpleResult = bag.verifyValid
@@ -79,11 +79,11 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     }
 
   @tailrec
-  private def findBagRoot(f: File): Try[File] =
+  private def findBagitRoot(f: File): Try[File] =
     if (f.isDirectory) {
       val children = f.listFiles
       if (children.size == 1) {
-        findBagRoot(children.head)
+        findBagitRoot(children.head)
       } else if (children.size > 1) {
         Success(f)
       } else {
@@ -93,21 +93,38 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       Failure(new RuntimeException(s"Couldn't find bagit folder, instead found: ${f.getName}"))
     }
 
-  private def finalizeDeposit(id: String): Try[File] =
+  private def extractBagit(id: String, mimeType: String): Try[File] =
     Try {
       val tempDir: File = new File(SwordProps("temp-dir"), id)
       val files: Array[File] = tempDir.listFiles
-      if (files == null) {
+      if (files == null)
         throw new SwordError("Failed to read temporary dataset")
+      mimeType match {
+        case "application/zip" =>
+          files.foreach(file => {
+            if (!file.isFile)
+              throw new SwordError("Inconsistent dataset: non-file object found")
+            extract(file, tempDir.getPath)
+            FileUtils.deleteQuietly(file)
+          })
+        case "application/octet-stream" =>
+          val mergedZip = new File(tempDir, "dataset.zip")
+          MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
+          extract(mergedZip, tempDir.getPath)
+          files.foreach(FileUtils.deleteQuietly)
+          FileUtils.deleteQuietly(mergedZip)
+        case _ =>
+          throw new RuntimeException(s"Invalid content type: $mimeType")
       }
-      files.foreach(file => {
-        if (!file.isFile) {
-          throw new SwordError("Inconsistent dataset: non-file object found")
-        }
-        extract(file, Paths.get(SwordProps("temp-dir"), id).toString)
-        FileUtils.deleteQuietly(file)
-      })
       tempDir
+    }
+
+  private def getSequenceNumber(f: File): Int =
+    try {
+      f.getName.split('.').last.toInt
+    } catch {
+      case _: Throwable =>
+        throw new RuntimeException(s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
     }
 
   private def moveBagToStorage(id: String): Try[File] =
