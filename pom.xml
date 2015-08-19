@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
    <parent>
        <groupId>nl.knaw.dans.shared</groupId>
        <artifactId>dans-prototype</artifactId>
-       <version>1.11</version>
+       <version>1.12</version>
    </parent>
   <groupId>nl.knaw.dans.easy</groupId>
   <artifactId>easy-deposit</artifactId>
@@ -14,6 +13,10 @@
   <name>EASY Deposit Service</name>
   <description>SWORD v2 based dataset deposit service</description>
   <url>https://github.com/DANS-KNAW/easy-deposit</url>
+  <scm>
+      <developerConnection>scm:git:https://github.com/DANS-KNAW/${project.artifactId}</developerConnection>
+      <tag>HEAD</tag>
+  </scm>
   <dependencies>
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -70,6 +73,9 @@
     <sourceDirectory>src/main/scala</sourceDirectory>
     <finalName>easy-deposit</finalName>
     <plugins>
+      <plugin>
+        <artifactId>maven-release-plugin</artifactId>
+      </plugin>
       <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
       </plugin>
