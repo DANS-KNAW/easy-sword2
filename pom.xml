@@ -9,7 +9,7 @@
   <groupId>nl.knaw.dans.easy</groupId>
   <artifactId>easy-deposit</artifactId>
   <packaging>war</packaging>
-  <version>1.x-SNAPSHOT</version>
+  <version>1.0-beta-1</version>
   <name>EASY Deposit Service</name>
   <description>SWORD v2 based dataset deposit service</description>
   <url>https://github.com/DANS-KNAW/easy-deposit</url>

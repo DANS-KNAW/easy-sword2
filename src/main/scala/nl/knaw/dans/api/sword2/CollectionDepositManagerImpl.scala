@@ -44,7 +44,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       id <- SwordID.extractOrGenerate(collectionURI)
       tempDirPath = Paths.get(SwordProps("temp-dir"), id)
       inProgressExists = Files.exists(tempDirPath)
-      zipFile <- SwordID.generate.map(zipId => Paths.get(SwordProps("temp-dir"), id, zipId + ".zip").toFile)
+      zipFile = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename).toFile
       _ <- copyPayloadToFile(deposit, zipFile)
       _ <- doesHashMatch(zipFile, deposit.getMd5)
     } yield if (!deposit.isInProgress) handleSingleOrLastContinuedDeposit(id, deposit.getMimeType) else id
