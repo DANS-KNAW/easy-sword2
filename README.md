@@ -15,7 +15,8 @@ DESCRIPTION
 
 Service that receives [EASY-BagIt] packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
 option of sending the package in one http session or several. The latter case is called a "continued deposit". A 
-continued deposit is in progress as long as the client keeps adding the ``In-Progress: true`` header (see also [SWORD v2]).
+continued deposit is in progress as long as the client keeps adding the ``In-Progress: true`` header (see also: 
+[SWORD v2 - Continued Deposit]).
 
 After finalizing the deposit with ``In-Progress: false`` the service will merge the received parts and check the resulting
 bag for validity (see [BagIt] for a definition of validity). 
@@ -148,6 +149,7 @@ Steps:
 
 [EASY-BagIt]: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
+[SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
 [cURL]: https://en.wikipedia.org/wiki/CURL
 [git]: http://www.git-scm.com/
