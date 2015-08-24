@@ -62,11 +62,12 @@ EXAMPLES
 --------
 
 The following are example sessions using [cURL] as a client. `easy-deposit` is assumed to be running on `localhost` at port 
-8080 and the data sent can be found in the examples in this project.
+8080 and to be configured with a user with username  `USER` and password `PASSWORD`. The example data sent can be found in
+the examples in this project.
 
 ### Single Deposit
 
-If a deposit is not too large it can be transferred in one http session
+If a deposit is not too large it can be transferred in one http session:
 
     curl -v -H "Content-Type: application/zip" \
         -H "Content-Disposition: attachment; filename=example-bag.zip" \
@@ -77,9 +78,8 @@ If a deposit is not too large it can be transferred in one http session
 
 ### Continued Deposit
 
-If a deposit is too large to be transferred in one go, or if it is not practical to do so for some other reason it can 
-be sent in several increments. Whether any more partial deposits are to be expected is indicated by the client in 
-the ``In-Progress`` header. The client has the
+If a deposit is too large to be transferred in one go it can be sent in several increments. Whether any more partial 
+deposits are to be expected is indicated by the client in the ``In-Progress`` header.
 
 #### First Transfer 
 
@@ -104,9 +104,9 @@ the ``In-Progress`` header. The client has the
             -H "In-Progress: true" \ 
             -i -u USER:PASSWORD --data-binary @part2.zip http://localhost:8080/collection/1435188185031
 
-#### Final Transfer (
+#### Final Transfer 
 
-notice "`In-Progress: false`" header)
+(notice "`In-Progress: false`" header)
 
     curl -v -H "Content-Type: application/zip" \ 
             -H "Content-Disposition: attachment; filename=part3.zip" \
