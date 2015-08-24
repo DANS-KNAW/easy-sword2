@@ -16,10 +16,24 @@ DESCRIPTION
 Service that receives [EASY-BagIt] packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
 option of sending the package in one http session or several. The latter case is called a "continued deposit". A 
 continued deposit is in progress as long as the client keeps adding the ``In-Progress: true`` header (see also: 
-[SWORD v2 - Continued Deposit]).
+[SWORD v2 - Continued Deposit]). The client must not send this last partial deposit before it receives a response for
+all the other partial deposits.
 
 After finalizing the deposit with ``In-Progress: false`` the service will merge the received parts and check the resulting
 bag for validity (see [BagIt] for a definition of validity). 
+
+The clients has two options for dividing up a deposit in partial deposit:
+* make every partial deposit a valid zip file, containing some of the bag's files. In this case, upon receiving the
+  final deposit, `easy-deposit` will unzip all the partial deposits to a single directory to create the resulting bag.
+  The client must therefore take care not to "overwrite" files from a previous partial deposit, as this will lead to
+  undefined behavior. When using this option the client must use the `Content-Type: application/zip` header.
+* create a single zip file, split is in chunks and send each chunk as a partial deposit. In this case, upon receiving
+  the final deposit, `easy-deposit` will concatenate all the partial deposits to recreate the zip file and upzip this
+  file to create the resulting bag. The client must specify the intended order of the parts by extending the file name
+  the Content-Diposition header with a dot and a sequence number, e.g., 
+  `Content-Disposition: attachment; filename=example-bag.zip.part.3` for the third partial deposit. When using this
+  option the client must use the `Content-Type: application/octet-stream` header, to indicate that the partial deposit
+  on its own is not a valid zip-archive.
 
 If ``--git-enabled`` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
 an initial commit. ``easy-deposit`` will use the tags in this git-repository to report the current state of the deposit
@@ -47,7 +61,8 @@ ARGUMENTS
 EXAMPLES
 --------
 
-The following are example sessions using [cURL] as a client.
+The following are example sessions using [cURL] as a client. `easy-deposit` is assumed to be running on `localhost` at port 
+8080 and the data sent can be found in the examples in this project.
 
 ### Single Deposit
 
@@ -62,8 +77,9 @@ If a deposit is not too large it can be transferred in one http session
 
 ### Continued Deposit
 
-If a deposit is too large to be transferred in one go, or it is not practical to do so for some other reason it can 
-be sent in several increments. The status of the deposit is specified in the ``In-Progress`` header.
+If a deposit is too large to be transferred in one go, or if it is not practical to do so for some other reason it can 
+be sent in several increments. Whether any more partial deposits are to be expected is indicated by the client in 
+the ``In-Progress`` header. The client has the
 
 #### First Transfer 
 
