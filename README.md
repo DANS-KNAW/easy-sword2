@@ -150,7 +150,7 @@ Steps:
 [EASY-BagIt]: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
-[BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-10
+[BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
 [cURL]: https://en.wikipedia.org/wiki/CURL
 [git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
