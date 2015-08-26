@@ -73,7 +73,8 @@ If a deposit is not too large it can be transferred in one http session:
         -H "Content-Disposition: attachment; filename=example-bag.zip" \
         -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
         -H "Content-MD5: 2d48ff55b2c745345db1a86694068b84" \ 
-        -i -u USER:PASSWORD --data-binary @example-bag.zip http://localhost:8080/collection
+        -i -u USER:PASSWORD \
+        --data-binary @example-bag.zip http://localhost:8080/collection
 
 
 ### Continued Deposit
@@ -102,7 +103,8 @@ deposits are to be expected is indicated by the client in the ``In-Progress`` he
             -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
             -H "Content-MD5: 67c8773a4dfff6d93e12002868c5395d" \
             -H "In-Progress: true" \ 
-            -i -u USER:PASSWORD --data-binary @part2.zip http://localhost:8080/collection/1435188185031
+            -i -u USER:PASSWORD \
+            --data-binary @part2.zip http://localhost:8080/collection/1435188185031
 
 #### Final Transfer 
 
@@ -113,7 +115,8 @@ deposits are to be expected is indicated by the client in the ``In-Progress`` he
             -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \
             -H "Content-MD5: 6c55ed00d3eadae513e720eb0f0489be" \
             -H "In-Progress: false" \ 
-            -i -u USER:PASSWORD --data-binary @part3.zip http://localhost:8080/collection/1435188185031
+            -i -u USER:PASSWORD \ 
+            --data-binary @part3.zip http://localhost:8080/collection/1435188185031
 
 ### Check Existence of Deposit
 
