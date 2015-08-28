@@ -140,11 +140,14 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
 
   private def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
+    val is = Files.newInputStream(Paths.get(zipFile.getPath))
     try {
-      if (MD5 == DigestUtils.md5Hex(Files.newInputStream(Paths.get(zipFile.getPath)))) Success(Unit)
+      if (MD5 == DigestUtils.md5Hex(is)) Success(Unit)
       else fail
     } catch {
       case _: Throwable => fail
+    } finally {
+      Try { is.close() }
     }
   }
 
