@@ -15,16 +15,41 @@
   ******************************************************************************/
 package nl.knaw.dans.api.sword2
 
+import java.io.File
 import java.util
 
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.lib.{ObjectId, Constants}
 import org.swordapp.server._
+
+import scala.util.{Failure, Try}
+
+import collection.JavaConversions._
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    Authentication.checkAuthentication(auth)
+    SwordID.extract(iri).flatMap {
+      case Some(id) => getStatus(id)
+      case None => Failure(new SwordError(404))
+    }.map(tag => new AtomStatement(iri, "DANS-EASY", s"state=$tag", "today")).get
+  }
+
+  def getStatus(id: String): Try[String] = Try {
+    val dir = new File(SwordProps("data-dir"), id)
+    if (!dir.exists) throw new SwordError(404)
+    val git = Git.open(dir)
+    val head = git.getRepository.resolve(Constants.HEAD)
+    val headTag = git.tagList().call().find(_.getObjectId.equals(head))
+    if (!git.status().call().isClean)
+      "PROCESSING"
+    else if (headTag.isEmpty)
+      "PROCESSING"
+    else
+      headTag.get.getName
   }
 
 }

@@ -25,6 +25,7 @@ import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
+import org.eclipse.jgit.api.Git
 import org.swordapp.server._
 
 import scala.annotation.tailrec
@@ -67,7 +68,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
           val checkValid: SimpleResult = bag.verifyValid
           try {
             if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
-            moveBagToStorage(id).recover { case e => throw new SwordError("Failed to move dataset to storage") }
+            moveBagToStorage(id)
+              .recover { case e => throw new SwordError("Failed to move dataset to storage") }
+              .flatMap(dir => initGit(dir).recover { case e => throw new SwordError("Failed to initialize versioning") })
             id
           } finally {
             removeTempDir(id)
@@ -77,6 +80,13 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     } catch {
       case e: IOException => throw new SwordError("http://purl.org/net/sword/error/ErrorBadRequest")
     }
+
+  private def initGit(bagDir: File): Try[Unit] = Try {
+    val git = Git.init().setDirectory(bagDir).call()
+    git.add().addFilepattern(".").call()
+    git.commit().setCommitter(SwordProps("git-user"), SwordProps("git-email")).setMessage("initial commit").call()
+    git.tag().setName("SUBMITTED").setMessage("SUBMITTED").call()
+  }
 
   @tailrec
   private def findBagitRoot(f: File): Try[File] =
