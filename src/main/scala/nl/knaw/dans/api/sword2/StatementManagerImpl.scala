@@ -44,9 +44,7 @@ class StatementManagerImpl extends StatementManager {
     val git = Git.open(dir)
     val head = git.getRepository.resolve(Constants.HEAD)
     val headTag = git.tagList().call().find(_.getObjectId.equals(head))
-    if (!git.status().call().isClean)
-      "PROCESSING"
-    else if (headTag.isEmpty)
+    if (!git.status().call().isClean || headTag.isEmpty)
       "PROCESSING"
     else
       headTag.get.getName
