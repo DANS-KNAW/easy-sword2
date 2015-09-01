@@ -1,15 +1,13 @@
 package nl.knaw.dans.api.sword2
 
-import javax.servlet.ServletContextListener
-import javax.servlet.ServletContextEvent
-import org.slf4j.LoggerFactory
 import java.io.File
-import ch.qos.logback.classic.joran.JoranConfigurator
-import org.slf4j.ILoggerFactory
+import javax.servlet.{ServletContextEvent, ServletContextListener}
+
 import ch.qos.logback.classic.LoggerContext
+import ch.qos.logback.classic.joran.JoranConfigurator
+import org.slf4j.LoggerFactory
 
 class LoggingInitializer extends ServletContextListener {
-  val homeDir = new File(System.getenv("EASY_DEPOSIT_HOME"))
   val log = LoggerFactory.getLogger(getClass)
 
   def contextInitialized(sce: ServletContextEvent) = {
@@ -20,9 +18,10 @@ class LoggingInitializer extends ServletContextListener {
         configurator.setContext(lc)
         lc.reset()
         configurator.doConfigure(logConfigFile)
-        log.info("Configured Logback with config file from: {}", logConfigFile.getAbsolutePath)
+        log.info(s"Home directory = $homeDir")
+        log.info(s"Logback configuration file = $logConfigFile")
       }
-      case _ => System.out.println("Logback not found. Could not configure logging")
+      case _ => println("Logback not found. Could not configure logging")
     }
   }
 

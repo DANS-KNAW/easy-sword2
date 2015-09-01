@@ -26,12 +26,14 @@ import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
 import org.eclipse.jgit.api.Git
+import org.slf4j.LoggerFactory
 import org.swordapp.server._
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
+  val log = LoggerFactory.getLogger(getClass)
 
   implicit val bf = new BagFactory
 
@@ -39,16 +41,28 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration) = {
+    log.info(s"Starting new deposit for ${auth.getUsername}")
     Authentication.checkAuthentication(auth)
 
     val result: Try[String] = for {
       id <- SwordID.extractOrGenerate(collectionURI)
+      _ = log.debug(s"Deposit ID = $id")
       tempDirPath = Paths.get(SwordProps("temp-dir"), id)
       inProgressExists = Files.exists(tempDirPath)
       zipFile = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename).toFile
+      _ = log.debug(s"Copying payload to: $zipFile")
       _ <- copyPayloadToFile(deposit, zipFile)
+      _ = log.debug(s"Checking Content-MD5 (Received: ${deposit.getMd5})")
       _ <- doesHashMatch(zipFile, deposit.getMd5)
-    } yield if (!deposit.isInProgress) handleSingleOrLastContinuedDeposit(id, deposit.getMimeType) else id
+    } yield
+      if (!deposit.isInProgress) {
+        log.info(s"Finalizing deposit ${auth.getUsername}/$id")
+        handleSingleOrLastContinuedDeposit(id, deposit.getMimeType)
+      }
+      else {
+        log.info(s"Received continuing deposit ${auth.getUsername}/$id/${deposit.getFilename}")
+        id
+      }
 
     result.map(id => createDepositReceipt(deposit, id)).get
   }
@@ -62,15 +76,21 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
 
   private def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): String =
     try {
+      log.debug("Extracting bag")
       extractBagit(id, mimeType).flatMap(findBagitRoot) match {
         case Success(bagitDir) =>
           val bag = bf.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+          log.debug("Verifying bag validity")
           val checkValid: SimpleResult = bag.verifyValid
           try {
             if (!checkValid.isSuccess) throw new SwordError(checkValid.messagesToString)
-            moveBagToStorage(id)
-              .recover { case e => throw new SwordError("Failed to move dataset to storage") }
-              .flatMap(dir => initGit(dir).recover { case e => throw new SwordError("Failed to initialize versioning") })
+            log.debug("Moving bag to permanent storage")
+            val moved = moveBagToStorage(id)
+                .recover { case e => throw new SwordError("Failed to move dataset to storage") }
+            if(SwordProps("git-enabled").toBoolean) {
+              log.debug("Initializing git repo for deposit")
+              moved.flatMap(dir => initGit(dir).recover { case e => throw new SwordError("Failed to initialize versioning") })
+            }
             id
           } finally {
             removeTempDir(id)
