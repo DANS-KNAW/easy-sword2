@@ -161,7 +161,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     Try {
       val tempDir = new File(SwordProps("temp-dir"), id)
       val storageDir = new File(SwordProps("data-dir"), id)
-      FileUtils.copyDirectory(tempDir, storageDir)
+      if(!tempDir.renameTo(storageDir)) throw new RuntimeException(s"Cannot move $tempDir to $storageDir")
       storageDir
     }
 
