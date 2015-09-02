@@ -27,7 +27,7 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
-    <logger name="nl.knaw.dans" level="info" >
+    <logger name="nl.knaw.dans" level="{{ easy_deposit_log_level }}" >
        <appender-ref ref="EASY_DEPOSIT_LOG" />
     </logger>
 </configuration>

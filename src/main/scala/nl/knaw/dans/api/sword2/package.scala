@@ -13,31 +13,18 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   ******************************************************************************/
-package nl.knaw.dans.api.sword2
 
-import java.io.{IOException, FileInputStream, InputStream}
-import java.util.Properties
+package nl.knaw.dans.api
+
 import java.io.File
 
-object SwordProps {
-  private val props: Properties = new Properties
-
-  var input: InputStream = null
-  try {
-    input = new FileInputStream(new File(homeDir, "cfg/application.properties"))
-    props.load(input)
-  }
-  catch {
-    case e: IOException => e.printStackTrace()
-  } finally {
-    if (input != null) {
-      try {
-        input.close()
-      } catch {
-        case e: IOException => e.printStackTrace()
-      }
-    }
-  }
-
-  def apply(key: String): String = props.getProperty(key)
+package object sword2 {
+  /*
+   * HACK ALERT:
+   *
+   * This is a global variable. It's GLOBAL and VARIABLE, which is bad, but I can see no other way to get
+   * a Servlet Init Parameter into the global scope. If there is a better way, please let me know (JvM).
+   */
+  var homeDir: File = null
 }
+

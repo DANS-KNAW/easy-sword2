@@ -13,26 +13,18 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   ******************************************************************************/
+
 package nl.knaw.dans.api.sword2
 
-import org.slf4j.LoggerFactory
-import org.swordapp.server.{AuthCredentials, SwordAuthException, SwordError}
+import java.io.File
+import javax.servlet.{ServletContextEvent, ServletContextListener}
 
-object Authentication {
-  val log = LoggerFactory.getLogger(getClass)
-
-  @throws(classOf[SwordError])
-  @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials) {
-    log.debug("Checking that onBehalfOf is not specified")
-    if (auth.getOnBehalfOf != null && !(auth.getOnBehalfOf == "")) {
-      throw new SwordError("http://purl.org/net/sword/error/MediationNotAllowed")
-    }
-    // temporary short-circuit
-    log.debug(s"Checking credentials for user ${auth.getUsername}")
-    if (!(auth.getUsername == SwordProps("user")) || !(auth.getPassword == SwordProps("password"))) {
-      throw new SwordAuthException
-    }
-    log.debug("Authentication succeeded")
+class HomeDirInitializer extends ServletContextListener {
+  override def contextInitialized(sce: ServletContextEvent) = {
+    homeDir = new File(sce.getServletContext.getInitParameter("EASY_DEPOSIT_HOME"))
   }
+
+  def contextDestroyed(sce: ServletContextEvent) = Unit
 }
+
+

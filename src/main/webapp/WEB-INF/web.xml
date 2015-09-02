@@ -4,7 +4,7 @@
  "http://java.sun.com/dtd/web-app_2_3.dtd" >
 
 <web-app>
-    <display-name>Archetype Created Web Application</display-name>
+    <display-name>EASY Deposit Service</display-name>
 
     <context-param>
         <param-name>config-impl</param-name>
@@ -62,6 +62,13 @@
         </description>
     </context-param>
 
+    <listener>
+        <listener-class>nl.knaw.dans.api.sword2.HomeDirInitializer</listener-class>
+    </listener>
+
+    <listener>
+        <listener-class>nl.knaw.dans.api.sword2.LoggingInitializer</listener-class>
+    </listener>
 
     <servlet>
         <servlet-name>HelloWorld</servlet-name>
@@ -93,7 +100,6 @@
         <servlet-class>org.swordapp.server.servlets.StatementServletDefault</servlet-class>
     </servlet>
 
-
     <servlet-mapping>
         <servlet-name>HelloWorld</servlet-name>
         <url-pattern>/hello</url-pattern>
@@ -123,9 +129,6 @@
         <servlet-name>statement</servlet-name>
         <url-pattern>/statement/*</url-pattern>
     </servlet-mapping>
-    
-    <listener>
-        <listener-class>nl.knaw.dans.api.sword2.LoggingInitializer</listener-class>
-    </listener>
 
 </web-app>
+
