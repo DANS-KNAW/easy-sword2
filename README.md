@@ -35,20 +35,22 @@ The clients has two options for dividing up a deposit in partial deposit:
   option the client must use the `Content-Type: application/octet-stream` header, to indicate that the partial deposit
   on its own is not a valid zip-archive.
 
-If ``--git-enabled`` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
-an initial commit. ``easy-deposit`` will use the tags in this git-repository to report the current state of the deposit
+If `--git-enabled` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
+an initial commit. `easy-deposit` will use the tags in this git-repository to report the current state of the deposit
 to clients. Tags that indicate a state must have a label of the form
 
         state=<state-name>
         
-where ``<state-name>`` is one of:
+where `<state-name>` is one of:
 
-* ``DRAFT``
-* ``SUBMITTED``
-* ``ARCHIVED``
+* `DRAFT`
+* `FINALIZING`
+* `INVALID`
+* `SUBMITTED`
+* `ARCHIVED`
 
-When state is set to ``ARCHIVED`` the working directory is cleared and committed to save space. Also if commit message
-of the ``ARCHIVED`` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
+When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
+of the `ARCHIVED` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
 
 *TODO: decide on the complete set of states and their semantics*
 
