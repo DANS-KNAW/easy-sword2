@@ -4,12 +4,6 @@ easy-deposit
 Receive EASY-bags over a SWORD v2 session
 
 
-SYNOPSIS
---------
-
-    easy-deposit [-g]
-
-
 DESCRIPTION
 -----------
 
@@ -22,7 +16,7 @@ all the other partial deposits.
 After finalizing the deposit with ``In-Progress: false`` the service will merge the received parts and check the resulting
 bag for validity (see [BagIt] for a definition of validity). 
 
-The clients has two options for dividing up a deposit in partial deposit:
+The clients has two options for dividing up a deposit in partial deposits:
 * make every partial deposit a valid zip file, containing some of the bag's files. In this case, upon receiving the
   final deposit, `easy-deposit` will unzip all the partial deposits to a single directory to create the resulting bag.
   The client must therefore take care not to "overwrite" files from a previous partial deposit, as this will lead to
@@ -41,18 +35,20 @@ to clients. Tags that indicate a state must have a label of the form
 
         state=<state-name>
         
-where `<state-name>` is one of:
+where `<state-name>` is one of the following.
 
-* `DRAFT`
-* `FINALIZING`
-* `INVALID`
-* `SUBMITTED`
-* `ARCHIVED`
+State               | Description
+--------------------|------------------------------------------------------------------------
+`DRAFT`             | Continued deposit in progress
+`FINALIZING`        | Deposit has been closed by the client, service is creating the deposit
+`INVALID`           | Deposit was finalized but turned out to be invalid (i.e. not a valid EASY bag)
+`SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed
+`REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason
+`ARCHIVED`          | Deposit was successfully archived. (Access URL in commit message.)
 
 When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
 of the `ARCHIVED` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
 
-*TODO: decide on the complete set of states and their semantics*
 
 ARGUMENTS
 ---------
