@@ -46,6 +46,10 @@ State               | Description
 `REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason
 `ARCHIVED`          | Deposit was successfully archived. (Access URL in commit message.)
 
+
+`POST`-ing to a deposit is only allowed when it is in `DRAFT` status. In all other statusses this will lead to
+[method not allowed error].
+
 When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
 of the `ARCHIVED` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
 
@@ -167,7 +171,9 @@ Steps:
 [EASY-BagIt]: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
+[method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
 [cURL]: https://en.wikipedia.org/wiki/CURL
 [git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
+
