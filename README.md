@@ -47,7 +47,7 @@ State               | Description
 `ARCHIVED`          | Deposit was successfully archived. (Access URL in commit message.)
 
 
-`POST`-ing to a deposit is only allowed when it is in `DRAFT` status. In all other statusses this will lead to
+`POST`-ing to a deposit is only allowed when it is in `DRAFT` state. In all other states this will lead to
 [method not allowed error].
 
 When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
