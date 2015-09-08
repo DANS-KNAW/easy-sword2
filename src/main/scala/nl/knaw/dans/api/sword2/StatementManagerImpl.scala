@@ -19,12 +19,11 @@ import java.io.File
 import java.util
 
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.{ObjectId, Constants}
+import org.eclipse.jgit.lib.Constants
 import org.swordapp.server._
 
+import scala.collection.JavaConversions._
 import scala.util.{Failure, Try}
-
-import collection.JavaConversions._
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -35,7 +34,7 @@ class StatementManagerImpl extends StatementManager {
     SwordID.extract(iri).flatMap {
       case Some(id) => getStatus(id)
       case None => Failure(new SwordError(404))
-    }.map(tag => new AtomStatement(iri, "DANS-EASY", s"state=$tag", "today")).get
+    }.map(tag => new AtomStatement(iri, "DANS-EASY", tag, "today")).get
   }
 
   def getStatus(id: String): Try[String] = Try {
@@ -45,7 +44,7 @@ class StatementManagerImpl extends StatementManager {
     val head = git.getRepository.resolve(Constants.HEAD)
     val headTag = git.tagList().call().find(_.getObjectId.equals(head))
     if (!git.status().call().isClean || headTag.isEmpty)
-      "PROCESSING"
+      "state=DRAFT"
     else
       headTag.get.getName
   }

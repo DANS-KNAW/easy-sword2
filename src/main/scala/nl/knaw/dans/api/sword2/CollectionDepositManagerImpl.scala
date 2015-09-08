@@ -29,14 +29,20 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.Ref
 import org.slf4j.LoggerFactory
 import org.swordapp.server._
+import rx.lang.scala.Observable
+import rx.lang.scala.schedulers.NewThreadScheduler
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
+object CollectionDepositManagerImpl {
+  val scheduler = NewThreadScheduler()
+  val bagFactory = new BagFactory
+}
+
 class CollectionDepositManagerImpl extends CollectionDepositManager {
   val log = LoggerFactory.getLogger(getClass)
-
-  implicit val bf = new BagFactory
+  implicit val bf = CollectionDepositManagerImpl.bagFactory
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
@@ -45,17 +51,24 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     log.info(s"Starting new deposit for ${auth.getUsername}")
     Authentication.checkAuthentication(auth)
 
-    val depositReceipt = for {
+    val result = for {
       id <- SwordID.extractOrGenerate(collectionURI)
       _ = log.debug(s"Deposit ID = $id")
       _ <- checkDepositStatus(id)
       payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename).toFile
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
-      _ <- handleDeposit(id, auth, deposit)
-    } yield createDepositReceipt(deposit, id)
+      _ <- handleDepositAsync(id, auth, deposit)
+    } yield (id, createDepositReceipt(deposit, id))
 
-    depositReceipt.get
+    result match {
+      case Success((id,depositReceipt)) =>
+        log.info(s"Sending deposit receipt for deposit: $id")
+        depositReceipt
+      case Failure(e) =>
+        log.error("Error(s) occurred", e)
+        throw e
+    }
   }
 
   private def checkDepositStatus(id: String): Try[Unit] = Try {
@@ -75,15 +88,26 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  private def handleDeposit(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] =
+  private def handleDepositAsync(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] = Try {
     if (!deposit.isInProgress) {
-      log.info(s"Finalizing deposit ${auth.getUsername}/$id")
-      handleSingleOrLastContinuedDeposit(id, deposit.getMimeType)
+      log.info(s"Registering deposit ${auth.getUsername}/$id for post-processing")
+      Observable[Unit](observer => {
+        log.info(s"STARTING $id")
+        handleSingleOrLastContinuedDeposit(id, deposit.getMimeType)
+          .recover { case t: Throwable => observer.onError(t) }
+        log.info(s"DONE $id")
+        observer.onCompleted()
+      }).subscribeOn(CollectionDepositManagerImpl.scheduler)
+        .subscribe(x => x,
+          e => log.error(s"Error while post-processing deposit $id", e),
+          () => log.info(s"Done post-processing deposit $id"))
     } else {
-      Success(log.info(s"Received continuing deposit ${auth.getUsername}/$id/${deposit.getFilename}"))
+      log.info(s"Received continuing deposit ${auth.getUsername}/$id/${deposit.getFilename}")
     }
+  }
 
   private def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): Try[Unit] = {
+    log.info(s"Finalizing deposit: $id (thread-name: ${Thread.currentThread().getName} thread-id: ${Thread.currentThread().getId})")
     val tempDir = new File(SwordProps("temp-dir"), id)
     for {
       git      <- initGit(tempDir)

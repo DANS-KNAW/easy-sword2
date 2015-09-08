@@ -4,12 +4,6 @@ easy-deposit
 Receive EASY-bags over a SWORD v2 session
 
 
-SYNOPSIS
---------
-
-    easy-deposit [-g]
-
-
 DESCRIPTION
 -----------
 
@@ -22,35 +16,43 @@ all the other partial deposits.
 After finalizing the deposit with ``In-Progress: false`` the service will merge the received parts and check the resulting
 bag for validity (see [BagIt] for a definition of validity). 
 
-The clients has two options for dividing up a deposit in partial deposit:
+The clients has two options for dividing up a deposit in partial deposits:
 * make every partial deposit a valid zip file, containing some of the bag's files. In this case, upon receiving the
   final deposit, `easy-deposit` will unzip all the partial deposits to a single directory to create the resulting bag.
   The client must therefore take care not to "overwrite" files from a previous partial deposit, as this will lead to
-  undefined behavior. When using this option the client must use the `Content-Type: application/zip` header.
+  undefined behavior. The client selects this option by using the `Content-Type: application/zip` header.
 * create a single zip file, split is in chunks and send each chunk as a partial deposit. In this case, upon receiving
   the final deposit, `easy-deposit` will concatenate all the partial deposits to recreate the zip file and upzip this
   file to create the resulting bag. The client must specify the intended order of the parts by extending the file name
   the Content-Diposition header with a dot and a sequence number, e.g., 
-  `Content-Disposition: attachment; filename=example-bag.zip.part.3` for the third partial deposit. When using this
-  option the client must use the `Content-Type: application/octet-stream` header, to indicate that the partial deposit
-  on its own is not a valid zip-archive.
+  `Content-Disposition: attachment; filename=example-bag.zip.part.3` for the third partial deposit. The client selects
+  this option by using the `Content-Type: application/octet-stream` header (to indicate that the partial deposit
+  on its own is not a valid zip archive).
 
-If ``--git-enabled`` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
-an initial commit. ``easy-deposit`` will use the tags in this git-repository to report the current state of the deposit
+If `--git-enabled` is specified the service will initialize a [git]-repository in the resulting bag-directory and create
+an initial commit. `easy-deposit` will use the tags in this git-repository to report the current state of the deposit
 to clients. Tags that indicate a state must have a label of the form
 
         state=<state-name>
         
-where ``<state-name>`` is one of:
+where `<state-name>` is one of the following.
 
-* ``DRAFT``
-* ``SUBMITTED``
-* ``ARCHIVED``
+State               | Description
+--------------------|------------------------------------------------------------------------
+`DRAFT`             | Continued deposit in progress
+`FINALIZING`        | Deposit has been closed by the client, service is creating the deposit
+`INVALID`           | Deposit was finalized but turned out to be invalid (i.e. not a valid EASY bag)
+`SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed
+`REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason
+`ARCHIVED`          | Deposit was successfully archived. (Access URL in commit message.)
 
-When state is set to ``ARCHIVED`` the working directory is cleared and committed to save space. Also if commit message
-of the ``ARCHIVED`` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
 
-*TODO: decide on the complete set of states and their semantics*
+`POST`-ing to a deposit is only allowed when it is in `DRAFT` state. In all other states this will lead to
+[method not allowed error].
+
+When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
+of the `ARCHIVED` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
+
 
 ARGUMENTS
 ---------
@@ -169,7 +171,9 @@ Steps:
 [EASY-BagIt]: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
+[method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
 [cURL]: https://en.wikipedia.org/wiki/CURL
 [git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
+
