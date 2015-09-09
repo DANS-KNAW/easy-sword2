@@ -22,6 +22,7 @@ import java.util.Collections
 import gov.loc.repository.bagit.BagFactory
 import gov.loc.repository.bagit.utilities.SimpleResult
 import net.lingala.zip4j.core.ZipFile
+import nl.knaw.dans.api.sword2.CollectionDepositManagerImpl._
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils
@@ -29,21 +30,13 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.Ref
 import org.slf4j.LoggerFactory
 import org.swordapp.server._
-import rx.lang.scala.Observable
 import rx.lang.scala.schedulers.NewThreadScheduler
+import rx.lang.scala.subjects.PublishSubject
 
 import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
-object CollectionDepositManagerImpl {
-  val scheduler = NewThreadScheduler()
-  val bagFactory = new BagFactory
-}
-
 class CollectionDepositManagerImpl extends CollectionDepositManager {
-  val log = LoggerFactory.getLogger(getClass)
-  implicit val bf = CollectionDepositManagerImpl.bagFactory
-
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
@@ -70,8 +63,25 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
         throw e
     }
   }
+}
 
-  private def checkDepositStatus(id: String): Try[Unit] = Try {
+object CollectionDepositManagerImpl {
+  val log = LoggerFactory.getLogger(getClass)
+
+  implicit val bagFactory = new BagFactory
+
+  val depositProcessingStream = PublishSubject[(String, Deposit)]()
+
+  depositProcessingStream
+    .onBackpressureBuffer
+    .observeOn(NewThreadScheduler())
+    .doOnEach(_ match { case (id, deposit) => handleSingleOrLastContinuedDeposit(id, deposit.getMimeType).get })
+    .subscribe(
+      d => log.info(s"Done post-processing deposit ${d._1}"),
+      e => log.error(s"Error while post-processing deposit", e),
+      () => log.error(s"Deposit processing stream completed, this should never happen!"))
+
+  def checkDepositStatus(id: String): Try[Unit] = Try {
     val tempDir = new File(SwordProps("temp-dir"), id)
     if (tempDir.exists() && Git.open(tempDir).tagList().call().size() > 0)
       throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state.")
@@ -80,7 +90,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     case _ => Success(Unit)
   }
 
-  private def copyPayloadToFile(deposit: Deposit, zipFile: File): Try[Unit] =
+  def copyPayloadToFile(deposit: Deposit, zipFile: File): Try[Unit] =
     try {
       log.debug(s"Copying payload to: $zipFile")
       Success(FileUtils.copyInputStreamToFile(deposit.getInputStream, zipFile))
@@ -88,25 +98,16 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  private def handleDepositAsync(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] = Try {
+  def handleDepositAsync(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"Registering deposit ${auth.getUsername}/$id for post-processing")
-      Observable[Unit](observer => {
-        log.info(s"STARTING $id")
-        handleSingleOrLastContinuedDeposit(id, deposit.getMimeType)
-          .recover { case t: Throwable => observer.onError(t) }
-        log.info(s"DONE $id")
-        observer.onCompleted()
-      }).subscribeOn(CollectionDepositManagerImpl.scheduler)
-        .subscribe(x => x,
-          e => log.error(s"Error while post-processing deposit $id", e),
-          () => log.info(s"Done post-processing deposit $id"))
+      depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"Received continuing deposit ${auth.getUsername}/$id/${deposit.getFilename}")
     }
   }
 
-  private def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): Try[Unit] = {
+  def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): Try[Unit] = {
     log.info(s"Finalizing deposit: $id (thread-name: ${Thread.currentThread().getName} thread-id: ${Thread.currentThread().getId})")
     val tempDir = new File(SwordProps("temp-dir"), id)
     for {
@@ -121,7 +122,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
 
   private def checkBagValidity(bagitDir: File): Try[Unit] = {
     log.debug(s"Verifying bag validity: ${bagitDir.getPath}")
-    val bag = bf.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+    val bag = bagFactory.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
     val validationResult: SimpleResult = bag.verifyValid
     if (validationResult.isSuccess)
       Success(Unit)
@@ -190,7 +191,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       tempDir
     }
 
-  private def getSequenceNumber(f: File): Int =
+  def getSequenceNumber(f: File): Int =
     try {
       f.getName.split('.').last.toInt
     } catch {
@@ -198,7 +199,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
         throw new RuntimeException(s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
     }
 
-  private def moveBagToStorage(id: String): Try[File] =
+  def moveBagToStorage(id: String): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(SwordProps("temp-dir"), id)
@@ -207,7 +208,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
-  private def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
+  def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
     log.debug(s"Checking Content-MD5 (Received: $MD5)")
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
     val is = Files.newInputStream(Paths.get(zipFile.getPath))
@@ -221,7 +222,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     }
   }
 
-  private def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
+  def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
     val dr = new DepositReceipt
     val editIRI = if (deposit.isInProgress) new IRI(SwordProps("host") + "/collection/" + id) else new IRI(SwordProps("host") + "/container/" + id)
     dr.setEditIRI(editIRI)
@@ -233,7 +234,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     dr
   }
 
-  private def extract(file: File, outputPath: String): Unit =
+  def extract(file: File, outputPath: String): Unit =
     new ZipFile(file.getPath).extractAll(outputPath)
 
 }
