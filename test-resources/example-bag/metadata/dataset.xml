@@ -15,30 +15,26 @@
 		http://easy.dans.knaw.nl/schemas/dcx/gml/ http://eof12.dans.knaw.nl/schemas/dcx/2012/10/dcx-gml.xsd
 ">
 	<ddm:profile>
-        <dc:title>{title VARCHAR(255) The title of the Dataset}</dc:title>
-        <dcterms:description>{abstract VARCHAR(3000) The Dataset abstract}</dcterms:description>
+        <dc:title>The title of the Dataset</dc:title>
+        <dcterms:description>The Dataset abstract</dcterms:description>
         <dcx-dai:creatorDetails>
             <dcx-dai:author>
                 <dcx-dai:titles></dcx-dai:titles>
-                <dcx-dai:initials>{[transformed] first_name VARCHAR(255)}</dcx-dai:initials>
+                <dcx-dai:initials>I</dcx-dai:initials>
                 <dcx-dai:insertions></dcx-dai:insertions>
-                <dcx-dai:surname>{last_name VARCHAR(255)}</dcx-dai:surname>
-                <dcx-dai:DAI></dcx-dai:DAI>
+                <dcx-dai:surname>Lastname</dcx-dai:surname>
                 <dcx-dai:organization>
-                    <dcx-dai:name xml:lang="en">{institution VARCHAR(255)}</dcx-dai:name>
+                    <dcx-dai:name xml:lang="en">DANS</dcx-dai:name>
                 </dcx-dai:organization>
             </dcx-dai:author>
         </dcx-dai:creatorDetails>        
-        <ddm:created>{created_date TIMESTAMP}</ddm:created>
-		<ddm:audience>D41500</ddm:audience>
-		<ddm:accessRights>OPEN_ACCESS</ddm:accessRights>
+        <ddm:created>2015-09-09</ddm:created>
+	<ddm:audience>D41500</ddm:audience>
+	<ddm:accessRights>OPEN_ACCESS</ddm:accessRights>
 	</ddm:profile>
-    <ddm:dcmiMetadata>
-        <dcterms:identifier>{doi VARCHAR(64)}</dcterms:identifier>
-        <dcterms:identifier>{id UUID The unique identifier for the Dataset}</dcterms:identifier>
-        <dcterms:hasVersion>{version BIGINT(19) The version number of the Dataset}</dcterms:hasVersion>
-        <dcterms:modified>{last_modified_date TIMESTAMP}</dcterms:modified>
-        <dcterms:issued>{publish_date TIMESTAMP The date a dataset is made public}</dcterms:issued>
-    </ddm:dcmiMetadata>
+	<ddm:dcmiMetadata>
+        	<dcterms:hasVersion>1.1</dcterms:hasVersion>
+        	<dcterms:modified>2015-09-08</dcterms:modified>
+    	</ddm:dcmiMetadata>
 </ddm:DDM>
 
