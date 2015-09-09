@@ -37,8 +37,6 @@ import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
-  implicit val bf = bagFactory
-
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
