@@ -21,7 +21,10 @@ import javax.servlet.{ServletContextEvent, ServletContextListener}
 
 class HomeDirInitializer extends ServletContextListener {
   override def contextInitialized(sce: ServletContextEvent) = {
-    homeDir = new File(sce.getServletContext.getInitParameter("EASY_DEPOSIT_HOME"))
+    val home = if(sce.getServletContext.getInitParameter("EASY_DEPOSIT_HOME") != null) sce.getServletContext.getInitParameter("EASY_DEPOSIT_HOME")
+               else System.getenv("EASY_DEPOSIT_HOME")
+    if(home == null) throw new RuntimeException("EASY_DEPOSIT_HOME not specified. Specify trough servlet init params or environment variable")
+    homeDir = new File(home)
   }
 
   def contextDestroyed(sce: ServletContextEvent) = Unit

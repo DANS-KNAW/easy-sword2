@@ -184,10 +184,13 @@ INSTALLATION AND CONFIGURATION
 ### Installation steps:
 
 1. Unzip the tarball to a directory of your choice, e.g. `/opt/
-2. A new directory called `easy-deposit-<version> will be created`
-3. Create an environment variabele ``EASY_DEPOSIT_HOME`` with the directory from step 2 as its value
+2. A new directory called `easy-deposit-<version> will be created`. This is the service's home directory.
+3. Configure the service's home directory in one of two ways:
+    * Set the init param `EASY_DEPOSIT_HOME` to point to the home directory. (In Tomcat this can be done by 
+      embedding a `Parameter` element in the context descriptor.)
+    * Set the enviroment variable `EASY_DEPOSIT_HOME` to point to the home directory.
 4. Either deploy the file ``$EASY_DEPOSIT_HOME/bin/easy-deposit.war`` in the Tomcat ``webapps`` directory or use the 
-   deployment descriptor ``$EASY_DEPOSIT_HOME/bin/easy-deposit.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
+   context descriptor ``$EASY_DEPOSIT_HOME/bin/easy-deposit.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
 
 ### Configuration
 
@@ -226,4 +229,5 @@ Steps:
 [git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [posting to the collection IRI]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource
+[SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement
 
