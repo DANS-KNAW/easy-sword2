@@ -41,7 +41,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration) = {
-    log.info(s"Starting new deposit for ${auth.getUsername}")
+    log.info(s"Receiving deposit from ${auth.getUsername}")
     Authentication.checkAuthentication(auth)
 
     val result = for {
@@ -75,10 +75,10 @@ object CollectionDepositManagerImpl {
   depositProcessingStream
     .onBackpressureBuffer
     .observeOn(NewThreadScheduler())
-    .doOnEach(_ match { case (id, deposit) => handleSingleOrLastContinuedDeposit(id, deposit.getMimeType).get })
+    .doOnEach(_ match { case (id, deposit) => finalizeDeposit(id, deposit.getMimeType).get })
     .subscribe(
-      d => log.info(s"Done post-processing deposit ${d._1}"),
-      e => log.error(s"Error while post-processing deposit", e),
+      d => log.info(s"Done finalizing deposit ${d._1}"),
+      e => log.error(s"Error while finalizing deposit", e),
       () => log.error(s"Deposit processing stream completed, this should never happen!"))
 
   def checkDepositStatus(id: String): Try[Unit] = Try {
@@ -100,14 +100,15 @@ object CollectionDepositManagerImpl {
 
   def handleDepositAsync(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] = Try {
     if (!deposit.isInProgress) {
-      log.info(s"Registering deposit ${auth.getUsername}/$id for post-processing")
+      log.info(s"Scheduling deposit ${auth.getUsername}/$id to be finalized")
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"Received continuing deposit ${auth.getUsername}/$id/${deposit.getFilename}")
     }
   }
 
-  def handleSingleOrLastContinuedDeposit(id: String, mimeType: String)(implicit bf: BagFactory): Try[Unit] = {
+  def finalizeDeposit(id: String, mimeType: String)(implicit bf: BagFactory): Try[Unit] = {
+    // TODO: remove thread name and id from code (this should be configured in logback)
     log.info(s"Finalizing deposit: $id (thread-name: ${Thread.currentThread().getName} thread-id: ${Thread.currentThread().getId})")
     val tempDir = new File(SwordProps("temp-dir"), id)
     for {
