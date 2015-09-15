@@ -187,7 +187,7 @@ INSTALLATION AND CONFIGURATION
 2. A new directory called `easy-deposit-<version> will be created`. This is the service's home directory.
 3. Configure the service's home directory in one of two ways:
     * Set the init param `EASY_DEPOSIT_HOME` to point to the home directory. (In Tomcat this can be done by 
-      embedding a `Parameter` element in the context descriptor.)
+      embedding a `Parameter` element in the [context descriptor].)
     * Set the enviroment variable `EASY_DEPOSIT_HOME` to point to the home directory.
 4. Either deploy the file ``$EASY_DEPOSIT_HOME/bin/easy-deposit.war`` in the Tomcat ``webapps`` directory or use the 
    context descriptor ``$EASY_DEPOSIT_HOME/bin/easy-deposit.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
@@ -230,4 +230,6 @@ Steps:
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [posting to the collection IRI]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource
 [SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement
+[context descriptor]: https://tomcat.apache.org/tomcat-6.0-doc/config/context.html
+
 
