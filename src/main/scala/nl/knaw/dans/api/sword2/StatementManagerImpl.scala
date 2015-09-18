@@ -19,11 +19,9 @@ import java.io.File
 import java.util
 
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.Constants
 import org.swordapp.server._
 
-import scala.collection.JavaConversions._
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -31,22 +29,27 @@ class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordAuthException])
   override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
     Authentication.checkAuthentication(auth)
-    SwordID.extract(iri).flatMap {
-      case Some(id) => getStatus(id)
-      case None => Failure(new SwordError(404))
-    }.map(tag => new AtomStatement(iri, "DANS-EASY", tag, "today")).get
+
+    // TODO: REFACTOR THIS MESS
+    val maybeState = SwordID.extract(iri) match {
+      case Success(id) => getStatus(id)
+      case Failure(t) => throw new SwordError(404)
+    }
+    maybeState match {
+      case Success(state) =>
+        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", null)
+        statement.setState(state, "Current state of the deposit")
+        statement
+      case Failure(t) => throw new SwordError(404)
+    }
   }
 
   def getStatus(id: String): Try[String] = Try {
     val dir = new File(SwordProps("data-dir"), id)
     if (!dir.exists) throw new SwordError(404)
     val git = Git.open(dir)
-    val head = git.getRepository.resolve(Constants.HEAD)
-    val headTag = git.tagList().call().find(_.getObjectId.equals(head))
-    if (!git.status().call().isClean || headTag.isEmpty)
-      "state=DRAFT"
-    else
-      headTag.get.getName
+    val tag = git.describe.call()
+    if(tag.isEmpty) "DRAFT" else tag.split("=").last
   }
 
 }

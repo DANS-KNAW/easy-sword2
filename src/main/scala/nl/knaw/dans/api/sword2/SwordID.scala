@@ -30,20 +30,9 @@ object SwordID {
     }
   }
 
-  def extract(IRI: String): Try[Option[String]] = {
+  def extract(IRI: String): Try[String] = {
     val parts = IRI.split("/")
-    if (parts.length < 1) {
-      Failure(new SwordError(404))
-    } else {
-      val lastPart = parts(parts.length - 1)
-      Success(if (lastPart == "collection") None else Some(lastPart))
-    }
-  }
-
-  def extractOrGenerate(IRI: String): Try[String] = {
-    extract(IRI).flatMap {
-      case Some(id) => Success(id)
-      case None => generate
-    }
+    if (parts.length < 1) Failure(new SwordError(404))
+    else Success(parts(parts.length - 1))
   }
 }

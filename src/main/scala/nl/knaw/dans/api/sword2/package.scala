@@ -26,5 +26,7 @@ package object sword2 {
    * a Servlet Init Parameter into the global scope. If there is a better way, please let me know (JvM).
    */
   var homeDir: File = null
+
+  def formatPrefix(user: String, depositId: String): String = s"[$depositId/$user]"
 }
 

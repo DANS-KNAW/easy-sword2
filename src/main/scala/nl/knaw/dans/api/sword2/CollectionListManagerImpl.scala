@@ -20,7 +20,7 @@ import org.apache.abdera.i18n.iri.IRI
 import org.apache.abdera.model.{Entry, Feed}
 import org.swordapp.server._
 
-import scala.util.{Failure, Success, Try}
+import scala.util.Success
 
 class CollectionListManagerImpl extends CollectionListManager {
   @throws(classOf[SwordServerException])
@@ -30,7 +30,7 @@ class CollectionListManagerImpl extends CollectionListManager {
     Authentication.checkAuthentication(auth)
     val abdera = new Abdera
     SwordID.extract(collectionIRI.toString) match {
-      case Success(Some(id)) => abdera.newFeed.addEntry(createEntry(id, abdera))
+      case Success(id) => abdera.newFeed.addEntry(createEntry(id, abdera))
       case _ => abdera.newFeed.addEntry(createEmptyEntry(abdera))
     }
   }

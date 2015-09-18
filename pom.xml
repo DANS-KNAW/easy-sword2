@@ -30,11 +30,9 @@
       <version>9.2.8.v20150217</version>
     </dependency>
     <dependency>
-      <groupId>org.swordapp</groupId>
-      <artifactId>sword2-server</artifactId>
-      <version>1.0</version>
-      <type>jar</type>
-      <classifier>classes</classifier>
+      <groupId>nl.knaw.dans.easy</groupId>
+      <artifactId>easy-sword2-lib</artifactId>
+      <version>1.x-SNAPSHOT</version>
       <exclusions>
          <exclusion>
             <groupId>log4j</groupId>
