@@ -15,13 +15,11 @@
   ******************************************************************************/
 package nl.knaw.dans.api.sword2
 
-import java.io.File
 import java.util
 
-import org.eclipse.jgit.api.Git
 import org.swordapp.server._
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -32,24 +30,15 @@ class StatementManagerImpl extends StatementManager {
 
     // TODO: REFACTOR THIS MESS
     val maybeState = SwordID.extract(iri) match {
-      case Success(id) => getStatus(id)
+      case Success(id) => DepositState.getDepositState(id)
       case Failure(t) => throw new SwordError(404)
     }
     maybeState match {
       case Success(state) =>
-        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", null)
-        statement.setState(state, "Current state of the deposit")
+        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", state.timeStamp)
+        statement.setState(state.state, state.description)
         statement
       case Failure(t) => throw new SwordError(404)
     }
   }
-
-  def getStatus(id: String): Try[String] = Try {
-    val dir = new File(SwordProps("data-dir"), id)
-    if (!dir.exists) throw new SwordError(404)
-    val git = Git.open(dir)
-    val tag = git.describe.call()
-    if(tag.isEmpty) "DRAFT" else tag.split("=").last
-  }
-
 }

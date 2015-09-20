@@ -30,7 +30,11 @@ object DepositHandler {
   depositProcessingStream
     .onBackpressureBuffer
     .observeOn(NewThreadScheduler())
-    .doOnEach(_ match { case (id, deposit) => finalizeDeposit(id, deposit.getMimeType).get })
+    .doOnEach(_ match { case (id, deposit) => finalizeDeposit(id, deposit.getMimeType).recoverWith {
+      case t =>
+        log.error(s"[$id] Failed to finalize deposit")
+        Success(()) // TODO: Make a distinction between a truly fatal error and just one deposit going awry?
+    }})
     .subscribe(
       d => log.info(s"Done finalizing deposit ${d._1}"),
       e => log.error(s"Error while finalizing deposit", e),
@@ -71,14 +75,25 @@ object DepositHandler {
     log.info(s"Finalizing deposit: $id (thread-name: ${Thread.currentThread().getName} thread-id: ${Thread.currentThread().getId})")
     val tempDir = new File(SwordProps("temp-dir"), id)
     for {
+      _        <- setStateToFinalizing(id)
       git      <- initGit(tempDir)
       _        <- extractBagit(id, mimeType)
       bagitDir <- findBagitRoot(tempDir)
       _        <- checkBagValidity(bagitDir)
+      _        <- setStateToSubmitted(id)
       _        <- commitSubmitted(git, tempDir)
-      _        <- moveBagToStorage(id)
+      dataDir  <- moveBagToStorage(id)
     } yield ()
   }
+
+  private def setStateToFinalizing(id: String): Try[Unit] = Try {
+    DepositState.setDepositState(id, "FINALIZING", "Deposit is being reassembled and validated", true)
+  }
+
+  private def setStateToSubmitted(id: String): Try[Unit] = Try {
+    DepositState.setDepositState(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", true)
+  }
+
 
   private def checkBagValidity(bagitDir: File): Try[Unit] = {
     log.debug(s"Verifying bag validity: ${bagitDir.getPath}")
@@ -111,7 +126,7 @@ object DepositHandler {
   @tailrec
   private def findBagitRoot(f: File): Try[File] =
     if (f.isDirectory) {
-      val children = f.listFiles.filter(_.getName != ".git")
+      val children = f.listFiles.filter(f => f.getName != ".git" && f.getName != "state.properties")
       if (children.length == 1) {
         findBagitRoot(children.head)
       } else if (children.length > 1) {
@@ -124,10 +139,10 @@ object DepositHandler {
     }
 
   private def extractBagit(id: String, mimeType: String): Try[File] =
-    Try {
+   Try {
       log.debug("Extracting bag")
       val tempDir: File = new File(SwordProps("temp-dir"), id)
-      val files: Array[File] = tempDir.listFiles().filter(_.getName != ".git")
+      val files: Array[File] = tempDir.listFiles().filter(f => f.getName != ".git" && f.getName != "state.properties  ")
       if (files == null)
         throw new SwordError("Failed to read temporary dataset")
       mimeType match {
