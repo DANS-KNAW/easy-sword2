@@ -32,7 +32,7 @@ object DepositHandler {
     .observeOn(NewThreadScheduler())
     .doOnEach(_ match { case (id, deposit) => finalizeDeposit(id, deposit.getMimeType).recoverWith {
       case t =>
-        log.error(s"[$id] Failed to finalize deposit")
+        log.error(s"[$id] Failed to finalize deposit", t)
         Success(()) // TODO: Make a distinction between a truly fatal error and just one deposit going awry?
     }})
     .subscribe(
@@ -64,6 +64,7 @@ object DepositHandler {
   def handleDepositAsync(id: String, auth: AuthCredentials, deposit: Deposit): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"${formatPrefix(auth.getUsername, id)} Scheduling deposit to be finalized")
+      setStateToFinalizing(id)
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"${formatPrefix(auth.getUsername, id)} Received continuing deposit: ${deposit.getFilename}")
@@ -75,7 +76,6 @@ object DepositHandler {
     log.info(s"Finalizing deposit: $id (thread-name: ${Thread.currentThread().getName} thread-id: ${Thread.currentThread().getId})")
     val tempDir = new File(SwordProps("temp-dir"), id)
     for {
-      _        <- setStateToFinalizing(id)
       git      <- initGit(tempDir)
       _        <- extractBagit(id, mimeType)
       bagitDir <- findBagitRoot(tempDir)
@@ -101,8 +101,14 @@ object DepositHandler {
     val validationResult: SimpleResult = bag.verifyValid
     if (validationResult.isSuccess)
       Success(Unit)
-    else
+    else {
+      setStateToInvalid(bagitDir.getParentFile.getName, validationResult.messagesToString)
       Failure(new SwordError(validationResult.messagesToString))
+    }
+  }
+
+  private def setStateToInvalid(id: String, msg: String): Unit = {
+    DepositState.setDepositState(id, "INVALID", msg, true)
   }
 
   private def initGit(bagDir: File): Try[Option[Git]] =
@@ -142,7 +148,7 @@ object DepositHandler {
    Try {
       log.debug("Extracting bag")
       val tempDir: File = new File(SwordProps("temp-dir"), id)
-      val files: Array[File] = tempDir.listFiles().filter(f => f.getName != ".git" && f.getName != "state.properties  ")
+      val files: Array[File] = tempDir.listFiles().filter(f => f.getName != ".git" && f.getName != "state.properties")
       if (files == null)
         throw new SwordError("Failed to read temporary dataset")
       mimeType match {

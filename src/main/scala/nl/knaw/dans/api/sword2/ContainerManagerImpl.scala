@@ -87,7 +87,7 @@ class ContainerManagerImpl extends ContainerManager {
       id <- SwordID.extract(editIRI)
       _ = log.debug(s"${formatPrefix(auth.getUsername, id)} Continued deposit")
       _ <- checkDepositStatus(id)
-      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename).toFile
+      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(id, auth, deposit)

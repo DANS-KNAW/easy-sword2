@@ -20,7 +20,7 @@ import java.nio.file.Paths
 import nl.knaw.dans.api.sword2.DepositHandler._
 import org.swordapp.server._
 
-import scala.util.{Failure, Success}
+import scala.util.{Try, Failure, Success}
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordError])
@@ -35,8 +35,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       id <- SwordID.generate
       _ = log.debug(s"${formatPrefix(auth.getUsername, id)} Assigned deposit ID")
       _ <- checkDepositStatus(id)
-      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename).toFile
+      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
       _ <- copyPayloadToFile(deposit, payload)
+      _ <- setDepositStateToDraft(id)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(id, auth, deposit)
     } yield (id, createDepositReceipt(deposit, id))
@@ -49,5 +50,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
         log.error("Error(s) occurred", e)
         throw e
     }
+  }
+
+  private def setDepositStateToDraft(id: String): Try[Unit] = Try {
+    DepositState.setDepositState(id, "DRAFT", "Deposit is open for additional data", true)
   }
 }
