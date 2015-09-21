@@ -17,7 +17,6 @@ import org.swordapp.server.{AuthCredentials, Deposit, DepositReceipt, SwordError
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
-import scala.annotation.tailrec
 import scala.util.{Failure, Success, Try}
 
 object DepositHandler {
@@ -78,7 +77,7 @@ object DepositHandler {
     for {
       git      <- initGit(tempDir)
       _        <- extractBagit(id, mimeType)
-      bagitDir <- findBagitRoot(tempDir)
+      bagitDir <- getBagDir(tempDir)
       _        <- checkBagValidity(bagitDir)
       _        <- setStateToSubmitted(id)
       _        <- commitSubmitted(git, tempDir)
@@ -129,20 +128,9 @@ object DepositHandler {
       })
     }.recoverWith { case e => Failure(new SwordError("Failed to set bag status to SUBMITTED", e)) }
 
-  @tailrec
-  private def findBagitRoot(f: File): Try[File] =
-    if (f.isDirectory) {
-      val children = f.listFiles.filter(f => f.getName != ".git" && f.getName != "state.properties")
-      if (children.length == 1) {
-        findBagitRoot(children.head)
-      } else if (children.length > 1) {
-        Success(f)
-      } else {
-        Failure(new RuntimeException(s"Bagit folder seems to be empty in: ${f.getName}"))
-      }
-    } else {
-      Failure(new RuntimeException(s"Couldn't find bagit folder, instead found: ${f.getName}"))
-    }
+  def getBagDir(depositDir: File): Try[File] = Try {
+    depositDir.listFiles.find(f => f.isDirectory && f.getName != ".git").get
+  }
 
   private def extractBagit(id: String, mimeType: String): Try[File] =
    Try {
