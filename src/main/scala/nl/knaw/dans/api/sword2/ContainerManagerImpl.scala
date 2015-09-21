@@ -16,13 +16,15 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.File
+import java.nio.file.Paths
 import java.util
 
+import nl.knaw.dans.api.sword2.DepositHandler._
 import org.apache.abdera.i18n.iri.IRI
 import org.swordapp.server._
 
 import scala.collection.JavaConversions._
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 class ContainerManagerImpl extends ContainerManager {
 
@@ -31,7 +33,7 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordAuthException])
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     SwordID.extract(editIRI) match {
-      case Success(Some(id)) =>
+      case Success(id) =>
         val dir: File = new File(SwordProps("data-dir") + "/" + id)
         if (!dir.exists) {
           throw new SwordError(404)
@@ -80,7 +82,25 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    Authentication.checkAuthentication(auth)
+    val result = for {
+      id <- SwordID.extract(editIRI)
+      _ = log.debug(s"${formatPrefix(auth.getUsername, id)} Continued deposit")
+      _ <- checkDepositStatus(id)
+      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
+      _ <- copyPayloadToFile(deposit, payload)
+      _ <- doesHashMatch(payload, deposit.getMd5)
+      _ <- handleDepositAsync(id, auth, deposit)
+    } yield (id, createDepositReceipt(deposit, id))
+
+    result match {
+      case Success((id,depositReceipt)) =>
+        log.info(s"${formatPrefix(auth.getUsername, id)} Sending deposit receipt")
+        depositReceipt
+      case Failure(e) =>
+        log.error("Error(s) occurred", e)
+        throw e
+    }
   }
 
   @throws(classOf[SwordError])

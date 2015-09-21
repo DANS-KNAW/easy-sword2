@@ -1,0 +1,19 @@
+<files>
+    <file filepath="data/quicksort.hs">
+        <dcterms:identifier>UUID</dcterms:identifier>
+        <dcterms:title>friendly name</dcterms:title>
+        <dcterms:alternative>friendly name</dcterms:alternative>
+        <dcterms:description>caption</dcterms:description>
+        <dcterms:format>mime type</dcterms:format>
+        <dcterms:created>date created</dcterms:created>
+    </file>
+    <file filepath="data/path/to/file.txt">
+        <dcterms:identifier>UUID</dcterms:identifier>
+        <dcterms:title>friendly name</dcterms:title>
+        <dcterms:alternative>friendly name</dcterms:alternative>
+        <dcterms:description>caption</dcterms:description>
+        <dcterms:format>mime type</dcterms:format>
+        <dcterms:created>date created</dcterms:created>
+    </file>
+</files>
+

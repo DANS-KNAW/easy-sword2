@@ -30,11 +30,9 @@
       <version>9.2.8.v20150217</version>
     </dependency>
     <dependency>
-      <groupId>org.swordapp</groupId>
-      <artifactId>sword2-server</artifactId>
-      <version>1.0</version>
-      <type>jar</type>
-      <classifier>classes</classifier>
+      <groupId>nl.knaw.dans.easy</groupId>
+      <artifactId>easy-sword2-lib</artifactId>
+      <version>1.x-SNAPSHOT</version>
       <exclusions>
          <exclusion>
             <groupId>log4j</groupId>
@@ -95,6 +93,22 @@
       <groupId>io.reactivex</groupId>
       <artifactId>rxscala_2.11</artifactId>
       <version>0.25.0</version>
+    </dependency>
+    <dependency>
+        <groupId>commons-configuration</groupId>
+        <artifactId>commons-configuration</artifactId>
+        <version>1.10</version>
+    </dependency>
+    <dependency>
+        <groupId>joda-time</groupId>
+        <artifactId>joda-time</artifactId>
+        <version>2.7</version>
+    </dependency>
+    <dependency>
+        <!-- Necessary to get rid of joda warnings about missing FromString -->
+        <groupId>org.joda</groupId>
+        <artifactId>joda-convert</artifactId>
+        <version>1.6</version>
     </dependency>
   </dependencies>
   <build>

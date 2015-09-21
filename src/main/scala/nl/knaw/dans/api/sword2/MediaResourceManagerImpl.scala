@@ -24,19 +24,6 @@ class MediaResourceManagerImpl extends MediaResourceManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   override def getMediaResourceRepresentation(uri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): MediaResource = {
-    /*
-      // We're not serving files from the SWORD interface currently!
-      val id: String = SwordID.extract(uri)
-      val dir: File = new File(SwordProps.get("data-dir") + "/" + id)
-      if (!dir.exists) {
-        throw new SwordError(404)
-      }
-      try {
-        new MediaResource(Files.newInputStream(Paths.get(dir.getPath)), "application/zip", "http://purl.org/net/sword/package/BagIt")
-      } catch {
-        case e: IOException => throw new SwordServerException("Invalid resource found on server")
-      }
-    */
     throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
   }
 

@@ -15,15 +15,11 @@
   ******************************************************************************/
 package nl.knaw.dans.api.sword2
 
-import java.io.File
 import java.util
 
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.Constants
 import org.swordapp.server._
 
-import scala.collection.JavaConversions._
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success}
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -31,22 +27,18 @@ class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordAuthException])
   override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
     Authentication.checkAuthentication(auth)
-    SwordID.extract(iri).flatMap {
-      case Some(id) => getStatus(id)
-      case None => Failure(new SwordError(404))
-    }.map(tag => new AtomStatement(iri, "DANS-EASY", tag, "today")).get
-  }
 
-  def getStatus(id: String): Try[String] = Try {
-    val dir = new File(SwordProps("data-dir"), id)
-    if (!dir.exists) throw new SwordError(404)
-    val git = Git.open(dir)
-    val head = git.getRepository.resolve(Constants.HEAD)
-    val headTag = git.tagList().call().find(_.getObjectId.equals(head))
-    if (!git.status().call().isClean || headTag.isEmpty)
-      "state=DRAFT"
-    else
-      headTag.get.getName
+    // TODO: REFACTOR THIS MESS
+    val maybeState = SwordID.extract(iri) match {
+      case Success(id) => DepositState.getDepositState(id)
+      case Failure(t) => throw new SwordError(404)
+    }
+    maybeState match {
+      case Success(state) =>
+        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", state.timeStamp)
+        statement.setState(state.state, state.description)
+        statement
+      case Failure(t) => throw new SwordError(404)
+    }
   }
-
 }
