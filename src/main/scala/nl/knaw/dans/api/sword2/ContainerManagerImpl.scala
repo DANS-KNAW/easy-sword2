@@ -85,22 +85,12 @@ class ContainerManagerImpl extends ContainerManager {
     Authentication.checkAuthentication(auth)
     val result = for {
       id <- SwordID.extract(editIRI)
-      _ = log.debug(s"${formatPrefix(auth.getUsername, id)} Continued deposit")
-      _ <- checkDepositStatus(id)
-      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
-      _ <- copyPayloadToFile(deposit, payload)
-      _ <- doesHashMatch(payload, deposit.getMd5)
-      _ <- handleDepositAsync(id, auth, deposit)
-    } yield (id, createDepositReceipt(deposit, id))
+      _ = log.debug(s"[$id] Continued deposit")
+      _ <- checkDepositIsInDraft(id)
+      depositReceipt <- handleDeposit(deposit)(id)
+    } yield (id, depositReceipt)
 
-    result match {
-      case Success((id,depositReceipt)) =>
-        log.info(s"${formatPrefix(auth.getUsername, id)} Sending deposit receipt")
-        depositReceipt
-      case Failure(e) =>
-        log.error("Error(s) occurred", e)
-        throw e
-    }
+    result.getOrThrow
   }
 
   @throws(classOf[SwordError])

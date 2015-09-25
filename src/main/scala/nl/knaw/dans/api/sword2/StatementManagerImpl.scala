@@ -36,7 +36,7 @@ class StatementManagerImpl extends StatementManager {
     maybeState match {
       case Success(state) =>
         val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", state.timeStamp)
-        statement.setState(state.state, state.description)
+        statement.setState(state.label, state.description)
         statement
       case Failure(t) => throw new SwordError(404)
     }

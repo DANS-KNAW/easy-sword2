@@ -18,6 +18,11 @@ package nl.knaw.dans.api
 
 import java.io.File
 
+import nl.knaw.dans.api.sword2.DepositHandler._
+import org.swordapp.server.DepositReceipt
+
+import scala.util.{Failure, Success, Try}
+
 package object sword2 {
   /*
    * HACK ALERT:
@@ -27,6 +32,32 @@ package object sword2 {
    */
   var homeDir: File = null
 
-  def formatPrefix(user: String, depositId: String): String = s"[$depositId/$user]"
+  case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+  case class FailedDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+
+  implicit class FileOps(val thisFile: File) extends AnyVal {
+
+    def listFilesSafe: Array[File] =
+      thisFile.listFiles match {
+        case null => Array[File]()
+        case files => files
+      }
+  }
+
+  def isPartOfDeposit(f: File): Boolean = f.getName != ".git" && f.getName != "state.properties"
+
+  implicit class TryDepositResultOps(val thisResult: Try[(String, DepositReceipt)]) extends AnyVal {
+
+    def getOrThrow: DepositReceipt = {
+      thisResult match {
+        case Success((id,depositReceipt)) =>
+          log.info(s"[$id] Sending deposit receipt")
+          depositReceipt
+        case Failure(e) =>
+          log.error(s"Error(s) occurred", e)
+          throw e
+      }
+    }
+  }
 }
 
