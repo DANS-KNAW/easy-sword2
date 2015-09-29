@@ -22,13 +22,13 @@ import org.slf4j.LoggerFactory
 
 class ServiceDocumentManagerImpl extends ServiceDocumentManager {
   val log = LoggerFactory.getLogger(getClass)
-  val EASY_BAGIT_URI = "http://easy.dans.knaw.nl/schemas/EASY-BagIt.html"
+  val BAGIT_URI = "http://purl.org/net/sword/package/BagIt"
   val sdoc: ServiceDocument = new ServiceDocument
   val sw: SwordWorkspace = new SwordWorkspace
   sw.setTitle("EASY Deposit Service")
   val sc: SwordCollection = new SwordCollection
   sc.setTitle("DANS Default Data Collection")
-  sc.addAcceptPackaging(EASY_BAGIT_URI)
+  sc.addAcceptPackaging(BAGIT_URI)
   sc.setLocation(SwordProps("collection-iri"))
   sw.addCollection(sc)
   sdoc.addWorkspace(sw)
