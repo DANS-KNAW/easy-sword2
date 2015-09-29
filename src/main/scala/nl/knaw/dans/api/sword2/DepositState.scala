@@ -1,6 +1,6 @@
 package nl.knaw.dans.api.sword2
 
-import java.io.{File, IOException}
+import java.io.{PrintWriter, StringWriter, File, IOException}
 
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.joda.time.{DateTime, DateTimeZone}
@@ -10,14 +10,18 @@ import scala.util.Try
 
 object DepositState {
   val log = LoggerFactory.getLogger(getClass)
-  case class State(state: String, description: String, timeStamp: String)
+  case class State(label: String, description: String, timeStamp: String)
 
-  def setDepositState(id: String, state: String, description: String, inTemp: Boolean = false): Try[Unit] = Try {
-    val depositDir = new File(if (inTemp) SwordProps("temp-dir")
+  def setDepositState(id: String, state: String, description: String, lookInTempFirst: Boolean = false, throwable: Throwable = null): Try[Unit] = Try {
+    val depositDir = new File(if (lookInTempFirst) SwordProps("temp-dir")
                               else SwordProps("data-dir"), id)
     val stateFile = new PropertiesConfiguration(new File(depositDir, "state.properties"))
     stateFile.setProperty("state", state)
-    stateFile.setProperty("description", description)
+    stateFile.setProperty("description",
+      s"""
+        |$description
+        |${if(throwable != null) throwable.getMessage else ""}
+      """.stripMargin.trim)
     stateFile.save()
   }
 
@@ -32,5 +36,13 @@ object DepositState {
     log.debug(s"[$id] Trying to retrieve state from $f")
     if(!f.exists()) throw new IOException(s"$f does not exist")
     State(s.getString("state"), s.getString("description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+  }
+
+  private def stackTraceToString(t: Throwable): String = {
+    val sw = new StringWriter()
+    val pw = new PrintWriter(sw)
+    t.printStackTrace(pw)
+    pw.flush()
+    sw.toString
   }
 }

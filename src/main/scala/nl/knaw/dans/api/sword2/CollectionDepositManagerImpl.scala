@@ -26,30 +26,21 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
-  def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration) = {
-    log.info(s"${formatPrefix(auth.getUsername, "<new>")} Creating new deposit")
+  def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     Authentication.checkAuthentication(auth)
-
     val result = for {
       - <- checkValidCollectionId(collectionURI)
       id <- SwordID.generate
-      _ = log.debug(s"${formatPrefix(auth.getUsername, id)} Assigned deposit ID")
-      _ <- checkDepositStatus(id)
-      payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
-      _ <- copyPayloadToFile(deposit, payload)
+      _ = log.info(s"[$id] Created new deposit for user ${auth.getUsername}")
       _ <- setDepositStateToDraft(id)
-      _ <- doesHashMatch(payload, deposit.getMd5)
-      _ <- handleDepositAsync(id, auth, deposit)
-    } yield (id, createDepositReceipt(deposit, id))
+      depositReceipt <- handleDeposit(deposit)(id)
+    } yield (id, depositReceipt)
 
-    result match {
-      case Success((id,depositReceipt)) =>
-        log.info(s"${formatPrefix(auth.getUsername, id)} Sending deposit receipt for deposit: $id")
-        depositReceipt
-      case Failure(e) =>
-        log.error("Error(s) occurred", e)
-        throw e
-    }
+    result.getOrThrow
+  }
+
+  def checkValidCollectionId(iri: String): Try[Unit] = Try {
+    if(iri != SwordProps("collection-iri")) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
   }
 
   private def setDepositStateToDraft(id: String): Try[Unit] = Try {
