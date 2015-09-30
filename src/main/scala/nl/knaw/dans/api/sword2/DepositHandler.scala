@@ -20,8 +20,6 @@ import rx.lang.scala.subjects.PublishSubject
 
 import scala.util.{Failure, Success, Try}
 
-
-
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
 
