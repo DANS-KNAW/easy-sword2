@@ -34,7 +34,7 @@ class ContainerManagerImpl extends ContainerManager {
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        val dir: File = new File(SwordProps("data-dir") + "/" + id)
+        val dir: File = new File(SwordProps("deposits-root") + "/" + id)
         if (!dir.exists) {
           throw new SwordError(404)
         }
@@ -85,6 +85,7 @@ class ContainerManagerImpl extends ContainerManager {
     Authentication.checkAuthentication(auth)
     val result = for {
       id <- SwordID.extract(editIRI)
+      _ = checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
       _ = log.debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
       depositReceipt <- handleDeposit(deposit)(id)
@@ -92,6 +93,9 @@ class ContainerManagerImpl extends ContainerManager {
 
     result.getOrThrow
   }
+
+  private def checkThatUserIsOwnerOfDeposit(id: String, user: String): Unit =
+    if(user != id.take(user.length)) throw new SwordAuthException("Not allowed to continue deposit for other user")
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])

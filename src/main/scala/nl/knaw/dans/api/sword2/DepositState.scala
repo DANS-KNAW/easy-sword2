@@ -13,8 +13,8 @@ object DepositState {
   case class State(label: String, description: String, timeStamp: String)
 
   def setDepositState(id: String, state: String, description: String, lookInTempFirst: Boolean = false, throwable: Throwable = null): Try[Unit] = Try {
-    val depositDir = new File(if (lookInTempFirst) SwordProps("temp-dir")
-                              else SwordProps("data-dir"), id)
+    val depositDir = new File(if (lookInTempFirst) SwordProps("tempdir")
+                              else SwordProps("deposits-root"), id)
     val stateFile = new PropertiesConfiguration(new File(depositDir, "state.properties"))
     stateFile.setProperty("state", state)
     stateFile.setProperty("description",
@@ -27,8 +27,8 @@ object DepositState {
 
   def getDepositState(id: String): Try[State] = {
     log.debug(s"[$id] Trying to retrieve state")
-    readState(id, new File(SwordProps("temp-dir"), s"$id/state.properties")).recoverWith {
-      case f: IOException => readState(id, new File(SwordProps("data-dir"), s"$id/state.properties"))
+    readState(id, new File(SwordProps("tempdir"), s"$id/state.properties")).recoverWith {
+      case f: IOException => readState(id, new File(SwordProps("deposits-root"), s"$id/state.properties"))
     }
   }
   private def readState(id: String, f: File): Try[State] = Try {
