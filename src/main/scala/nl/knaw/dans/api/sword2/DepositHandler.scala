@@ -36,7 +36,7 @@ object DepositHandler {
     .subscribe(_ match { case (id, deposit) => log.info(s"Done finalizing deposit $id") })
 
   def handleDeposit(deposit: Deposit)(implicit id: String): Try[DepositReceipt] = {
-    val payload = Paths.get(SwordProps("temp-dir"), id, deposit.getFilename.split("/").last).toFile
+    val payload = Paths.get(SwordProps("tempdir"), id, deposit.getFilename.split("/").last).toFile
     for {
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
@@ -46,7 +46,7 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    val tempDir = new File(SwordProps("temp-dir"), id)
+    val tempDir = new File(SwordProps("tempdir"), id)
     (for {
       git      <- initGit(tempDir)
       _        <- extractBag(mimeType)
@@ -70,7 +70,7 @@ object DepositHandler {
   }
 
   private def initGit(bagDir: File)(implicit id: String): Try[Option[Git]] =
-    if (SwordProps("git-enabled").toBoolean)
+    if (SwordProps("git.enabled").toBoolean)
       Try {
         log.debug("Initializing git repo for deposit")
         Some(Git.init().setDirectory(bagDir).call())
@@ -91,7 +91,7 @@ object DepositHandler {
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val tempDir: File = new File(SwordProps("temp-dir"), id)
+      val tempDir: File = new File(SwordProps("tempdir"), id)
       val files = tempDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -158,7 +158,7 @@ object DepositHandler {
     Try {
       optionalGit.map(git => {
         git.add().addFilepattern(".").call()
-        git.commit().setCommitter(SwordProps("git-user"), SwordProps("git-email")).setMessage("initial commit").call()
+        git.commit().setCommitter(SwordProps("git.user"), SwordProps("git.email")).setMessage("initial commit").call()
         git.tag().setName("state=SUBMITTED").setMessage("state=SUBMITTED").call()
       })
     }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to set bag status to SUBMITTED", e)) }
@@ -166,8 +166,8 @@ object DepositHandler {
   def moveBagToStorage()(implicit id: String): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
-      val tempDir = new File(SwordProps("temp-dir"), id)
-      val storageDir = new File(SwordProps("data-dir"), id)
+      val tempDir = new File(SwordProps("tempdir"), id)
+      val storageDir = new File(SwordProps("deposits-root"), id)
       if(!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
@@ -188,9 +188,9 @@ object DepositHandler {
 
   def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
     val dr = new DepositReceipt
-    val editIRI = new IRI(SwordProps("host") + "/container/" + id)
-    val editMediaIri = new IRI(SwordProps("host") + "/media/" + id)
-    val stateIri = SwordProps("host") + "/statement/" + id
+    val editIRI = new IRI(SwordProps("base-url") + "/container/" + id)
+    val editMediaIri = new IRI(SwordProps("base-url") + "/media/" + id)
+    val stateIri = SwordProps("base-url") + "/statement/" + id
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editMediaIri)

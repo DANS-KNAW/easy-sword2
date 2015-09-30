@@ -29,7 +29,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
   val sc: SwordCollection = new SwordCollection
   sc.setTitle("DANS Default Data Collection")
   sc.addAcceptPackaging(BAGIT_URI)
-  sc.setLocation(SwordProps("collection-iri"))
+  sc.setLocation(SwordProps("collection.iri"))
   sw.addCollection(sc)
   sdoc.addWorkspace(sw)
 

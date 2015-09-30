@@ -30,8 +30,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     Authentication.checkAuthentication(auth)
     val result = for {
       - <- checkValidCollectionId(collectionURI)
-      id <- SwordID.generate
-      _ = log.info(s"[$id] Created new deposit for user ${auth.getUsername}")
+      timestamp <- SwordID.generate
+      id = s"${auth.getUsername}-${timestamp}"
+      _ = log.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id)
       depositReceipt <- handleDeposit(deposit)(id)
     } yield (id, depositReceipt)
@@ -40,7 +41,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   }
 
   def checkValidCollectionId(iri: String): Try[Unit] = Try {
-    if(iri != SwordProps("collection-iri")) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
+    if(iri != SwordProps("collection.iri")) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
   }
 
   private def setDepositStateToDraft(id: String): Try[Unit] = Try {
