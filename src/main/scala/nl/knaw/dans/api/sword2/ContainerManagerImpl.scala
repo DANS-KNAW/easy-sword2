@@ -95,7 +95,7 @@ class ContainerManagerImpl extends ContainerManager {
   }
 
   private def checkThatUserIsOwnerOfDeposit(id: String, user: String): Unit =
-    if(user != id.take(user.length)) throw new SwordAuthException("Not allowed to continue deposit for other user")
+    if(s"$user-" != id.take(s"$user-".length)) throw new SwordAuthException("Not allowed to continue deposit for other user")
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
