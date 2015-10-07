@@ -50,7 +50,7 @@ object Authentication {
       case Success(context) =>
         val attrs = context.getAttributes(s"uid=$user, ${SwordProps("auth.ldap.users.parent-entry")}")
         val enabled = attrs.get(SwordProps("auth.ldap.deposit-enabled-attribute-name"))
-        enabled.size == 1 && enabled.get(0) == SwordProps("auth.ldap.deposit-enabled-attribute-value")
+        enabled != null && enabled.size == 1 && enabled.get(0) == SwordProps("auth.ldap.deposit-enabled-attribute-value")
       case Failure(t: AuthenticationException) => false
       case Failure(t) => throw new RuntimeException("Error trying to authenticate", t)
     }
