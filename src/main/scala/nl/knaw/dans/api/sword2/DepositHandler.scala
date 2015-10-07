@@ -7,7 +7,6 @@ import java.util.Collections
 import gov.loc.repository.bagit.BagFactory
 import gov.loc.repository.bagit.utilities.SimpleResult
 import net.lingala.zip4j.core.ZipFile
-import nl.knaw.dans.api.sword2.DepositState.{setDepositState, getDepositState}
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
@@ -50,20 +49,20 @@ object DepositHandler {
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
       _        <- checkBagValidity(bagitDir)
-      _        <- setDepositState(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
+      _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       _        <- commitSubmitted(git, tempDir)
       dataDir  <- moveBagToStorage()
     } yield ())
     .recover {
       case InvalidDepositException(_, msg, cause) =>
         log.warn(s"[$id] Invalid deposit", cause)
-        setDepositState(id, "INVALID", msg, lookInTempFirst = true)
+        DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
       case FailedDepositException(_, msg, cause) =>
         log.error(s"[$id] Failed deposit", cause)
-        setDepositState(id, "FAILED", msg, lookInTempFirst = true)
+        DepositProperties.set(id, "FAILED", msg, lookInTempFirst = true)
       case cause: Throwable =>
         log.error(s"[$id] Unexpected failure in deposit", cause)
-        setDepositState(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
+        DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
     }
   }
 
@@ -119,7 +118,7 @@ object DepositHandler {
 
   def checkDepositIsInDraft(id: String): Try[Unit] =
     (for {
-      state <- getDepositState(id)
+      state <- DepositProperties.getState(id)
       if state.label == "DRAFT"
     } yield ())
       .recoverWith {
@@ -137,7 +136,7 @@ object DepositHandler {
   def handleDepositAsync(deposit: Deposit)(implicit id: String): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
-      setDepositState(id, "FINALIZING", "Deposit is being reassembled and validated", lookInTempFirst = true)
+      DepositProperties.set(id, "FINALIZING", "Deposit is being reassembled and validated", lookInTempFirst = true)
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")

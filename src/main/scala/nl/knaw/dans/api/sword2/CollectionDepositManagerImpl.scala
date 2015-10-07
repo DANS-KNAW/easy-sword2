@@ -33,7 +33,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       timestamp <- SwordID.generate
       id = s"${auth.getUsername}-${timestamp}"
       _ = log.info(s"[$id] Created new deposit")
-      _ <- setDepositStateToDraft(id)
+      _ <- setDepositStateToDraft(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(id)
     } yield (id, depositReceipt)
 
@@ -44,7 +44,12 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     if(iri != SwordProps("collection.iri")) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
   }
 
-  private def setDepositStateToDraft(id: String): Try[Unit] = Try {
-    DepositState.setDepositState(id, "DRAFT", "Deposit is open for additional data", true)
+  private def setDepositStateToDraft(id: String, userId: String): Try[Unit] = Try {
+    DepositProperties.set(
+      id = id,
+      stateLabel = "DRAFT",
+      stateDescription = "Deposit is open for additional data",
+      userId = Some(userId),
+      lookInTempFirst = true)
   }
 }
