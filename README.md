@@ -1,26 +1,26 @@
 easy-deposit
 ============
 
-Receive EASY-bags over a SWORD v2 session
+Receive bags over a SWORD v2 session
 
 
 DESCRIPTION
 -----------
 
-Service that receives [EASY-BagIt] packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
+Service that receives bags (see [BagIt]) packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
 option of sending the package in one http session (simple deposit) or several (continued deposit). A continued deposit 
 is in progress as long as the client keeps adding the ``In-Progress: true`` http header. Authentication is done either
 through a username/password pair configured in the `application.properties` file (single user setup) or through an LDAP 
 directory (multi-user setup). After a deposit-transfer is completed it is made available for subsequent (human and/or 
-machine) processing at the path `<deposits-root-dir>/[<user>/]<deposit-ID>`, in which:
+machine) processing at the path `<deposits-root-dir>/<deposit-ID>`, in which:
 
   * `<deposits-root-dir>` is the configured directory on the server under which deposits are to be stored;
-  * `<user>` is user ID of the user (only in multi-user setup);
-  * `<deposit-ID>` is a unique ID for the deposit.
+  * `<deposit-ID>` is a unique ID for the deposit, consisting of the user ID a dash and the unix timestamp of
+    initial deposit creation.
   
 Optionally, the deposit directory is initialized with a git-repository. This is useful if it is to be used for curation
-purposes. The transformations performed to the deposit can then be controlled and recorded in git. `easy-deposit` also
-uses git to report to the client about the current state of the deposit after it has been finalized.
+purposes. The transformations performed to the deposit can then be controlled and recorded in git.
+
 
 ### Authentication
 
@@ -34,10 +34,10 @@ In a simple deposit the whole deposit package is sent in one http session. It is
 with following headers:
 
  Header                  |  Content                               
--------------------------|-------------------------------------------------------------------------------------
+-------------------------|------------------------------------------------------------------------------------
  `Content-Type`          | `application/zip`                       
- `Content-Disposition`   | `attachment; filename: package.zip` ("`package.zip`" can be something else, it is ignored)
- `Packaging`             | `http://easy.dans.knaw.nl/schemas/EASY-BagIt.html` 
+ `Content-Disposition`   | `attachment; filename: <package-name>.zip` (`<package-name>` is the name of the bag on the server)
+ `Packaging`             | `http://purl.org/net/sword/package/BagIt` 
  `Content-MD5`           | the MD5 digest of the payload encoded as hexadecimal number in ascii
   
   
@@ -49,12 +49,11 @@ with the following headers:
  Header                  |  Content                               
 -------------------------|-------------------------------------------------------------------------------------
  `Content-Type`          | `application/zip` or `application/octet-stream` (see below)                    
- `Content-Disposition`   | `attachment; filename: package.zip[.<seq nr>]` (for `<seq nr>` see below)
- `Packaging`             | `http://easy.dans.knaw.nl/schemas/EASY-BagIt.html` 
+ `Content-Disposition`   | `attachment; filename: <package-name>.zip[.<seq nr>]` (for `<seq nr>` see below)
+ `Packaging`             | `http://purl.org/net/sword/package/BagIt` 
  `Content-MD5`           | the MD5 digest of the payload encoded as hexadecimal number in ascii
  `In-Progress`           | `true` for all partial deposits, except the last, where it must be `false`
 
-Authentication
 
 The correct order of the parts is communicated by the client by extending the filename with a sequence number. The
 parts may be sent in any order, provided that the client sends the last part after it receives the 
@@ -76,22 +75,23 @@ The clients has two options for dividing up a deposit in partial deposits:
     this option by using the `Content-Type: application/octet-stream` header (to indicate that the partial deposit
     on its own is not a valid zip archive).
 
+
 ### States
 
 A deposit goes through several states. A continued deposit that is still open for additions is said to be in `DRAFT`
-state. Once the client closed the deposit by sending `In-Progress: false` it enters `FINALIZING` state (a simple 
+state. Once the client closes the deposit by sending `In-Progress: false` it enters `FINALIZING` state (a simple 
 deposit goes straigth to the state). During this state `easy-deposit` assembles the deposit and validates it. If the
 the deposit is valid it transitions to the `SUBMITTED` state, otherwise it is flagged as `INVALID`. 
 
-If git-support is enabled any number of additional states may be defined. `easy-deposit` will always use the state 
-recorded in the latest tag of the form `state=<state-label>`. We recommend the states `ARCHIVED` and `REJECTED` to
-indicate that subsequent processing of the deposit was successful or not.
+After submission the deposit is processed for ingestion in the archive. This may include any number of steps, such
+as virus scans and file normalizations. These steps are not performed by `easy-deposit`.
+
+If the ingest is successful the deposit will change to `ARCHIVED` and the bag directory will be deleted from the 
+upload area. Other possible outcomes are the deposit being `REJECTED` (e.g., because it contained a virus) or 
+`FAILED` ingest (an unforseen error). In these cases the deposited data is not deleted automatically.
 
 `POST`-ing to a deposit is only allowed when it is in `DRAFT` state. In all other states this will lead to
 [method not allowed error].
-
-When state is set to `ARCHIVED` the working directory is cleared and committed to save space. Also if commit message
-of the `ARCHIVED` tag contains a URL it is reported to clients as the archiving URL of the resulting dataset.
 
 After closing its deposit the client must retrieve the state of the deposit by getting its [SWORD statement]. Only
 after establishing that the state has gone to `SUBMITTED` may the client assume that the deposit has been received
@@ -102,80 +102,106 @@ in order to retrieve the permanent URI for the deposited files.
 | :-----------------  | :------------------------------------------------------------------------------------------- |
 | `DRAFT`             | Continued deposit in progress                                                                |
 | `FINALIZING`        | Deposit has been closed by the client, service is creating and validating the deposit        | 
-| `INVALID`           | Deposit was finalized but turned out to be invalid (i.e. not a valid EASY bag)               |
-| `SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed                            | 
+| `INVALID`           | Deposit was finalized but turned out to be invalid (i.e. not a valid bag)                    |
+| `SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed for ingest in the archive  | 
 | `REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason                   | 
-| `ARCHIVED`          | Deposit was successfully archived. (Access URL in commit message.)                           | 
+| `ARCHIVED`          | Deposit was successfully archived. (Access URL available)                                    | 
 [States]
 
 
 EXAMPLES
 --------
 
-The following are example sessions using [cURL] as a client. `easy-deposit` is assumed to be running on `localhost` at port 
-8080 and to be configured with a user with username  `USER` and password `PASSWORD`. The example data sent can be found in
-the examples in this project.
+Example sessions can be performed using the data and shell scripts provided in this project in the
+sub-directory `src/test/resources`. The [cURL] command needs to be installed for the scripts to work.
 
-### Single Deposit
+The scripts read the credentials from the `vars.sh` file, so you most probably need to change these before
+you start. The examples assume you have changed directory to the `src/test/resources` directory.
 
-If a deposit is not too large it can be transferred in one http session:
 
-    curl -v -H "Content-Type: application/zip" \
-        -H "Content-Disposition: attachment; filename=example-bag.zip" \
-        -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
-        -H "Content-MD5: 2d48ff55b2c745345db1a86694068b84" \ 
-        -i -u USER:PASSWORD \
-        --data-binary @example-bag.zip http://localhost:8080/collection
+### Get the Service Document
+
+The service document URL is where you start. As a service provider this is the URL you provide to your clients to 
+get started.
+
+    ./get.sh http://example.com/easy-deposit/servicedocument
+     
+From the service document the client can retrieve one or more collection URL's  that are available. `easy-deposit`
+currently support only one collection URL.
+
+
+### Simple Deposit
+
+Every deposit starts by `POST`-ing data to the collection URL. In the case of a simple deposit this is all the 
+data at once. For the `example.com` collection URL you will of course have to substitute the correct URL.
+
+    ./send-simple.sh simple/example-bag.zip http://example.com/easy-deposit/collection/1
+    
+If the deposit is successful, you will get back an Atom-document, something similar to this:
+
+    <entry xmlns="http://www.w3.org/2005/Atom">
+        <generator uri="http://www.swordapp.org/" version="2.0" />
+        <id>http://example.com/easy-deposit/container/user001-1444582849119</id>
+        <link href="http://example.com/easy-deposit/container/user001-1444582849119" rel="edit" />
+        <link href="http://example.com/easy-deposit/media/user001-1444582849119" rel="http://purl.org/net/sword/terms/add" />
+        <link href="http://example.com/easy-deposit/media/user001-1444582849119" rel="edit-media" />
+        <packaging xmlns="http://purl.org/net/sword/terms/">http://purl.org/net/sword/package/BagIt</packaging>
+        <link href="http://example.com/easy-deposit/statement/user001-1444582849119" rel="http://purl.org/net/sword/terms/statement" 
+              type="application/atom+xml; type=feed" />
+        <treatment xmlns="http://purl.org/net/sword/terms/">[1] unpacking [2] verifying integrity [3] storing persistently</treatment>
+        <verboseDescription xmlns="http://purl.org/net/sword/terms/">
+            received successfully: simple/example-bag.zip; MD5: a9a4ef72998cc34e53d4b039eb30b1d3
+        </verboseDescription>
+    </entry>
+
+The `Location` header of the response will contain the some URL as the link element with `rel="edit"` attribute. This is
+what [SWORDv2] call the `SE-IRI` (SWORD-Edit IRI). It is used to `POST` subsequent continued deposits to. Of course, in 
+this example that is no longer possible, as we sent all the data at once.
+
+The link marked `rel="http://purl.org/net/sword/terms/statement"` is used to retrieve the current state of the deposit.
 
 
 ### Continued Deposit
 
-If a deposit is too large to be transferred in one go it can be sent in several increments. Whether any more partial 
-deposits are to be expected is indicated by the client in the ``In-Progress`` header.
+A continued deposit is executed by `POST`-ing the first partial deposit to the collection URL, just as the simple deposit,
+but with the `In-Progress` header to false:
 
-#### First Transfer 
+    ./send-distr.sh distributed/part1.zip http://example.com/easy-deposit/collection/1 false
+    
+Then retrieve the `SE-IRI` from the Location header (or the atom document in the response) and `POST` the subsequent parts
+to that URL:
 
-(notice "`In-Progress: true`" header):
+    ./send-distr.sh distributed/part2.zip <SE-IRI> false
 
-    curl -v -H "Content-Type: application/zip" \
-            -H "Content-Disposition: attachment; filename=part1.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \
-            -H "Content-MD5: ce17fca299eab53a9622fdf40b7450c1" \
-            -H "In-Progress: true" \
-            -i -u USER:PASSWORD --data-binary @part1.zip http://localhost:8080/collection
+and finally,
+
+    ./send-distr.sh distributed/part2.zip <SE-IRI> true
+
+The "split" variant works the same, except that it sets the `Content-Type` header to `application/octet-stream`. 
 
 
-#### Intermediate Transfers 
+### Getting the State
 
-(notice URI contains the ID which can be found in the response of the first transfer):
+To get the state of the first example (of course, using the `State-IRI` returned to you rather that the one in this
+example):
 
-    curl -v -H "Content-Type: application/zip" \
-            -H "Content-Disposition: attachment; filename=part2.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \ 
-            -H "Content-MD5: 67c8773a4dfff6d93e12002868c5395d" \
-            -H "In-Progress: true" \ 
-            -i -u USER:PASSWORD \
-            --data-binary @part2.zip http://localhost:8080/collection/1435188185031
+    ./get.sh http://example.com/easy-deposit/statement/user001-1444582849119
+    
+This will yield a atom feed document similar to this:
 
-#### Final Transfer 
-
-(notice "`In-Progress: false`" header)
-
-    curl -v -H "Content-Type: application/zip" \ 
-            -H "Content-Disposition: attachment; filename=part3.zip" \
-            -H "Packaging: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html" \
-            -H "Content-MD5: 6c55ed00d3eadae513e720eb0f0489be" \
-            -H "In-Progress: false" \ 
-            -i -u USER:PASSWORD \ 
-            --data-binary @part3.zip http://localhost:8080/collection/1435188185031
-
-### Check Existence of Deposit
-
-To check if the deposit still exists you can simple do a ``GET`` request on its URL:
-
-    curl -v -u USER:PASSWORD https://localhost:8080/collection/1435188185031
-
-Response code is `200` if dataset exists, otherwise `404`.
+    <feed xmlns="http://www.w3.org/2005/Atom">
+        <id>http://deasy.dans.knaw.nl/sword2/statement/user001-1444582849119</id>
+        <link href="http://deasy.dans.knaw.nl/sword2/statement/user001-1444582849119" rel="self" />
+        <title type="text">Deposit user001-1444582849119</title>
+        <author><name>DANS-EASY</name></author>
+        <updated>2015-10-11T17:00:50.000Z</updated>
+        <category term="SUBMITTED" scheme="http://purl.org/net/sword/terms/state" label="State">
+            Deposit is valid and ready for post-submission processing
+        </category>
+    </feed>
+    
+The state is retrieved from the `term` attribute of the `category` element that is marked with 
+`scheme="http://purl.org/net/sword/terms/state"`.
 
 
 INSTALLATION AND CONFIGURATION
@@ -204,7 +230,7 @@ BUILDING FROM SOURCE
 
 Prerequisites:
 
-* Java 7 or higher
+* Java 8 or higher
 * Maven 3.3.3 or higher
  
 Steps:
@@ -220,7 +246,6 @@ Steps:
         cd easy-deposit
         mvn install
 
-[EASY-BagIt]: http://easy.dans.knaw.nl/schemas/EASY-BagIt.html
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
 [SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
 [method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
