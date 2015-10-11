@@ -154,7 +154,7 @@ If the deposit is successful, you will get back an Atom-document, something simi
         </verboseDescription>
     </entry>
 
-The `Location` header of the response will contain the some URL as the link element with `rel="edit"` attribute. This is
+The `Location` header of the response will contain the same URL as the link element with `rel="edit"` attribute. This is
 what [SWORDv2] call the `SE-IRI` (SWORD-Edit IRI). It is used to `POST` subsequent continued deposits to. Of course, in 
 this example that is no longer possible, as we sent all the data at once.
 
