@@ -80,7 +80,7 @@ The clients has two options for dividing up a deposit in partial deposits:
 
 A deposit goes through several states. A continued deposit that is still open for additions is said to be in `DRAFT`
 state. Once the client closes the deposit by sending `In-Progress: false` it enters `FINALIZING` state (a simple 
-deposit goes straigth to the state). During this state `easy-deposit` assembles the deposit and validates it. If the
+deposit goes straight to this state). During this state `easy-deposit` assembles the deposit and validates it. If the
 the deposit is valid it transitions to the `SUBMITTED` state, otherwise it is flagged as `INVALID`. 
 
 After submission the deposit is processed for ingestion in the archive. This may include any number of steps, such
