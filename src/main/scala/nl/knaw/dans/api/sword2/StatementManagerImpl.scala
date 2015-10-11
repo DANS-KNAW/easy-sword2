@@ -30,7 +30,7 @@ class StatementManagerImpl extends StatementManager {
 
     // TODO: REFACTOR THIS MESS
     val maybeState = SwordID.extract(iri) match {
-      case Success(id) => DepositState.getDepositState(id)
+      case Success(id) => DepositProperties.getState(id)
       case Failure(t) => throw new SwordError(404)
     }
     maybeState match {

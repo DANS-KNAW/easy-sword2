@@ -44,7 +44,7 @@ package object sword2 {
       }
   }
 
-  def isPartOfDeposit(f: File): Boolean = f.getName != ".git" && f.getName != "state.properties"
+  def isPartOfDeposit(f: File): Boolean = f.getName != ".git" && f.getName != "deposit.properties"
 
   implicit class TryDepositResultOps(val thisResult: Try[(String, DepositReceipt)]) extends AnyVal {
 
