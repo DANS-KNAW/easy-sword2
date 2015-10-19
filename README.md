@@ -106,7 +106,6 @@ in order to retrieve the permanent URI for the deposited files.
 | `SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed for ingest in the archive  | 
 | `REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason                   | 
 | `ARCHIVED`          | Deposit was successfully archived. (Access URL available)                                    | 
-[States]
 
 
 EXAMPLES
