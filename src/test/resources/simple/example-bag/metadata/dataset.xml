@@ -6,13 +6,10 @@
 	xmlns:dcx-dai="http://easy.dans.knaw.nl/schemas/dcx/dai/"
 	xmlns:ddm="http://easy.dans.knaw.nl/schemas/md/ddm/"
 	xmlns:dcterms="http://purl.org/dc/terms/"
-	xmlns:dcx-gml="http://easy.dans.knaw.nl/schemas/dcx/gml/"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xmlns:abr="http://www.den.nl/standaard/166/Archeologisch-Basisregister/"
 	xsi:schemaLocation="
-		http://www.den.nl/standaard/166/Archeologisch-Basisregister/ http://easy.dans.knaw.nl/schemas/vocab/2012/10/abr-type.xsd
 		http://easy.dans.knaw.nl/schemas/md/ddm/ http://easy.dans.knaw.nl/schemas/md/2014/09/ddm.xsd
-		http://easy.dans.knaw.nl/schemas/dcx/gml/ http://eof12.dans.knaw.nl/schemas/dcx/2012/10/dcx-gml.xsd
+
 ">
 	<ddm:profile>
         <dc:title>The title of the Dataset</dc:title>
@@ -35,6 +32,7 @@
 	<ddm:dcmiMetadata>
         	<dcterms:hasVersion>1.1</dcterms:hasVersion>
         	<dcterms:modified>2015-09-08</dcterms:modified>
+                <dcterms:license xsi:type="dcterms:URI">http://opensource.org/licenses/MIT</dcterms:license>
     	</ddm:dcmiMetadata>
 </ddm:DDM>
 
