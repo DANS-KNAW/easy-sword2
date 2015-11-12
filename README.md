@@ -234,13 +234,6 @@ Prerequisites:
  
 Steps:
 
-1. Clone and build the [dans-parent] project (*can be skipped if you have access to the DANS maven repository*)
-      
-        git clone https://github.com/DANS-KNAW/dans-parent.git
-        cd dans-parent
-        mvn install
-2. Clone and build this project
-
         git clone https://github.com/DANS-KNAW/easy-deposit.git
         cd easy-deposit
         mvn install

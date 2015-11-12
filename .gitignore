@@ -6,16 +6,15 @@ pom.xml.next
 release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
-target/
 *.class
 *~
 *.swp
 *.iml
 .idea/
 .DS_Store
-data/
-temp/
-cfg/
+apphome.sh
+home/
+out/
 
 # Eclipse
 /.project
