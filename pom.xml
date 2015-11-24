@@ -4,7 +4,7 @@
    <parent>
        <groupId>nl.knaw.dans.shared</groupId>
        <artifactId>dans-scala-prototype</artifactId>
-       <version>1.15</version>
+       <version>1.16</version>
    </parent>
   <groupId>nl.knaw.dans.easy</groupId>
   <artifactId>easy-deposit</artifactId>
