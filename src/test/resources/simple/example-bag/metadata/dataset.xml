@@ -33,6 +33,7 @@
         	<dcterms:hasVersion>1.1</dcterms:hasVersion>
         	<dcterms:modified>2015-09-08</dcterms:modified>
                 <dcterms:license xsi:type="dcterms:URI">http://opensource.org/licenses/MIT</dcterms:license>
+                <dcterms:rightsHolder>I Lastname</dcterms:rightsHolder>
     	</ddm:dcmiMetadata>
 </ddm:DDM>
 
