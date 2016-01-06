@@ -31,7 +31,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     val result = for {
       - <- checkValidCollectionId(collectionURI)
       timestamp <- SwordID.generate
-      maybeSlug <- Option(deposit.getSlug)
+      maybeSlug = Option(deposit.getSlug)
       id = maybeSlug match {
               case Some(slug) => s"${auth.getUsername}-${slug}"
               case None => s"${auth.getUsername}-${timestamp}"
