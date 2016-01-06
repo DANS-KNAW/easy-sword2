@@ -4,7 +4,7 @@
    <parent>
        <groupId>nl.knaw.dans.shared</groupId>
        <artifactId>dans-scala-prototype</artifactId>
-       <version>1.16</version>
+       <version>1.17</version>
    </parent>
   <groupId>nl.knaw.dans.easy</groupId>
   <artifactId>easy-deposit</artifactId>
@@ -27,7 +27,7 @@
     <dependency>
       <groupId>nl.knaw.dans.easy</groupId>
       <artifactId>easy-sword2-lib</artifactId>
-      <version>1.0-beta-1</version>
+      <version>1.0-beta-2</version>
       <exclusions>
          <exclusion>
             <groupId>log4j</groupId>
@@ -98,6 +98,12 @@
   </repositories>
   <build>
     <plugins>
+        <!--
+      <plugin>
+          <groupId>com.mycila</groupId>
+          <artifactId>license-maven-plugin</artifactId>
+      </plugin>
+      -->
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
       </plugin>
