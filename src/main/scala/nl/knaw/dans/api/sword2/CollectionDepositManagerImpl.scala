@@ -31,7 +31,11 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     val result = for {
       - <- checkValidCollectionId(collectionURI)
       timestamp <- SwordID.generate
-      id = s"${auth.getUsername}-${timestamp}"
+      maybeSlug <- Option(deposit.getSlug)
+      id = maybeSlug match {
+              case Some(slug) => s"${auth.getUsername}-${slug}"
+              case None => s"${auth.getUsername}-${timestamp}"
+            }
       _ = log.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(id)
