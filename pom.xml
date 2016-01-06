@@ -98,10 +98,12 @@
   </repositories>
   <build>
     <plugins>
+        <!--
       <plugin>
           <groupId>com.mycila</groupId>
           <artifactId>license-maven-plugin</artifactId>
       </plugin>
+      -->
       <plugin>
         <artifactId>maven-release-plugin</artifactId>
       </plugin>
