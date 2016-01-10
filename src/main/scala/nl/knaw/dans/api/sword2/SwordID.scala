@@ -20,7 +20,19 @@ import org.swordapp.server.SwordError
 import scala.util.{Failure, Success, Try}
 
 object SwordID {
-  def generate: Try[String] = synchronized {
+  def generate(maybeSlug: Option[String], user: String): Try[String] = Try {
+    val postfix = maybeSlug match {
+      case Some(slug) => slug
+      case None => generateTimeBasedPostfix.get
+    }
+    val prefix = SwordProps("auth.mode") match {
+      case "single" => ""
+      case _ => "$user-"
+    }
+    s"$prefix$postfix"
+  }
+
+  def generateTimeBasedPostfix = synchronized {
     try {
       val id: Long = System.currentTimeMillis
       Thread.sleep(2)
@@ -33,6 +45,6 @@ object SwordID {
   def extract(IRI: String): Try[String] = {
     val parts = IRI.split("/")
     if (parts.length < 1) Failure(new SwordError(404))
-    else Success(parts(parts.length - 1))
+    else Success(parts.last)
   }
 }
