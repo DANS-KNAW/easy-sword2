@@ -27,7 +27,7 @@ object SwordID {
     }
     val prefix = SwordProps("auth.mode") match {
       case "single" => ""
-      case _ => "$user-"
+      case _ => s"$user-"
     }
     s"$prefix$postfix"
   }

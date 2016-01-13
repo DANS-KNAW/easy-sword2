@@ -27,7 +27,7 @@
         </dcx-dai:creatorDetails>        
         <ddm:created>2015-09-09</ddm:created>
 	<ddm:audience>D41500</ddm:audience>
-	<ddm:accessRights>OPEN_ACCESS</ddm:accessRights>
+	<ddm:accessRights>NO_ACCESS</ddm:accessRights>
 	</ddm:profile>
 	<ddm:dcmiMetadata>
         	<dcterms:hasVersion>1.1</dcterms:hasVersion>
