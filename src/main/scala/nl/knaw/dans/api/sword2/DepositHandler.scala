@@ -82,6 +82,7 @@ object DepositHandler {
   }
 
   private def initGit(bagDir: File)(implicit id: String): Try[Option[Git]] =
+    // TODO: refactor this, so that errors thrown by toBoolean are actually caught somewhere!
     if (SwordProps("git.enabled").toBoolean)
       Try {
         log.debug("Initializing git repo for deposit")
