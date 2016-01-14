@@ -21,15 +21,6 @@ import org.slf4j.LoggerFactory
 class ServiceDocumentManagerImpl extends ServiceDocumentManager {
   val log = LoggerFactory.getLogger(getClass)
   val BAGIT_URI = "http://purl.org/net/sword/package/BagIt"
-  val sdoc: ServiceDocument = new ServiceDocument
-  val sw: SwordWorkspace = new SwordWorkspace
-  sw.setTitle("EASY Deposit Service")
-  val sc: SwordCollection = new SwordCollection
-  sc.setTitle("DANS Default Data Collection")
-  sc.addAcceptPackaging(BAGIT_URI)
-  sc.setLocation(SwordProps("collection.iri"))
-  sw.addCollection(sc)
-  sdoc.addWorkspace(sw)
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
@@ -38,6 +29,15 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
     log.info("Service document retrieved by {}",
       if (authCredentials.getUsername.isEmpty) "Anonymous user"
       else authCredentials.getUsername)
+    val sdoc: ServiceDocument = new ServiceDocument
+    val sw: SwordWorkspace = new SwordWorkspace
+    sw.setTitle("EASY Deposit Service")
+    val sc: SwordCollection = new SwordCollection
+    sc.setTitle("DANS Default Data Collection")
+    sc.addAcceptPackaging(BAGIT_URI)
+    sc.setLocation(SwordProps("collection.iri"))
+    sw.addCollection(sc)
+    sdoc.addWorkspace(sw)
     sdoc
   }
 }
