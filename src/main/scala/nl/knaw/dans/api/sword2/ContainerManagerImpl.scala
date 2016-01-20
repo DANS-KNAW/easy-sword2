@@ -85,7 +85,7 @@ class ContainerManagerImpl extends ContainerManager {
     Authentication.checkAuthentication(auth)
     val result = for {
       id <- SwordID.extract(editIRI)
-      _ = checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+      _ = if(SwordProps("auth.mode") == "ldap") checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
       _ = log.debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
       depositReceipt <- handleDeposit(deposit)(id)
