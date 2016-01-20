@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/DANS-KNAW/easy-deposit.png?branch=master)](https://travis-ci.org/DANS-KNAW/easy-deposit)
+
 easy-deposit
 ============
 
