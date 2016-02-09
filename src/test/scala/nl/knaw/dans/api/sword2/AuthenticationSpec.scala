@@ -21,15 +21,18 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class AuthenticationSpec extends FlatSpec with Matchers {
 
-  // TODO somehow match the implemetation of 'hash' with some command line
+  val command = "echo -n SomePassword | openssl sha1 -hmac someUserNameAsSalt -binary | base64"
+  val output = "WjYViDQOdGR8V1kkTs900ZfoLXU="
 
-  "hash" should "return same as 'echo -n SomePassword | openssl sha1 -hmac someUserNameAsSalt'" in {
-    hash("SomePassword","someUserNameAsSalt") shouldBe "5a361588340e74647c5759244ecf74d197e82d75"
+  "hash" should s"return same as '$command'" in {
+    hash("SomePassword", "someUserNameAsSalt") shouldBe output
   }
 
-  "hash" should "return same as 'echo -n SomePassword | openssl sha1 -hmac someUserNameAsSalt -binary | base64'" in {
-    new sun.misc.BASE64Encoder().encode(
-      hash("SomePassword","someUserNameAsSalt")
-    ) shouldBe "WjYViDQOdGR8V1kkTs900ZfoLXU="
+  it should "return something else than '$command'" in {
+    hash("somePassword", "someUserNameAsSalt") should not be output
+  }
+
+  it should s"not return same as '$command'" in {
+    hash("SomePassword", "SomeUserNameAsSalt") should not be output
   }
 }
