@@ -16,6 +16,8 @@
 package nl.knaw.dans.api.sword2
 
 import java.util
+import javax.crypto.{Mac, SecretKeyFactory}
+import javax.crypto.spec.{SecretKeySpec, PBEKeySpec}
 import javax.naming.{AuthenticationException, Context}
 import javax.naming.ldap.InitialLdapContext
 
@@ -28,6 +30,13 @@ import scala.util.{Failure, Success, Try}
 object Authentication {
   val log = LoggerFactory.getLogger(getClass)
 
+  def hash(password: String, userName: String): String = {
+    val signingKey = new SecretKeySpec(userName.getBytes(), "HmacSHA1")
+    val mac = Mac.getInstance("HmacSHA1")
+    mac.init(signingKey)
+    val rawHmac = mac.doFinal(password.getBytes())
+    new sun.misc.BASE64Encoder().encode(rawHmac)
+  }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
@@ -38,7 +47,7 @@ object Authentication {
     }
     log.debug(s"Checking credentials for user ${auth.getUsername} using auth.mode: ${SwordProps("auth.mode")}")
     SwordProps("auth.mode") match {
-      case "single" => if (!(auth.getUsername == SwordProps("auth.single.user")) || !(auth.getPassword == SwordProps("auth.single.password"))) throw new SwordAuthException
+      case "single" => if (!(hash(auth.getPassword, auth.getUsername) == SwordProps("auth.single.password"))) throw new SwordAuthException
       case "ldap" => if(!authenticateThroughLdap(auth.getUsername, auth.getPassword).get) throw new SwordAuthException
       case _ => throw new RuntimeException("Authentication not properly configured. Contact service admin")
     }
