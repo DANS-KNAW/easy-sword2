@@ -15,10 +15,9 @@
  */
 package nl.knaw.dans.api.sword2
 
-import java.nio.file.Paths
-
 import nl.knaw.dans.api.sword2.DepositHandler._
 import org.swordapp.server._
+import org.apache.commons.lang.StringUtils._
 
 import scala.util.{Try, Failure, Success}
 
@@ -30,7 +29,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     Authentication.checkAuthentication(auth)
     val result = for {
       _ <- checkValidCollectionId(collectionURI)
-      maybeSlug = Option(deposit.getSlug)
+      maybeSlug = if(isNotBlank(deposit.getSlug)) Some(deposit.getSlug) else None
       id <- SwordID.generate(maybeSlug, auth.getUsername)
       _ = log.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id, auth.getUsername)
