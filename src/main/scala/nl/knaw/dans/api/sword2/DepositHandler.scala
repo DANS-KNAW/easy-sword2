@@ -15,8 +15,9 @@
  */
 package nl.knaw.dans.api.sword2
 
-import java.io.File
-import java.nio.file.{Files, Paths}
+import java.io.{File, IOException}
+import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
+import java.nio.file._
 import java.util.Collections
 
 import gov.loc.repository.bagit.BagFactory
@@ -176,12 +177,35 @@ object DepositHandler {
       })
     }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to set bag status to SUBMITTED", e)) }
 
+
+  case class MakeAllGroupWritable() extends SimpleFileVisitor[Path] {
+      override def visitFile(path: Path,  attrs: BasicFileAttributes): FileVisitResult = {
+        log.debug(s"Making file group writable: $path")
+        try {
+          Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxrwxr--"))
+          FileVisitResult.CONTINUE
+        } catch {
+          case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system");  FileVisitResult.TERMINATE
+          case cce: ClassCastException => log.error("Non file permission elements in set"); FileVisitResult.TERMINATE
+          case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
+          case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
+        }
+      }
+
+      override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
+        Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxrwxr--"))
+        if(ex == null) FileVisitResult.CONTINUE
+        else FileVisitResult.TERMINATE
+      }
+  }
+
   def moveBagToStorage()(implicit id: String): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(SwordProps("tempdir"), id)
       val storageDir = new File(SwordProps("deposits-root"), id)
       if(!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
+      Files.walkFileTree(storageDir.toPath, MakeAllGroupWritable())
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 

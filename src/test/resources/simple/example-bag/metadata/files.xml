@@ -1,10 +1,11 @@
-<files>
-    <file filepath="data/quicksort.hs">
+<?xml version="1.0" encoding="UTF-8"?>
+<files xmlns:dcterms="http://purl.org/dc/terms/">
+<file filepath="data/quicksort.hs">
         <dcterms:identifier>UUID</dcterms:identifier>
         <dcterms:title>friendly name</dcterms:title>
         <dcterms:alternative>friendly name</dcterms:alternative>
         <dcterms:description>caption</dcterms:description>
-        <dcterms:format>mime type</dcterms:format>
+        <dcterms:format>text/plain</dcterms:format>
         <dcterms:created>date created</dcterms:created>
     </file>
     <file filepath="data/path/to/file.txt">
@@ -12,7 +13,7 @@
         <dcterms:title>friendly name</dcterms:title>
         <dcterms:alternative>friendly name</dcterms:alternative>
         <dcterms:description>caption</dcterms:description>
-        <dcterms:format>mime type</dcterms:format>
+        <dcterms:format>text/plain</dcterms:format>
         <dcterms:created>date created</dcterms:created>
     </file>
 </files>
