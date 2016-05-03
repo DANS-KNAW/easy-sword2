@@ -16,7 +16,6 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.File
-import java.nio.file.Paths
 import java.util
 
 import nl.knaw.dans.api.sword2.DepositHandler._
@@ -34,7 +33,7 @@ class ContainerManagerImpl extends ContainerManager {
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        val dir: File = new File(SwordProps("deposits-root") + "/" + id)
+        val dir: File = new File(SwordProps("deposits.rootdir") + "/" + id)
         if (!dir.exists) {
           throw new SwordError(404)
         }

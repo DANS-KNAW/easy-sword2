@@ -178,11 +178,11 @@ object DepositHandler {
     }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to set bag status to SUBMITTED", e)) }
 
 
-  case class MakeAllGroupWritable() extends SimpleFileVisitor[Path] {
+  case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
       override def visitFile(path: Path,  attrs: BasicFileAttributes): FileVisitResult = {
-        log.debug(s"Making file group writable: $path")
+        log.debug(s"Setting the following permissions $permissions on file $path")
         try {
-          Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxrwxr--"))
+          Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
           FileVisitResult.CONTINUE
         } catch {
           case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system");  FileVisitResult.TERMINATE
@@ -193,19 +193,31 @@ object DepositHandler {
       }
 
       override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-        Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString("rwxrwxr--"))
+        log.debug(s"Setting the following permissions $permissions on directory $dir")
+        Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
         if(ex == null) FileVisitResult.CONTINUE
         else FileVisitResult.TERMINATE
       }
+  }
+
+  def isOnPosixFileSystem(file: File): Boolean = {
+    try {
+        Files.getPosixFilePermissions(file.toPath)
+        true
+    }
+    catch {
+      case e: UnsupportedOperationException => false
+    }
   }
 
   def moveBagToStorage()(implicit id: String): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(SwordProps("tempdir"), id)
-      val storageDir = new File(SwordProps("deposits-root"), id)
+      val storageDir = new File(SwordProps("deposits.rootdir"), id)
       if(!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
-      Files.walkFileTree(storageDir.toPath, MakeAllGroupWritable())
+      if(isOnPosixFileSystem(storageDir))
+        Files.walkFileTree(storageDir.toPath, MakeAllGroupWritable(SwordProps("deposits.permissions")))
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 

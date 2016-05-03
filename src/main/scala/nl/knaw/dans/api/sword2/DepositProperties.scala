@@ -29,7 +29,7 @@ object DepositProperties {
 
   def set(id: String, stateLabel: String, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null): Try[Unit] = Try {
     val depositDir = new File(if (lookInTempFirst) SwordProps("tempdir")
-                              else SwordProps("deposits-root"), id)
+                              else SwordProps("deposits.rootdir"), id)
     val props = new PropertiesConfiguration(new File(depositDir, "deposit.properties"))
     props.setProperty("state.label", stateLabel)
     props.setProperty("state.description",
@@ -44,7 +44,7 @@ object DepositProperties {
   def getState(id: String): Try[State] = {
     log.debug(s"[$id] Trying to retrieve state")
     readState(id, new File(SwordProps("tempdir"), s"$id/deposit.properties")).recoverWith {
-      case f: IOException => readState(id, new File(SwordProps("deposits-root"), s"$id/deposit.properties"))
+      case f: IOException => readState(id, new File(SwordProps("deposits.rootdir"), s"$id/deposit.properties"))
     }
   }
   private def readState(id: String, f: File): Try[State] = Try {
