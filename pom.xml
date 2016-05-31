@@ -21,7 +21,7 @@
     <parent>
         <groupId>nl.knaw.dans.shared</groupId>
         <artifactId>dans-scala-prototype</artifactId>
-        <version>1.26</version>
+        <version>1.27</version>
     </parent>
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-deposit</artifactId>
@@ -115,7 +115,7 @@
             <releases>
                 <enabled>true</enabled>
             </releases>
-            <url>https://easy.dans.knaw.nl/maven/</url>
+            <url>http://maven.dans.knaw.nl/</url>
         </repository>
     </repositories>
     <pluginRepositories>
@@ -124,7 +124,7 @@
             <releases>
                 <enabled>true</enabled>
             </releases>
-            <url>https://easy.dans.knaw.nl/maven/</url>
+            <url>http://maven.dans.knaw.nl/</url>
         </pluginRepository>
     </pluginRepositories>
     <build>
