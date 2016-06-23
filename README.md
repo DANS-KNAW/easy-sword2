@@ -175,7 +175,7 @@ to that URL:
 
 and finally,
 
-    ./send-distr.sh distributed/part2.zip <SE-IRI> true
+    ./send-distr.sh distributed/part3.zip <SE-IRI> true
 
 The "split" variant works the same, except that it sets the `Content-Type` header to `application/octet-stream`. 
 
