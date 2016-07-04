@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="3 minutes">
-    <property name="LOGDIR" value="{{ easy_deposit_log_dir }}" />
+    <property name="LOGDIR" value="{{ easy_sword2_log_dir }}" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
@@ -8,12 +8,12 @@
         </encoder>
     </appender>    
 
-    <appender name="EASY_DEPOSIT_LOG"
+    <appender name="EASY_SWORD2_LOG"
         class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGDIR}/easy-deposit.log</file>
+        <file>${LOGDIR}/easy-sword2.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- daily rollover -->
-            <fileNamePattern>${LOGDIR}/easy-deposit.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>${LOGDIR}/easy-sword2.%d{yyyy-MM-dd}.log</fileNamePattern>
 
             <!-- keep 30 days' worth of history -->
             <maxHistory>30</maxHistory>
@@ -27,7 +27,7 @@
         <appender-ref ref="CONSOLE" />
     </root>
 
-    <logger name="nl.knaw.dans" level="{{ easy_deposit_log_level }}" >
-       <appender-ref ref="EASY_DEPOSIT_LOG" />
+    <logger name="nl.knaw.dans" level="{{ easy_sword2_log_level }}" >
+       <appender-ref ref="EASY_SWORD2_LOG" />
     </logger>
 </configuration>
