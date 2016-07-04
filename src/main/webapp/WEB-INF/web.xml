@@ -21,7 +21,7 @@
  "http://java.sun.com/dtd/web-app_2_3.dtd" >
 
 <web-app>
-    <display-name>EASY Deposit Service</display-name>
+    <display-name>EASY SWORD2 Deposit Service</display-name>
 
     <context-param>
         <param-name>config-impl</param-name>

@@ -28,7 +28,7 @@
     <packaging>war</packaging>
     <version>1.x-SNAPSHOT</version>
     <inceptionYear>2015-2016</inceptionYear>
-    <name>EASY Sword2 Deposit Service</name>
+    <name>EASY SWORD2 Deposit Service</name>
     <description>SWORD v2 based dataset deposit service</description>
     <url>https://github.com/DANS-KNAW/easy-sword2</url>
     <scm>
