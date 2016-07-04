@@ -1,6 +1,6 @@
-easy-deposit
+easy-sword2
 ============
-[![Build Status](https://travis-ci.org/DANS-KNAW/easy-deposit.png?branch=master)](https://travis-ci.org/DANS-KNAW/easy-deposit)
+[![Build Status](https://travis-ci.org/DANS-KNAW/easy-sword2.png?branch=master)](https://travis-ci.org/DANS-KNAW/easy-sword2)
 
 Receive bags over a SWORD v2 session
 
@@ -25,7 +25,7 @@ purposes. The transformations performed to the deposit can then be controlled an
 
 ### Authentication
 
-`easy-deposit` assumes that communications are done through a secure http connection. Therefore basic authentication 
+`easy-sword2` assumes that communications are done through a secure http connection. Therefore basic authentication 
 is used.
 
   
@@ -65,11 +65,11 @@ deposits being uploaded to the server.
 The clients has two options for dividing up a deposit in partial deposits:
 
   * make every partial deposit a valid zip file, containing some of the bag's files. In this case, upon receiving the
-    final deposit, `easy-deposit` will unzip all the partial deposits to a single directory to create the resulting bag.
+    final deposit, `easy-sword2` will unzip all the partial deposits to a single directory to create the resulting bag.
     The client must therefore take care not to "overwrite" files from a previous partial deposit, as this will lead to
     undefined behavior. The client selects this option by using the `Content-Type: application/zip` header.
   * create a single zip file, split it up into chunks and send each chunk as a partial deposit. In this case, upon receiving
-    the final deposit, `easy-deposit` will concatenate all the partial deposits to recreate the zip file and unzip this
+    the final deposit, `easy-sword2` will concatenate all the partial deposits to recreate the zip file and unzip this
     file to create the resulting bag. The client must specify the intended order of the parts by extending the file name
     the Content-Diposition header with a dot and a sequence number, e.g., 
     `Content-Disposition: attachment; filename=example-bag.zip.part.3` for the third partial deposit. The client selects
@@ -81,11 +81,11 @@ The clients has two options for dividing up a deposit in partial deposits:
 
 A deposit goes through several states. A continued deposit that is still open for additions is said to be in `DRAFT`
 state. Once the client closes the deposit by sending `In-Progress: false` it enters `FINALIZING` state (a simple 
-deposit goes straight to this state). During this state `easy-deposit` assembles the deposit and validates it. If the
+deposit goes straight to this state). During this state `easy-sword2` assembles the deposit and validates it. If the
 the deposit is valid it transitions to the `SUBMITTED` state, otherwise it is flagged as `INVALID`. 
 
 After submission the deposit is processed for ingestion in the archive. This may include any number of steps, such
-as virus scans and file normalizations. These steps are not performed by `easy-deposit`.
+as virus scans and file normalizations. These steps are not performed by `easy-sword2`.
 
 If the ingest is successful the deposit will change to `ARCHIVED` and the bag directory will be deleted from the 
 upload area. Other possible outcomes are the deposit being `REJECTED` (e.g., because it contained a virus) or 
@@ -124,9 +124,9 @@ you start. The examples assume you have changed directory to the `src/test/resou
 The service document URL is where you start. As a service provider this is the URL you provide to your clients to 
 get started.
 
-    ./get.sh http://example.com/easy-deposit/servicedocument
+    ./get.sh http://example.com/easy-sword2/servicedocument
      
-From the service document the client can retrieve one or more collection URL's  that are available. `easy-deposit`
+From the service document the client can retrieve one or more collection URL's  that are available. `easy-sword2`
 currently support only one collection URL.
 
 
@@ -135,18 +135,18 @@ currently support only one collection URL.
 Every deposit starts by `POST`-ing data to the collection URL. In the case of a simple deposit this is all the 
 data at once. For the `example.com` collection URL you will of course have to substitute the correct URL.
 
-    ./send-simple.sh simple/example-bag.zip http://example.com/easy-deposit/collection/1
+    ./send-simple.sh simple/example-bag.zip http://example.com/easy-sword2/collection/1
     
 If the deposit is successful, you will get back an Atom-document, something similar to this:
 
     <entry xmlns="http://www.w3.org/2005/Atom">
         <generator uri="http://www.swordapp.org/" version="2.0" />
-        <id>http://example.com/easy-deposit/container/user001-1444582849119</id>
-        <link href="http://example.com/easy-deposit/container/user001-1444582849119" rel="edit" />
-        <link href="http://example.com/easy-deposit/media/user001-1444582849119" rel="http://purl.org/net/sword/terms/add" />
-        <link href="http://example.com/easy-deposit/media/user001-1444582849119" rel="edit-media" />
+        <id>http://example.com/easy-sword2/container/user001-1444582849119</id>
+        <link href="http://example.com/easy-sword2/container/user001-1444582849119" rel="edit" />
+        <link href="http://example.com/easy-sword2/media/user001-1444582849119" rel="http://purl.org/net/sword/terms/add" />
+        <link href="http://example.com/easy-sword2/media/user001-1444582849119" rel="edit-media" />
         <packaging xmlns="http://purl.org/net/sword/terms/">http://purl.org/net/sword/package/BagIt</packaging>
-        <link href="http://example.com/easy-deposit/statement/user001-1444582849119" rel="http://purl.org/net/sword/terms/statement" 
+        <link href="http://example.com/easy-sword2/statement/user001-1444582849119" rel="http://purl.org/net/sword/terms/statement" 
               type="application/atom+xml; type=feed" />
         <treatment xmlns="http://purl.org/net/sword/terms/">[1] unpacking [2] verifying integrity [3] storing persistently</treatment>
         <verboseDescription xmlns="http://purl.org/net/sword/terms/">
@@ -166,7 +166,7 @@ The link marked `rel="http://purl.org/net/sword/terms/statement"` is used to ret
 A continued deposit is executed by `POST`-ing the first partial deposit to the collection URL, just as the simple deposit,
 but with the `In-Progress` header to false:
 
-    ./send-distr.sh distributed/part1.zip http://example.com/easy-deposit/collection/1 false
+    ./send-distr.sh distributed/part1.zip http://example.com/easy-sword2/collection/1 false
     
 Then retrieve the `SE-IRI` from the Location header (or the atom document in the response) and `POST` the subsequent parts
 to that URL:
@@ -185,7 +185,7 @@ The "split" variant works the same, except that it sets the `Content-Type` heade
 To get the state of the first example (of course, using the `State-IRI` returned to you rather that the one in this
 example):
 
-    ./get.sh http://example.com/easy-deposit/statement/user001-1444582849119
+    ./get.sh http://example.com/easy-sword2/statement/user001-1444582849119
     
 This will yield a atom feed document similar to this:
 
@@ -210,18 +210,18 @@ INSTALLATION AND CONFIGURATION
 ### Installation steps:
 
 1. Unzip the tarball to a directory of your choice, e.g. `/opt/
-2. A new directory called `easy-deposit-<version> will be created`. This is the service's home directory.
+2. A new directory called `easy-sword2-<version> will be created`. This is the service's home directory.
 3. Configure the service's home directory in one of two ways:
-    * Set the init param `EASY_DEPOSIT_HOME` to point to the home directory. (In Tomcat this can be done by 
+    * Set the init param `EASY_SWORD2_HOME` to point to the home directory. (In Tomcat this can be done by 
       embedding a `Parameter` element in the [context descriptor].)
-    * Set the enviroment variable `EASY_DEPOSIT_HOME` to point to the home directory.
-4. Either deploy the file ``$EASY_DEPOSIT_HOME/bin/easy-deposit.war`` in the Tomcat ``webapps`` directory or use the 
-   context descriptor ``$EASY_DEPOSIT_HOME/bin/easy-deposit.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
+    * Set the enviroment variable `EASY_SWORD2_HOME` to point to the home directory.
+4. Either deploy the file ``$EASY_SWORD2_HOME/bin/easy-sword2.war`` in the Tomcat ``webapps`` directory or use the 
+   context descriptor ``$EASY_SWORD2_HOME/bin/easy-sword2.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
 
 ### Configuration
 
-General configuration settings can be set in ``$EASY_DEPOSIT_HOME/cfg/application.properties`` and logging can be
-configured in ``$EASY_DEPOSIT_HOME/cfg/logback.xml``. The available settings are explained in comments in 
+General configuration settings can be set in ``$EASY_SWORD2_HOME/cfg/application.properties`` and logging can be
+configured in ``$EASY_SWORD2_HOME/cfg/logback.xml``. The available settings are explained in comments in 
 aforementioned files.
 
 
@@ -235,8 +235,8 @@ Prerequisites:
  
 Steps:
 
-        git clone https://github.com/DANS-KNAW/easy-deposit.git
-        cd easy-deposit
+        git clone https://github.com/DANS-KNAW/easy-sword2.git
+        cd easy-sword2
         mvn install
 
 [SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
