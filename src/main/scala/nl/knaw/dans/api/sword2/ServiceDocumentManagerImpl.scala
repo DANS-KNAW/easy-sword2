@@ -31,7 +31,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
       else authCredentials.getUsername)
     val sdoc: ServiceDocument = new ServiceDocument
     val sw: SwordWorkspace = new SwordWorkspace
-    sw.setTitle("EASY Deposit Service")
+    sw.setTitle("EASY SWORD2 Deposit Service")
     val sc: SwordCollection = new SwordCollection
     sc.setTitle("DANS Default Data Collection")
     sc.addAcceptPackaging(BAGIT_URI)
