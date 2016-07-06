@@ -43,12 +43,12 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
     if(iri != SwordProps("collection.iri")) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
   }
 
-  private def setDepositStateToDraft(id: String, userId: String): Try[Unit] = Try {
+  private def setDepositStateToDraft(id: String, userId: String): Try[Unit] =
     DepositProperties.set(
       id = id,
       stateLabel = "DRAFT",
       stateDescription = "Deposit is open for additional data",
       userId = Some(userId),
       lookInTempFirst = true)
-  }
+
 }

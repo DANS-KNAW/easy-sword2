@@ -65,8 +65,8 @@ object DepositProperties {
   private def readProperties(f: File) = {
     val ps = new PropertiesConfiguration()
     ps.setDelimiterParsingDisabled(true)
-    ps.load(f)
-
+    if(f.exists) ps.load(f)
+    ps.setFile(f)
     ps
   }
 }
