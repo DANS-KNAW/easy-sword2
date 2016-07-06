@@ -1,3 +1,0 @@
-<Context docBase="/opt/easy-deposit/bin/easy-deposit.war" debug="0" crossContext="true" >
-    <Parameter name="EASY_DEPOSIT_HOME" value="/opt/easy-deposit" />
-</Context>
