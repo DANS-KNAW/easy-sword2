@@ -30,7 +30,7 @@ object DepositProperties {
   def set(id: String, stateLabel: String, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null): Try[Unit] = Try {
     val depositDir = new File(if (lookInTempFirst) SwordProps("tempdir")
                               else SwordProps("deposits.rootdir"), id)
-    val props = new PropertiesConfiguration(new File(depositDir, "deposit.properties"))
+    val props = readProperties(new File(depositDir, "deposit.properties"))
     props.setProperty("state.label", stateLabel)
     props.setProperty("state.description",
       s"""
@@ -48,7 +48,7 @@ object DepositProperties {
     }
   }
   private def readState(id: String, f: File): Try[State] = Try {
-    val s = new PropertiesConfiguration(f)
+    val s = readProperties(f)
     log.debug(s"[$id] Trying to retrieve state from $f")
     if(!f.exists()) throw new IOException(s"$f does not exist")
     State(s.getString("state.label"), s.getString("state.description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
@@ -60,5 +60,13 @@ object DepositProperties {
     t.printStackTrace(pw)
     pw.flush()
     sw.toString
+  }
+
+  private def readProperties(f: File) = {
+    val ps = new PropertiesConfiguration()
+    ps.setDelimiterParsingDisabled(true)
+    ps.load(f)
+
+    ps
   }
 }

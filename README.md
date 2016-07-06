@@ -164,18 +164,18 @@ The link marked `rel="http://purl.org/net/sword/terms/statement"` is used to ret
 ### Continued Deposit
 
 A continued deposit is executed by `POST`-ing the first partial deposit to the collection URL, just as the simple deposit,
-but with the `In-Progress` header to false:
+but with the `In-Progress` header to true:
 
-    ./send-distr.sh distributed/part1.zip http://example.com/easy-sword2/collection/1 false
+    ./send-distr.sh distributed/part1.zip http://example.com/easy-deposit/collection/1 true
     
 Then retrieve the `SE-IRI` from the Location header (or the atom document in the response) and `POST` the subsequent parts
 to that URL:
 
-    ./send-distr.sh distributed/part2.zip <SE-IRI> false
+    ./send-distr.sh distributed/part2.zip <SE-IRI> true
 
 and finally,
 
-    ./send-distr.sh distributed/part2.zip <SE-IRI> true
+    ./send-distr.sh distributed/part3.zip <SE-IRI> false
 
 The "split" variant works the same, except that it sets the `Content-Type` header to `application/octet-stream`. 
 
