@@ -215,9 +215,9 @@ object DepositHandler {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(SwordProps("tempdir"), id)
       val storageDir = new File(SwordProps("deposits.rootdir"), id)
+      if(isOnPosixFileSystem(tempDir))
+        Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(SwordProps("deposits.permissions")))
       if(!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
-      if(isOnPosixFileSystem(storageDir))
-        Files.walkFileTree(storageDir.toPath, MakeAllGroupWritable(SwordProps("deposits.permissions")))
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
