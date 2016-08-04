@@ -19,8 +19,9 @@ import java.io.{File, IOException}
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.nio.file._
 import java.util.Collections
+import java.net.URL
 
-import gov.loc.repository.bagit.BagFactory
+import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
 import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
@@ -34,6 +35,10 @@ import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
 import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
+
+import resource.Using
+
 
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
@@ -64,6 +69,7 @@ object DepositHandler {
       git      <- initGit(tempDir)
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
+      _        <- resolveFetchItems(bagitDir)
       _        <- checkBagValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       _        <- commitSubmitted(git, tempDir)
@@ -71,7 +77,7 @@ object DepositHandler {
     } yield ())
     .recover {
       case InvalidDepositException(_, msg, cause) =>
-        log.warn(s"[$id] Invalid deposit", cause)
+        log.error(s"[$id] Invalid deposit", cause)
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
       case FailedDepositException(_, msg, cause) =>
         log.error(s"[$id] Failed deposit", cause)
@@ -157,6 +163,32 @@ object DepositHandler {
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")
+    }
+  }
+
+  private def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = {
+    log.debug(s"[$id] Resolving files in fetch.txt")
+    getFetchTxt(bagitDir).map(t =>
+      t.foreach(fetchText =>
+        fetchText.asScala.foreach(item =>
+          getUrl(item.getUrl).foreach(url =>
+            Using.urlInputStream(url).foreach(src =>
+              Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename)))))))
+  }
+
+  private def getFetchTxt(bagitDir: File)(implicit id: String): Try[Option[FetchTxt]] = {
+    getBagFromDir(bagitDir).map(bag => Option(bag.getFetchTxt))
+  }
+
+  private def getBagFromDir(dir: File)(implicit id: String): Try[Bag] = Try {
+    bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+  }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to create a bag when resolving Fetch Items", e)) }
+
+  private def getUrl(url: String)(implicit id: String): Try[URL] =  {
+    val urlPattern = SwordProps("fetch.allowed-url-pattern").r
+    urlPattern findFirstIn url match {
+      case Some(_) => Success(new URL(url))
+      case _ => throw new InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
     }
   }
 
