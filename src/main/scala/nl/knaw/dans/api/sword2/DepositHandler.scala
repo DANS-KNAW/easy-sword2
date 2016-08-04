@@ -166,23 +166,29 @@ object DepositHandler {
     }
   }
 
-  private def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = {
-    log.debug(s"[$id] Resolving files in fetch.txt")
-    getFetchTxt(bagitDir).map(t =>
-      t.foreach(fetchText =>
+  private def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = Try {
+    log.debug(s"[$id] Checking fetch.txt")
+    getFetchTxt(bagitDir).foreach(fetchText =>
+      { log.debug(s"[$id] Resolving files in fetch.txt")
         fetchText.asScala.foreach(item =>
-          getUrl(item.getUrl).foreach(url =>
-            Using.urlInputStream(url).foreach(src =>
-              Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename)))))))
+        getUrl(item.getUrl).foreach(url =>
+          Using.urlInputStream(url).foreach(src =>
+            Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename)))))
+      }
+    )
   }
 
-  private def getFetchTxt(bagitDir: File)(implicit id: String): Try[Option[FetchTxt]] = {
-    getBagFromDir(bagitDir).map(bag => Option(bag.getFetchTxt))
+  private def getFetchTxt(bagitDir: File)(implicit id: String): Option[FetchTxt] = Option {
+    getBagFromDir(bagitDir).getFetchTxt
   }
 
-  private def getBagFromDir(dir: File)(implicit id: String): Try[Bag] = Try {
-    bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
-  }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to create a bag when resolving Fetch Items", e)) }
+  private def getBagFromDir(dir: File)(implicit id: String): Bag = {
+    try {
+      bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+    } catch {
+      case e: Throwable => throw new FailedDepositException(id, "Failed to create a bag when resolving Fetch Items", e)
+    }
+  }
 
   private def getUrl(url: String)(implicit id: String): Try[URL] =  {
     val urlPattern = SwordProps("fetch.allowed-url-pattern").r
