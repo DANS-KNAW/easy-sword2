@@ -36,7 +36,6 @@ import rx.lang.scala.subjects.PublishSubject
 
 import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
-
 import resource.Using
 
 
@@ -166,14 +165,11 @@ object DepositHandler {
     }
   }
 
-  private def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = Try {
-    log.debug(s"[$id] Checking fetch.txt")
+  def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = Try {
+    log.debug(s"[$id] Checking if bag contains fetch.txt")
     getFetchTxt(bagitDir).foreach(fetchText =>
-      { log.debug(s"[$id] Resolving files in fetch.txt")
-        fetchText.asScala.foreach(item =>
-        getUrl(item.getUrl).foreach(url =>
-          Using.urlInputStream(url).foreach(src =>
-            Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename)))))
+      { checkFetchTxtUrls(fetchText)
+        resolveFetchTxtFiles(bagitDir, fetchText)
       }
     )
   }
@@ -182,28 +178,46 @@ object DepositHandler {
     getBagFromDir(bagitDir).getFetchTxt
   }
 
-  private def getBagFromDir(dir: File)(implicit id: String): Bag = {
-    try {
-      bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
-    } catch {
-      case e: Throwable => throw new FailedDepositException(id, "Failed to create a bag when resolving Fetch Items", e)
-    }
+  private def checkFetchTxtUrls(fetchText: FetchTxt)(implicit id: String): Unit = {
+    log.debug(s"[$id] Checking validity of urls in fetch.txt")
+    fetchText.asScala.foreach(item =>
+      checkUrlValidity(item.getUrl))
   }
 
-  private def getUrl(url: String)(implicit id: String): Try[URL] =  {
-    val urlPattern = SwordProps("fetch.allowed-url-pattern").r
-    urlPattern findFirstIn url match {
-      case Some(_) => Success(new URL(url))
-      case _ => throw new InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
+  private def checkUrlValidity(url: String)(implicit id: String): Unit =  {
+    // check if the url is syntactically correct
+    try {
+      new URL(url)
+    } catch {
+      case e: Throwable => throw new InvalidDepositException(id, s"Invalid url syntax in Fetch Items ($url)")
     }
+    // check if the url complies with the allowed url-structure
+    val urlPattern = SwordProps("fetch.allowed-url-pattern").r
+    if (!urlPattern.pattern.matcher(url).matches)
+      throw new InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)")
+  }
+
+  private def resolveFetchTxtFiles(bagitDir: File, fetchText: FetchTxt)(implicit id: String): Unit = {
+    log.debug(s"[$id] Resolving files in fetch.txt")
+    fetchText.asScala.foreach(item =>
+      Using.urlInputStream(new URL(item.getUrl)).foreach(src =>
+        Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename))))
   }
 
   private def checkBagValidity(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
-    val bag = bagFactory.createBag(bagitDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+    val bag = getBagFromDir(bagitDir)
     val validationResult: SimpleResult = bag.verifyValid
     if (validationResult.isSuccess) Success(Unit)
     else Failure(new InvalidDepositException(id, validationResult.messagesToString))
+  }
+
+  private def getBagFromDir(dir: File)(implicit id: String): Bag = {
+    try {
+      bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+    } catch {
+      case e: Throwable => throw new FailedDepositException(id, "Failed to create a bag", e)
+    }
   }
 
   private def commitSubmitted(optionalGit: Option[Git], bagDir: File)(implicit id: String): Try[Option[Ref]] =
