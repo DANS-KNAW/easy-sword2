@@ -20,6 +20,7 @@ import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.nio.file._
 import java.util.Collections
 import java.net.URL
+import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
@@ -184,7 +185,7 @@ object DepositHandler {
       checkUrlValidity(item.getUrl))
   }
 
-  private def checkUrlValidity(url: String)(implicit id: String): Unit =  {
+  private def checkUrlValidity(url: String)(implicit id: String): Unit = {
     // check if the url is syntactically correct
     try {
       new URL(url)
@@ -192,8 +193,8 @@ object DepositHandler {
       case e: Throwable => throw new InvalidDepositException(id, s"Invalid url syntax in Fetch Items ($url)")
     }
     // check if the url complies with the allowed url-structure
-    val urlPattern = SwordProps("fetch.allowed-url-pattern").r
-    if (!urlPattern.pattern.matcher(url).matches)
+    val urlPattern = Pattern.compile(SwordProps("url-pattern"))
+    if (!urlPattern.matcher(url).matches)
       throw new InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)")
   }
 
@@ -204,7 +205,7 @@ object DepositHandler {
         Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename))))
   }
 
-  private def checkBagValidity(bagitDir: File)(implicit id: String): Try[Unit] = {
+  def checkBagValidity(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
     val bag = getBagFromDir(bagitDir)
     val validationResult: SimpleResult = bag.verifyValid
@@ -231,31 +232,31 @@ object DepositHandler {
 
 
   case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
-      override def visitFile(path: Path,  attrs: BasicFileAttributes): FileVisitResult = {
-        log.debug(s"Setting the following permissions $permissions on file $path")
-        try {
-          Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
-          FileVisitResult.CONTINUE
-        } catch {
-          case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system");  FileVisitResult.TERMINATE
-          case cce: ClassCastException => log.error("Non file permission elements in set"); FileVisitResult.TERMINATE
-          case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
-          case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
-        }
+    override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
+      log.debug(s"Setting the following permissions $permissions on file $path")
+      try {
+        Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
+        FileVisitResult.CONTINUE
+      } catch {
+        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
+        case cce: ClassCastException => log.error("Non file permission elements in set"); FileVisitResult.TERMINATE
+        case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
+        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
       }
+    }
 
-      override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-        log.debug(s"Setting the following permissions $permissions on directory $dir")
-        Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
-        if(ex == null) FileVisitResult.CONTINUE
-        else FileVisitResult.TERMINATE
-      }
+    override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
+      log.debug(s"Setting the following permissions $permissions on directory $dir")
+      Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
+      if (ex == null) FileVisitResult.CONTINUE
+      else FileVisitResult.TERMINATE
+    }
   }
 
   def isOnPosixFileSystem(file: File): Boolean = {
     try {
-        Files.getPosixFilePermissions(file.toPath)
-        true
+      Files.getPosixFilePermissions(file.toPath)
+      true
     }
     catch {
       case e: UnsupportedOperationException => false
@@ -267,9 +268,9 @@ object DepositHandler {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(SwordProps("tempdir"), id)
       val storageDir = new File(SwordProps("deposits.rootdir"), id)
-      if(isOnPosixFileSystem(tempDir))
+      if (isOnPosixFileSystem(tempDir))
         Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(SwordProps("deposits.permissions")))
-      if(!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
+      if (!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
@@ -283,7 +284,9 @@ object DepositHandler {
     } catch {
       case _: Throwable => fail
     } finally {
-      Try { is.close() }
+      Try {
+        is.close()
+      }
     }
   }
 
