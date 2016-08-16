@@ -19,7 +19,7 @@ import java.io.{File, IOException}
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.nio.file._
 import java.util.Collections
-import java.net.URL
+import java.net.{MalformedURLException, URL}
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
@@ -190,7 +190,7 @@ object DepositHandler {
     try {
       new URL(url)
     } catch {
-      case e: Throwable => throw new InvalidDepositException(id, s"Invalid url syntax in Fetch Items ($url)")
+      case e: MalformedURLException => throw new InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
     }
     // check if the url complies with the allowed url-structure
     val urlPattern = Pattern.compile(SwordProps("url-pattern"))
@@ -214,11 +214,7 @@ object DepositHandler {
   }
 
   private def getBagFromDir(dir: File)(implicit id: String): Bag = {
-    try {
       bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
-    } catch {
-      case e: Throwable => throw new FailedDepositException(id, "Failed to create a bag", e)
-    }
   }
 
   private def commitSubmitted(optionalGit: Option[Git], bagDir: File)(implicit id: String): Try[Option[Ref]] =
