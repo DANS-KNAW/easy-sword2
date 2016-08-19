@@ -47,7 +47,7 @@ object Authentication {
     }
     log.debug(s"Checking credentials for user ${auth.getUsername} using auth.mode: ${SwordProps("auth.mode")}")
     SwordProps("auth.mode") match {
-      case "single" => if (!(hash(auth.getPassword, auth.getUsername) == SwordProps("auth.single.password"))) throw new SwordAuthException
+      case "single" => if (SwordProps("auth.single.user") != auth.getUsername || hash(auth.getPassword, auth.getUsername) != SwordProps("auth.single.password")) throw new SwordAuthException
       case "ldap" => if(!authenticateThroughLdap(auth.getUsername, auth.getPassword).get) throw new SwordAuthException
       case _ => throw new RuntimeException("Authentication not properly configured. Contact service admin")
     }
