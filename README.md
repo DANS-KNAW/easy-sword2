@@ -244,7 +244,6 @@ Steps:
 [method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
 [cURL]: https://en.wikipedia.org/wiki/CURL
-[git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [posting to the collection IRI]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource
 [SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement

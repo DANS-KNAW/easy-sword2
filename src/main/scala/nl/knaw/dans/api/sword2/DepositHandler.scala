@@ -28,8 +28,6 @@ import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
-import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.lib.Ref
 import org.slf4j.LoggerFactory
 import org.swordapp.server.{Deposit, DepositReceipt, SwordError}
 import rx.lang.scala.schedulers.NewThreadScheduler
@@ -66,13 +64,11 @@ object DepositHandler {
     log.info(s"[$id] Finalizing deposit")
     val tempDir = new File(SwordProps("tempdir"), id)
     (for {
-      git      <- initGit(tempDir)
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
       _        <- resolveFetchItems(bagitDir)
       _        <- checkBagValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
-      _        <- commitSubmitted(git, tempDir)
       dataDir  <- moveBagToStorage()
     } yield ())
     .recover {
@@ -87,16 +83,6 @@ object DepositHandler {
         DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
     }
   }
-
-  private def initGit(bagDir: File)(implicit id: String): Try[Option[Git]] =
-    // TODO: refactor this, so that errors thrown by toBoolean are actually caught somewhere!
-    if (SwordProps("git.enabled").toBoolean)
-      Try {
-        log.debug("Initializing git repo for deposit")
-        Some(Git.init().setDirectory(bagDir).call())
-      }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to initialize versioning", e)) }
-    else
-      Success(None)
 
   private def extractBag(mimeType: String)(implicit id: String): Try[File] = {
     def extract(file: File, outputPath: String): Unit = new ZipFile(file.getPath).extractAll(outputPath)
@@ -216,16 +202,6 @@ object DepositHandler {
   private def getBagFromDir(dir: File)(implicit id: String): Bag = {
       bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
-
-  private def commitSubmitted(optionalGit: Option[Git], bagDir: File)(implicit id: String): Try[Option[Ref]] =
-    Try {
-      optionalGit.map(git => {
-        git.add().addFilepattern(".").call()
-        git.commit().setCommitter(SwordProps("git.user"), SwordProps("git.email")).setMessage("initial commit").call()
-        git.tag().setName("state=SUBMITTED").setMessage("state=SUBMITTED").call()
-      })
-    }.recoverWith { case e => Failure(new FailedDepositException(id, "Failed to set bag status to SUBMITTED", e)) }
-
 
   case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
