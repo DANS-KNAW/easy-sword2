@@ -19,9 +19,6 @@ machine) processing at the path `<deposits-root-dir>/<deposit-ID>`, in which:
   * `<deposit-ID>` is a unique ID for the deposit, consisting of the user ID a dash and the unix timestamp of
     initial deposit creation.
   
-Optionally, the deposit directory is initialized with a git-repository. This is useful if it is to be used for curation
-purposes. The transformations performed to the deposit can then be controlled and recorded in git.
-
 
 ### Authentication
 
@@ -244,7 +241,6 @@ Steps:
 [method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
 [BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
 [cURL]: https://en.wikipedia.org/wiki/CURL
-[git]: http://www.git-scm.com/
 [dans-parent]: https://github.com/DANS-KNAW/dans-parent
 [posting to the collection IRI]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource
 [SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement
