@@ -8,218 +8,243 @@ Receive bags over a SWORD v2 session
 DESCRIPTION
 -----------
 
-Service that receives bags (see [BagIt]) packages and stores them on disk. The protocol used is [SWORD v2]. The client has the
-option of sending the package in one http session (simple deposit) or several (continued deposit). A continued deposit 
-is in progress as long as the client keeps adding the ``In-Progress: true`` http header. Authentication is done either
-through a username/password pair configured in the `application.properties` file (single user setup) or through an LDAP 
-directory (multi-user setup). After a deposit-transfer is completed it is made available for subsequent (human and/or 
-machine) processing at the path `<deposits-root-dir>/<deposit-ID>`, in which:
+### Summary
 
-  * `<deposits-root-dir>` is the configured directory on the server under which deposits are to be stored;
-  * `<deposit-ID>` is a unique ID for the deposit, consisting of the user ID a dash and the unix timestamp of
-    initial deposit creation.
+Service that receives **bag**s (see [BagIt]) and stores them on disk as **deposit-dir**s. A **deposit-dir** is
+a directory containing the bag and a file called `deposit.properties`, with additional information about the deposit. 
+While the deposit is being received and validated it goes through several states. Once it reaches the `SUBMITTED` state 
+it is made available for post-submission processing.
+ 
+[SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement
+
+### Interfaces
+
+`easy-sword2` can be thought of as having two interfaces:
+
+* **SWORD**: an external facing interface which interacts with deposit clients using the [SWORD v2] protocol.
+* **Deposit directories**: an internal interface, consisting of a well-defined layout and access policy for the
+  directories where the deposits received over SWORD are stored. This interface is intended for use by 
+  post-submission processes.
+
+![interfaces.png](interfaces.png)
+
+[SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
+
+
+### SWORD Interface
+
+[SWORD v2] is a protocol for the depositing of data packages over HTTP. It builds on [Atom] and [AtomPub]. For details,
+please see the linked specifications. This sections describes how `easy-sword2` implements part of the SWORD v2 protocol.
+Currently the implementation is limited to:
+
+* Retrieving the Service Document
+* Creation of deposit through binary file upload
+* Retrieving the SWORD statement
+* One packaging format, namely BagIt
+
+Note that in this description the [abbreviated IRI-names] from the specification are used.
+
+[AtomPub]: https://tools.ietf.org/html/rfc5023 
+[Atom]: https://tools.ietf.org/html/rfc4287
+[abbreviated IRI-names]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#terminology
+
+
+#### Service Document
+
+The entry point for clients of a SWORD server is the Service Document, which describes the collections and capabilities of the server.
+The Service Document can be retrieved from the **SD-IRI**, which needs to be known by the client. All other URLs can be retrieved by
+the client from the various responses sent by the server. For example, the Service Document contains the **Col-IRI**s (collection URLs)
+that the client can use to create deposits. At present only one **Col-IRI** can be used.
+
+#### Creating a Deposit
+
+`easy-sword2` currently only supports the creation by [binary file deposit]. The only supported packaging is BagIt. The deposit 
+may be created in one HTTP session (simple deposit) or in multiple HTTP sessions (continued deposit). See next sections for 
+details.
+
+[binary file deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource_binary
+
+##### Simple Deposit
+
+A simple deposit is created by a `POST` request to the **Col-IRI**, sending the binary package in the body of the request. The package
+must be a zipped bag. The following headers must be set. 
+
+Header                                  | Content
+----------------------------------------|--------------------------------------------------------------------------------------
+`Content-Type`                          | `application/zip`
+`Content-Disposition`                   | `attachment; filename=<package-name>.zip` 
+`Packaging`                             | `http://purl.org/net/sword/package/BagIt`
+`Content-MD5`                           | the MD5 of the binary content, encoded in base-16
+
+Of course, `<package-name>` should be replaced with an actual file name to use for the bag on the server.
+
+`easy-sword2` will return a [deposit receipt] if the deposit was created successfully. Otherwise it will return an [error document]. 
+For a successful deposit the **Edit-IRI** will be returned in the `Location` header of the HTTP response.
+
+[deposit receipt]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#depositreceipt
+[error document]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments
+
+##### Continued Deposit
+
+A continued deposit should be used when the package is too large for a single deposit. SWORD defines a [continued deposit]
+as a means to send a package in parts. The first part is sent by a `POST` request to the **Col-IRI**, the same as with a simple deposit.
+Subsequent parts however are sent with a `POST` request to the **SE-IRI** (which was communicated back to the client by the deposit
+receipt for the first part). For every part except the last, the header `In-Progress: false` must be included.
+
+How to split up a large package is not specified by the SWORD protocol. `easy-sword2` requires the following:
+
+* the package is split up by simple partioning of the zipped bag
+* `Content-Type` is set to `application/octet-stream` to signal that the content is in a format bilaterally agreed by client and server
+  (namely the partioning specified here).
+* the order of the parts is communicated by extending the `Content-Disposition`'s `filename` field value with `.<sequence number>`,
+  e.g., `filename=mypackage.zip.1`, `filename=mypackage.zip.2`, etc.
+* the parts may be send out-of-order and/or in parallel, but the client must not send the last part before it has received
+  the deposit receipts for all the other parts.
   
+Summarizing, the following headers must be included in a continued deposit.
 
-### Authentication
+Header                                  | Content
+----------------------------------------|--------------------------------------------------------------------------------------
+`Content-Type`                          | `application/octet-stream`
+`Content-Disposition`                   | `attachment; filename=<package-name>.zip.<sequence number>` 
+`Packaging`                             | `http://purl.org/net/sword/package/BagIt`
+`Content-MD5`                           | the MD5 of the binary content of this part, encoded in base-16
+`In-Progress`                           | `true` if not the last message, `false` otherwise
 
-`easy-sword2` assumes that communications are done through a secure http connection. Therefore basic authentication 
-is used.
-
-  
-### Simple Deposit
-  
-In a simple deposit the whole deposit package is sent in one http session. It is done by [posting to the collection IRI] with 
-with following headers:
-
- Header                  |  Content                               
--------------------------|------------------------------------------------------------------------------------
- `Content-Type`          | `application/zip`                       
- `Content-Disposition`   | `attachment; filename: <package-name>.zip` (`<package-name>` is the name of the bag on the server)
- `Packaging`             | `http://purl.org/net/sword/package/BagIt` 
- `Content-MD5`           | the MD5 digest of the payload encoded as hexadecimal number in ascii
-  
-  
-### Continued Deposit
-  
-In a continued deposit the deposit package is divided up into partial deposits. Then each partial deposit is sent 
-with the following headers:
-
- Header                  |  Content                               
--------------------------|-------------------------------------------------------------------------------------
- `Content-Type`          | `application/zip` or `application/octet-stream` (see below)                    
- `Content-Disposition`   | `attachment; filename: <package-name>.zip[.<seq nr>]` (for `<seq nr>` see below)
- `Packaging`             | `http://purl.org/net/sword/package/BagIt` 
- `Content-MD5`           | the MD5 digest of the payload encoded as hexadecimal number in ascii
- `In-Progress`           | `true` for all partial deposits, except the last, where it must be `false`
+[continued deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
 
 
-The correct order of the parts is communicated by the client by extending the filename with a sequence number. The
-parts may be sent in any order, provided that the client sends the last part after it receives the 
-deposit receipt for all the other parts. The reason for this is that the last partial deposit triggers the server
-to attempt to assemble the complete deposit from the parts. It must therefore be able to rely on all the partial
-deposits being uploaded to the server. 
+#### Packaging Requirements
 
-The clients has two options for dividing up a deposit in partial deposits:
+The only packaging format supported is [BagIt]. The BagIt specifications define the following [states] for a bag: invalid, incomplete, complete and valid.
+Two types of bags are accepted by `easy-sword2`:
 
-  * make every partial deposit a valid zip file, containing some of the bag's files. In this case, upon receiving the
-    final deposit, `easy-sword2` will unzip all the partial deposits to a single directory to create the resulting bag.
-    The client must therefore take care not to "overwrite" files from a previous partial deposit, as this will lead to
-    undefined behavior. The client selects this option by using the `Content-Type: application/zip` header.
-  * create a single zip file, split it up into chunks and send each chunk as a partial deposit. In this case, upon receiving
-    the final deposit, `easy-sword2` will concatenate all the partial deposits to recreate the zip file and unzip this
-    file to create the resulting bag. The client must specify the intended order of the parts by extending the file name
-    the Content-Diposition header with a dot and a sequence number, e.g., 
-    `Content-Disposition: attachment; filename=example-bag.zip.part.3` for the third partial deposit. The client selects
-    this option by using the `Content-Type: application/octet-stream` header (to indicate that the partial deposit
-    on its own is not a valid zip archive).
+* valid bags
+* incomplete bags with a [`fetch.txt` file], provided that after fetching the files in it (and deleting `fetch.txt`) the bag becomes valid.
+
+[BagIt]: https://tools.ietf.org/html/draft-kunze-bagit
+[states]: https://tools.ietf.org/html/draft-kunze-bagit#section-3
+[`fetch.txt` file]: https://tools.ietf.org/html/draft-kunze-bagit#section-2.2.3
 
 
-### States
+#### Tracking a Deposit
 
-A deposit goes through several states. A continued deposit that is still open for additions is said to be in `DRAFT`
-state. Once the client closes the deposit by sending `In-Progress: false` it enters `FINALIZING` state (a simple 
-deposit goes straight to this state). During this state `easy-sword2` assembles the deposit and validates it. If the
-the deposit is valid it transitions to the `SUBMITTED` state, otherwise it is flagged as `INVALID`. 
+The [deposit receipt] contains, among other things, the **Stat-IRI**. From this URL the client can obtain the [SWORD Statement] for the deposit.
+The statement contains information about the state of the deposit and the objects created as a result of it (including, but not limited to, the
+deposited files themselves). When being processed by `easy-sword2` the deposit goes through the following states:
 
-After submission the deposit is processed for ingestion in the archive. This may include any number of steps, such
-as virus scans and file normalizations. These steps are not performed by `easy-sword2`.
+State                                    | Description
+-----------------------------------------|--------------------------------------------------------------------------------------
+`DRAFT`                                  | Deposit is being created by the client (e.g., during a continued deposit)
+`FINALIZING`                             | Deposit process has been finished by the client. Server is reassembling and validating the bag
+`INVALID`                                | Deposit was reassembled but turned out not to be valid
+`FAILED`                                 | Processing failed because of some unforeseen condition
+`SUBMITTED`                              | Deposit was reassembled and found to be valid; it is ready for post-submission processing
 
-If the ingest is successful the deposit will change to `ARCHIVED` and the bag directory will be deleted from the 
-upload area. Other possible outcomes are the deposit being `REJECTED` (e.g., because it contained a virus) or 
-`FAILED` ingest (an unforseen error). In these cases the deposited data is not deleted automatically.
-
-`POST`-ing to a deposit is only allowed when it is in `DRAFT` state. In all other states this will lead to
-[method not allowed error].
-
-After closing its deposit the client must retrieve the state of the deposit by getting its [SWORD statement]. Only
-after establishing that the state has gone to `SUBMITTED` may the client assume that the deposit has been received
-correctly. After that it may still be necessary for the client to monitor the deposit's state to change to `ARCHIVED`
-in order to retrieve the permanent URI for the deposited files.
-
-| State               | Description                                                                                  |
-| :-----------------  | :------------------------------------------------------------------------------------------- |
-| `DRAFT`             | Continued deposit in progress                                                                |
-| `FINALIZING`        | Deposit has been closed by the client, service is creating and validating the deposit        | 
-| `INVALID`           | Deposit was finalized but turned out to be invalid (i.e. not a valid bag)                    |
-| `SUBMITTED`         | Deposit was finalized and was a valid bag, and is being processed for ingest in the archive  | 
-| `REJECTED`          | Deposit was finalized, a valid bag, but was rejected for some other reason                   | 
-| `ARCHIVED`          | Deposit was successfully archived. (Access URL available)                                    | 
+If and when the deposit reaches the `SUBMITTED` state `easy-sword2` will treat it as read-only (see also next section). It will, however,
+continue returning the statement to clients that request it. Post-submission workflows may extend above list of states to enable clients to
+track their deposits through the workflow.
 
 
-EXAMPLES
---------
+### Deposit Directories
 
-Example sessions can be performed using the data and shell scripts provided in this project in the
-sub-directory `src/test/resources`. The [cURL] command needs to be installed for the scripts to work.
+`easy-sword2` stores incoming deposits in a designated location on a file system as **deposit-dir**s. This section describes the 
+location, layout and contents of a **deposit-dir** as it goes through the stages of processing. 
 
-The scripts read the credentials from the `vars.sh` file, so you most probably need to change these before
-you start. The examples assume you have changed directory to the `src/test/resources` directory.
+#### Location and Name
 
+***TODO: refactor to match following specs***
 
-### Get the Service Document
+`easy-sword2` is configured with the following base directories for the storage of incoming data:
 
-The service document URL is where you start. As a service provider this is the URL you provide to your clients to 
-get started.
+* `original` - in this directory `easy-sword2` will create the **deposit-dirs** for newly created deposits.
+* `invalid` - here **deposit-dir**s that turn out to be invalid are moved.
+* `failed` - here **deposit-dir**s that fail because of some unexpected error are moved.
+* `submitted` - here valid **deposit-dir**s are move. Typically this directory will be monitored by a service that further
+   processes the deposits.
 
-    ./get.sh http://example.com/easy-sword2/servicedocument
-     
-From the service document the client can retrieve one or more collection URL's  that are available. `easy-sword2`
-currently support only one collection URL.
+The **deposit-dir**s in `invalid`, `failed` and `submitted` will be treated as read-only by `easy-sword2`. It will only attempt to 
+retrieve SWORD statements from these deposits when requested by clients. Other processes may delete or modify these deposits, 
+provided that their layout and contents stay conformant with the requirements stated in the next section.
 
+By default the name of the **deposit-dir** is contructed with the following scheme: [`<user ID>` `-`] `<Unix timestamp>`. The user ID is only
+used if the service is running in [LDAP mode](#ldap). The client may override the unix timestamp by sending a different name in the `Slug` header.
 
-### Simple Deposit
+#### Layout and Contents
 
-Every deposit starts by `POST`-ing data to the collection URL. In the case of a simple deposit this is all the 
-data at once. For the `example.com` collection URL you will of course have to substitute the correct URL.
+A **deposit-dir** is a directory with the following properties:
 
-    ./send-simple.sh simple/example-bag.zip http://example.com/easy-sword2/collection/1
-    
-If the deposit is successful, you will get back an Atom-document, something similar to this:
+* it MUST contain at most one sub-directory
+* it MUST contain a file called `deposit.properties` which is a valid Java properties file and contain the keys as specified in the 
+  table below
+ 
+Key                                      | Description
+-----------------------------------------|--------------------------------------------------------------------------------------
+`state.label`                            | One of the states described under Tracking a Deposit, or other states defined by a post-submission process
+`state.description`                      | An extended description of the state
+`depositor.userId`                       | The user ID of the depositor
 
-    <entry xmlns="http://www.w3.org/2005/Atom">
-        <generator uri="http://www.swordapp.org/" version="2.0" />
-        <id>http://example.com/easy-sword2/container/user001-1444582849119</id>
-        <link href="http://example.com/easy-sword2/container/user001-1444582849119" rel="edit" />
-        <link href="http://example.com/easy-sword2/media/user001-1444582849119" rel="http://purl.org/net/sword/terms/add" />
-        <link href="http://example.com/easy-sword2/media/user001-1444582849119" rel="edit-media" />
-        <packaging xmlns="http://purl.org/net/sword/terms/">http://purl.org/net/sword/package/BagIt</packaging>
-        <link href="http://example.com/easy-sword2/statement/user001-1444582849119" rel="http://purl.org/net/sword/terms/statement" 
-              type="application/atom+xml; type=feed" />
-        <treatment xmlns="http://purl.org/net/sword/terms/">[1] unpacking [2] verifying integrity [3] storing persistently</treatment>
-        <verboseDescription xmlns="http://purl.org/net/sword/terms/">
-            received successfully: simple/example-bag.zip; MD5: a9a4ef72998cc34e53d4b039eb30b1d3
-        </verboseDescription>
-    </entry>
+***TODO: REFACTOR SO THAT ENTRY-LIST CAN BE ADDED TO THE STATEMENT***
 
-The `Location` header of the response will contain the same URL as the link element with `rel="edit"` attribute. This is
-what [SWORDv2] call the `SE-IRI` (SWORD-Edit IRI). It is used to `POST` subsequent continued deposits to. Of course, in 
-this example that is no longer possible, as we sent all the data at once.
+### Authentication and Authorization
 
-The link marked `rel="http://purl.org/net/sword/terms/statement"` is used to retrieve the current state of the deposit.
+`easy-sword2` uses http basic access authentication. This method of authentication is only safe over a secure http connection.
+ For requests to the **SD-IR** the credentials are not checked. For all other actions the credentials are checked and the client
+ is only granted access to its own deposits.
 
+`easy-sword2` can be configured in one of two modes: "single" or "LDAP".
 
-### Continued Deposit
+#### Single User
 
-A continued deposit is executed by `POST`-ing the first partial deposit to the collection URL, just as the simple deposit,
-but with the `In-Progress` header to true:
+When configured as a single user service the credentials must be configured in the application configuration file. The SHA-1 hash of the password,
+salted with the user name is stored.
 
-    ./send-distr.sh distributed/part1.zip http://example.com/easy-deposit/collection/1 true
-    
-Then retrieve the `SE-IRI` from the Location header (or the atom document in the response) and `POST` the subsequent parts
-to that URL:
+#### LDAP
 
-    ./send-distr.sh distributed/part2.zip <SE-IRI> true
+When using LDAP authentication credentials are looked up in an LDAP directory. The following is assumed about the layout of the directory:
 
-and finally,
-
-    ./send-distr.sh distributed/part3.zip <SE-IRI> false
-
-The "split" variant works the same, except that it sets the `Content-Type` header to `application/octet-stream`. 
-
-
-### Getting the State
-
-To get the state of the first example (of course, using the `State-IRI` returned to you rather that the one in this
-example):
-
-    ./get.sh http://example.com/easy-sword2/statement/user001-1444582849119
-    
-This will yield a atom feed document similar to this:
-
-    <feed xmlns="http://www.w3.org/2005/Atom">
-        <id>http://deasy.dans.knaw.nl/sword2/statement/user001-1444582849119</id>
-        <link href="http://deasy.dans.knaw.nl/sword2/statement/user001-1444582849119" rel="self" />
-        <title type="text">Deposit user001-1444582849119</title>
-        <author><name>DANS-EASY</name></author>
-        <updated>2015-10-11T17:00:50.000Z</updated>
-        <category term="SUBMITTED" scheme="http://purl.org/net/sword/terms/state" label="State">
-            Deposit is valid and ready for post-submission processing
-        </category>
-    </feed>
-    
-The state is retrieved from the `term` attribute of the `category` element that is marked with 
-`scheme="http://purl.org/net/sword/terms/state"`.
-
+* the user entries all have a common parent
+* the user entries must have a relative distinguished name "uid" with as the value the user ID
+* the user entries must also have an attribute to indicate whether the user is authorized to use the SWORD deposit service. The name of this 
+  attribute and the value that means "enabled" are configurable.
+ 
 
 INSTALLATION AND CONFIGURATION
 ------------------------------
 
-### Installation steps:
+### Steps
 
 1. Unzip the tarball to a directory of your choice, e.g. `/opt/
 2. A new directory called `easy-sword2-<version> will be created`. This is the service's home directory.
 3. Configure the service's home directory in one of two ways:
     * Set the init param `EASY_SWORD2_HOME` to point to the home directory. (In Tomcat this can be done by 
       embedding a `Parameter` element in the [context descriptor].)
-    * Set the enviroment variable `EASY_SWORD2_HOME` to point to the home directory.
-4. Either deploy the file ``$EASY_SWORD2_HOME/bin/easy-sword2.war`` in the Tomcat ``webapps`` directory or use the 
-   context descriptor ``$EASY_SWORD2_HOME/bin/easy-sword2.xml`` and put it in ``/etc/tomcat6/Catalina/localhost``.
+    * Set the environment variable `EASY_SWORD2_HOME` to point to the home directory.
+4. Fill in appropriate values for the placeholders in `$EASY_SWORD2_HOME/cfg/application.properties` (see [next subsection](#configurationparameters)).
+5. Either deploy the file `$EASY_SWORD2_HOME/bin/easy-sword2.war` in the Tomcat `webapps` directory or use the 
+   context descriptor `EASY_SWORD2_HOME/bin/easy-sword2.xml` and put it in `/etc/tomcat6/Catalina/localhost`.
 
-### Configuration
+[context descriptor]: https://tomcat.apache.org/tomcat-6.0-doc/config/context.html
 
-General configuration settings can be set in ``$EASY_SWORD2_HOME/cfg/application.properties`` and logging can be
-configured in ``$EASY_SWORD2_HOME/cfg/logback.xml``. The available settings are explained in comments in 
-aforementioned files.
+### Configuration Parameters
+
+The following parameters 
+
+Parameter                                | Description                                                                          | Example
+-----------------------------------------|--------------------------------------------------------------------------------------|-------------------------------------------------
+`deposits.rootdir`                       | Directory to which to move **deposit-dir**s after unzipping and validation           | `/data/sword2-data/deposits`
+`deposits.permissions`                   | The permissions to (recursively) set on a submitted **deposit-dir**                  | `rwxrwx---`
+`tempdir`                                | Directory in which to  create **deposit-dir**s                                       | `/data/sword2-data/temp`
+`base-url`                               | ***TODO: document this***                                                            |
+`collection.iri`                         | URL of the only collection                                                           |  
+`auth.mode`                              | `ldap` or `single`                                                                   | 
+`auth.ldap.url`                          | URL of the LDAP directory                                                            | `ldap://localhost`                                              
+`auth.ldap.users.parent-entry`           | The entry in the LDAP directory that contains all the user entries as children       | `ou=users, o=myorganization, dc=some, dc=domain`
+`auth.ldap.sword-enabled-attribute-name` | The user entry attribute that indicates if the user is allowed to use SWORD          | `swordAllowed`
+`auth.ldap.sword-enabled-attribute-value`| The value for above attribute that indicates permission                              | `TRUE`
+`auth.single.user`                       | The user ID of the single user                                                       | `sword-client`
+`auth.single.password`                   | ***TODO: document this***                                                            | 
+`url-pattern`                            | A regular expression that matches all URLs that are allowed to be fetched            | `^https://my.domain.name.org/.*$`
 
 
 BUILDING FROM SOURCE
@@ -236,14 +261,5 @@ Steps:
         cd easy-sword2
         mvn install
 
-[SWORD v2]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html
-[SWORD v2 - Continued Deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
-[method not allowed error]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#errordocuments_uris_notallowed
-[BagIt]: https://tools.ietf.org/html/draft-kunze-bagit-11
-[cURL]: https://en.wikipedia.org/wiki/CURL
-[dans-parent]: https://github.com/DANS-KNAW/dans-parent
-[posting to the collection IRI]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#protocoloperations_creatingresource
-[SWORD statement]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#statement
-[context descriptor]: https://tomcat.apache.org/tomcat-6.0-doc/config/context.html
 
 
