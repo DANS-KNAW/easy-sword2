@@ -30,6 +30,8 @@ abstract class Sword2Fixture extends FlatSpec with Matchers with OneInstancePerT
   FileUtils.deleteQuietly(targetBagDir)
 
   homeDir = new File("src/main/assembly/dist")
+  baseDir = new File("src/test/resources/bag-store")
+  baseUrl = "http://deasy.dans.knaw.nl/aips"
 }
 
 

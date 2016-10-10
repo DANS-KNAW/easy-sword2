@@ -24,6 +24,7 @@ import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
+import gov.loc.repository.bagit.verify.CompleteVerifier
 import net.lingala.zip4j.core.ZipFile
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
@@ -36,11 +37,10 @@ import rx.lang.scala.subjects.PublishSubject
 import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
 import resource.Using
-
+import nl.knaw.dans.lib.error.TraversableTryExtensions
 
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
-
   implicit val bagFactory = new BagFactory
 
   val depositProcessingStream = PublishSubject[(String, Deposit)]()
@@ -62,11 +62,13 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
+    baseDir = new File(SwordProps("basedir"))
+    baseUrl = SwordProps("baseurl")
     val tempDir = new File(SwordProps("tempdir"), id)
     (for {
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
-      _        <- resolveFetchItems(bagitDir)
+      _        <- checkFetchTxtUrls(bagitDir)
       _        <- checkBagValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
@@ -152,23 +154,15 @@ object DepositHandler {
     }
   }
 
-  def resolveFetchItems(bagitDir: File)(implicit id: String): Try[Unit] = Try {
-    log.debug(s"[$id] Checking if bag contains fetch.txt")
-    getFetchTxt(bagitDir).foreach(fetchText =>
-      { checkFetchTxtUrls(fetchText)
-        resolveFetchTxtFiles(bagitDir, fetchText)
-      }
-    )
-  }
-
   private def getFetchTxt(bagitDir: File)(implicit id: String): Option[FetchTxt] = Option {
     getBagFromDir(bagitDir).getFetchTxt
   }
 
-  private def checkFetchTxtUrls(fetchText: FetchTxt)(implicit id: String): Unit = {
+  def checkFetchTxtUrls(bagitDir: File)(implicit id: String): Try[Unit] = Try {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
-    fetchText.asScala.foreach(item =>
-      checkUrlValidity(item.getUrl))
+    getFetchTxt(bagitDir).foreach(fetchText =>
+      fetchText.asScala.foreach(item =>
+      checkUrlValidity(item.getUrl)))
   }
 
   private def checkUrlValidity(url: String)(implicit id: String): Unit = {
@@ -176,27 +170,101 @@ object DepositHandler {
     try {
       new URL(url)
     } catch {
-      case e: MalformedURLException => throw new InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
+      case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
     }
     // check if the url complies with the allowed url-structure
     val urlPattern = Pattern.compile(SwordProps("url-pattern"))
     if (!urlPattern.matcher(url).matches)
-      throw new InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)")
+      throw InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)")
   }
 
-  private def resolveFetchTxtFiles(bagitDir: File, fetchText: FetchTxt)(implicit id: String): Unit = {
-    log.debug(s"[$id] Resolving files in fetch.txt")
-    fetchText.asScala.foreach(item =>
-      Using.urlInputStream(new URL(item.getUrl)).foreach(src =>
-        Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename))))
-  }
-
-  def checkBagValidity(bagitDir: File)(implicit id: String): Try[Unit] = {
+  def checkBagValidity(bagitDir: File)(implicit id: String) = {
     log.debug(s"[$id] Verifying bag validity")
+
+    val fetchTexts = getFetchTxt(bagitDir).map(fetchText => fetchText.asScala).getOrElse(List()).toList
+    val fetchTextsBagStore = fetchTexts.filter(_.getUrl.startsWith(baseUrl))
+    val fetchTextsOther = fetchTexts diff fetchTextsBagStore
+
+    // resolve those FetchTxt files that do not refer to the bag store
+    resolveFetchTxtFiles(bagitDir, fetchTextsOther)
+
     val bag = getBagFromDir(bagitDir)
     val validationResult: SimpleResult = bag.verifyValid
-    if (validationResult.isSuccess) Success(Unit)
-    else Failure(new InvalidDepositException(id, validationResult.messagesToString))
+
+    if (fetchTextsBagStore.isEmpty) {
+      if (validationResult.isSuccess) Success(Unit)
+      else Failure(InvalidDepositException(id, validationResult.messagesToString))
+    }
+    else {
+      if (validationResult.isSuccess) log.warn(s"[$id] There is a fetch.txt file, while all the files are present in the bag.")
+
+      val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages.listIterator().asScala.filterNot(msg =>
+        msg.getCode == CompleteVerifier.CODE_PAYLOAD_MANIFEST_CONTAINS_MISSING_FILE)
+      if (otherThanMissingPayloadFilesMessages.nonEmpty)
+        Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
+      else {
+        val missingPayloadFiles = validationResult.getSimpleMessages.listIterator().asScala.toList.flatMap(msg => msg.getObjects.asScala.toList)
+        val fetchTextFilesBagStore = fetchTextsBagStore.map(item => item.getFilename)
+        val missingFilesNotInFetchText = missingPayloadFiles.filterNot(file => fetchTextFilesBagStore.contains(file))
+        if (missingFilesNotInFetchText.nonEmpty)
+          Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: $missingFilesNotInFetchText.mkString."))
+        else {
+          validateChecksumsFetchtextFiles(bag, fetchTextsBagStore)
+        }
+      }
+    }
+  }
+
+  private def resolveFetchTxtFiles(bagitDir: File, fetchTexts: List[FetchTxt.FilenameSizeUrl])(implicit id: String): Unit =  {
+    if (fetchTexts.nonEmpty){
+      log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
+      fetchTexts.foreach(item =>
+        Using.urlInputStream(new URL(item.getUrl)).foreach(src =>
+          Files.copy(src, Paths.get(bagitDir.getAbsolutePath, item.getFilename))))
+    }
+  }
+
+  private def validateChecksumsFetchtextFiles(bag: Bag, fetchTexts: List[FetchTxt.FilenameSizeUrl]) (implicit id: String) = {
+    log.debug(s"[$id] Validating the checksums of those files in fetch.txt, that refer to the bag store.")
+
+    val fetchTextFiles = fetchTexts.map(item => item.getFilename)
+    val checksums = bag.getPayloadManifests.asScala.toList.flatMap(manifest => manifest.asScala).filter(fileChecksumTuple => fetchTextFiles.contains(fileChecksumTuple._1))
+    val urls = fetchTexts.map(file => file.getFilename -> file.getUrl)
+
+    val checksumMapping: List[(String, String, String)] =
+      checksums.map { case (file_a, checksum) =>
+        urls.find { case (file_b, url) => file_a == file_b }
+          .map { case (_, url) => (file_a, checksum, url) }
+            .getOrElse(throw InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file_a not found in the fetch.txt."))
+        }
+
+    validateChecksums(checksumMapping)
+  }
+
+  private def validateChecksums(checksumMapping: List[(String, String, String)]) (implicit id: String) = {
+    checksumMapping.map(tuple => compareChecksumAgainstReferredBag(tuple._1,tuple._2,tuple._3)).collectResults
+  }
+
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String) (implicit id: String): Try[Unit] = {
+    val referredFile = getReferredFile(url)
+    val referredBagChecksums = getReferredBagChecksums(url)
+    if (referredBagChecksums.contains(referredFile -> checksum))
+      Success(Unit)
+    else {
+      if (referredBagChecksums.map(tuple => tuple._1).contains(referredFile))
+        Failure(InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag."))
+      else
+        Failure(InvalidDepositException(id, s"While validating checksums, the file $referredFile not found in the referred bag."))
+    }
+  }
+
+  private def getReferredFile(url: String) = {
+    val s = url.stripPrefix(baseUrl)
+    s.substring(s.indexOf("/data/") + 1)
+  }
+
+  private def getBagUrlB(dir: File)(implicit id: String): Bag = {
+    bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
   private def getBagFromDir(dir: File)(implicit id: String): Bag = {
@@ -276,5 +344,20 @@ object DepositHandler {
     dr.setTreatment("[1] unpacking [2] verifying integrity [3] storing persistently")
     dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     dr
+  }
+
+
+  // TO DO: RETRIEVE VIA AN INTERFACE
+  private def getReferredBagChecksums(url: String) (implicit id: String) = {
+    getBagFromDir(getReferredBagDir(url)).getPayloadManifests.asScala.toList.flatMap(manifest => manifest.asScala)
+  }
+
+  private def getReferredBagDir(url: String) (implicit id: String) = {
+    //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
+    val s = url.stripPrefix(baseUrl).split("/data").head.replaceAll("-", "")
+    val dir_1 = s.splitAt(3)._1
+    val dir_2 = s.substring(3, s.lastIndexOf("."))
+    val dir_3 = s.drop(s.lastIndexOf(".") + 1)
+    getFile(baseDir, dir_1, dir_2, dir_3)
   }
 }

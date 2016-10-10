@@ -23,37 +23,72 @@ import scala.util.{Failure, Success}
 
 class ResolveFetchItems extends Sword2Fixture {
 
-  val VALID_BAG_WITHOUT_FETCH_TEXT = new File("src/test/resources/simple/simple-bag")
-  val VALID_BAG_WITH_FETCH_TEXT = new File("src/test/resources/simple/simple-2-bag")
-  val INVALID_BAG_INVALID_URL = new File("src/test/resources/simple/simple-2-invalid-url-bag")
-  val INVALID_BAG_NOT_ALLOWED_URL = new File("src/test/resources/simple/simple-2-not-allowed-url-bag")
-  val INVALID_BAG_NO_DATA = new File("src/test/resources/distributed/part1-invalid/example-bag")
+  val SIMPLE_SEQUENCE_A          = new File("src/test/resources/simple-sequence/a")
+  val SIMPLE_SEQUENCE_B          = new File("src/test/resources/simple-sequence/b")
+  val SIMPLE_SEQUENCE_C          = new File("src/test/resources/simple-sequence/c")
+  val REQUIRED_FILE_MISSING      = new File("src/test/resources/simple-sequence/missing-required-file")
+  val FETCHTEXT_FILE_MISSING     = new File("src/test/resources/simple-sequence/file-missing-in-fetch-text")
+  val INCORRECT_CHECKSUM         = new File("src/test/resources/simple-sequence/incorrect-checksum")
+  val NONEXISTENT_FETCHTEXT_PATH = new File("src/test/resources/simple-sequence/nonexistent-fetchtext-path")
+  val INVALID_URL_BAG            = new File("src/test/resources/simple/invalid-url-bag")
+  val NOT_ALLOWED_URL_BAG        = new File("src/test/resources/simple/not-allowed-url-bag")
+  val NO_DATA_BAG                = new File("src/test/resources/distributed/part1-invalid/example-bag")
 
   "resolveFetchItems" should "result in a Success with a valid bag without a fetch.txt" in {
-    copyBagFromDirectory(VALID_BAG_WITHOUT_FETCH_TEXT)
-    DepositHandler.resolveFetchItems(targetBagDir) shouldBe a[Success[_]]
+    copyBagFromDirectory(SIMPLE_SEQUENCE_A)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
     DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Success with a valid bag with a fetch.txt"  in {
-    copyBagFromDirectory(VALID_BAG_WITH_FETCH_TEXT)
-    DepositHandler.resolveFetchItems(targetBagDir) shouldBe a[Success[_]]
+    copyBagFromDirectory(SIMPLE_SEQUENCE_B)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
     DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
-  it should "result in a Failure with a syntactically invalid url in a fetch.txt"  in {
-    copyBagFromDirectory(INVALID_BAG_INVALID_URL)
-    DepositHandler.resolveFetchItems(targetBagDir) shouldBe a[Failure[_]]
+  it should "result in a Success with another valid bag with a fetch.txt"  in {
+    copyBagFromDirectory(SIMPLE_SEQUENCE_C)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
-  it should "result in a Failure with a not allowed url in a fetch.txt"  in {
-    copyBagFromDirectory(INVALID_BAG_NOT_ALLOWED_URL)
-    DepositHandler.resolveFetchItems(targetBagDir) shouldBe a[Failure[_]]
+  it should "result in a Failure when a required file is missing"  in {
+    copyBagFromDirectory(REQUIRED_FILE_MISSING)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
-  it should "result in a Failure with a invalid bag"  in {
-    copyBagFromDirectory(INVALID_BAG_NO_DATA)
-    DepositHandler.resolveFetchItems(targetBagDir) shouldBe a[Success[_]]
+  it should "result in a Failure when a file is missing in the fetch.txt"  in {
+    copyBagFromDirectory(FETCHTEXT_FILE_MISSING)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure when a file checksum is incorrect"  in {
+    copyBagFromDirectory(INCORRECT_CHECKSUM)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure when there is a nonexistent path in the fetch.txt"  in {
+    copyBagFromDirectory(NONEXISTENT_FETCHTEXT_PATH)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure with a syntactically invalid url in the fetch.txt"  in {
+    copyBagFromDirectory(INVALID_URL_BAG)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure with a not allowed url in the fetch.txt"  in {
+    copyBagFromDirectory(NOT_ALLOWED_URL_BAG)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure with an empty bag"  in {
+    copyBagFromDirectory(NO_DATA_BAG)
+    DepositHandler.checkFetchTxtUrls(targetBagDir) shouldBe a[Success[_]]
     DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
