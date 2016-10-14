@@ -30,8 +30,6 @@ package object sword2 {
    * a Servlet Init Parameter into the global scope. If there is a better way, please let me know (JvM).
    */
   var homeDir: File = null
-  var baseDir: File = null
-  var baseUrl: String = null
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
   case class FailedDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
