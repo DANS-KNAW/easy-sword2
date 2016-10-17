@@ -207,49 +207,42 @@ object DepositHandler {
     } yield ()
   }
 
-  def checkBagValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI) = {
+  def checkBagValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
-    val fetchItems = getFetchTxt(bagitDir).
-                      map(_.asScala).
-                      getOrElse(Seq())
-    val fetchItemsBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
+    val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
+    val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
 
-    resolveFetchItems(bagitDir, fetchItems diff fetchItemsBagStore)
+    resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
 
     val bag = getBagFromDir(bagitDir)
-    val validationResult: SimpleResult = bag.verifyValid
+    val validationResult = bag.verifyValid
 
-    if (fetchItemsBagStore.isEmpty) {
-      if (validationResult.isSuccess) Success(Unit)
-      else Failure(InvalidDepositException(id, validationResult.messagesToString))
-    }
-    else {
-      if (validationResult.isSuccess) {
-        Failure(InvalidDepositException(id, s"There is a fetch.txt file, while all the files are present in the bag."))
-      }
-      else {
-        val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages.
-          listIterator().asScala.
-          filterNot(msg => msg.getCode == CompleteVerifier.CODE_PAYLOAD_MANIFEST_CONTAINS_MISSING_FILE)
-        if (otherThanMissingPayloadFilesMessages.nonEmpty)
-          Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
-        else {
-          val missingPayloadFiles = validationResult.getSimpleMessages.
-            listIterator().asScala.toList.
-            flatMap(_.getObjects.asScala.toList)
-          val fetchItemFilesBagStore = fetchItemsBagStore.map(_.getFilename)
-          val missingFilesNotInFetchText = missingPayloadFiles.filterNot(file => fetchItemFilesBagStore.contains(file))
-          if (missingFilesNotInFetchText.nonEmpty)
-            Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
-          else {
-            if (noFetchItemsAlreadyInBag(bagitDir, fetchItemsBagStore).isFailure)
-              Failure(InvalidDepositException(id, s"One or more fetch.txt files are already present in the bag."))
-            else
-              validateChecksumsFetchItems(bag, fetchItemsBagStore)
+    (fetchItemsInBagStore, validationResult.isSuccess) match {
+      case (Seq(), true) => Success(())
+      case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
+      case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, while all the files are present in the bag."))
+      case (items, false) =>
+        val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages
+          .asScala
+          .filterNot(_.getCode == CompleteVerifier.CODE_PAYLOAD_MANIFEST_CONTAINS_MISSING_FILE)
+
+        if (otherThanMissingPayloadFilesMessages.isEmpty) {
+          val missingPayloadFiles = validationResult.getSimpleMessages
+            .asScala
+            .flatMap(_.getObjects.asScala)
+          val fetchItemFilesFromBagStore = fetchItemsInBagStore.map(_.getFilename)
+          val missingFilesNotInFetchText = missingPayloadFiles diff fetchItemFilesFromBagStore
+
+          if (missingFilesNotInFetchText.isEmpty) {
+            noFetchItemsAlreadyInBag(bagitDir, fetchItemsInBagStore)
+              .flatMap(_ => validateChecksumsFetchItems(bag, fetchItemsInBagStore))
           }
+          else
+            Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
         }
-      }
+        else
+          Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
     }
   }
 
