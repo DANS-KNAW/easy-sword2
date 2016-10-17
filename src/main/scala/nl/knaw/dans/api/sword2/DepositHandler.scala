@@ -334,7 +334,7 @@ object DepositHandler {
   }
 
   private def getBagFromDir(dir: File): Bag = {
-      bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+    bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
   case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
