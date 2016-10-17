@@ -65,7 +65,8 @@ object DepositHandler {
     implicit val baseDir: File = new File(SwordProps("bag-store.base-dir"))
     implicit val baseUrl: URI  = new URI(SwordProps("bag-store.base-url"))
     val tempDir = new File(SwordProps("tempdir"), id)
-    (for {
+
+    val result = for {
       _        <- checkBaseDir()
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
@@ -73,8 +74,9 @@ object DepositHandler {
       _        <- checkBagValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
-    } yield ())
-    .recover {
+    } yield ()
+
+    result.recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
