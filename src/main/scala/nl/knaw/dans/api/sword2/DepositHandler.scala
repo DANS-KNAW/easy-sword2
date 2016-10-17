@@ -178,10 +178,12 @@ object DepositHandler {
   def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
-    for {
-      fetchItem <- Try(getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq.empty))
-      _ <- fetchItem.map(item => checkUrlValidity(item.getUrl)).collectResults
-    } yield ()
+    getFetchTxt(bagitDir)
+      .map(_.asScala)
+      .getOrElse(Seq.empty)
+      .map(item => checkUrlValidity(item.getUrl))
+      .collectResults
+      .map(_ => ())
   }
 
   private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
