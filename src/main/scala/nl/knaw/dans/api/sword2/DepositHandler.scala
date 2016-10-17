@@ -84,8 +84,8 @@ object DepositHandler {
       case FailedDepositException(_, msg, cause) =>
         log.error(s"[$id] Failed deposit", cause)
         DepositProperties.set(id, "FAILED", msg, lookInTempFirst = true)
-      case _: Throwable =>
-        log.error(s"[$id] Unexpected failure in deposit")
+      case cause: Throwable =>
+        log.error(s"[$id] Unexpected failure in deposit", cause)
         DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
     }
   }
@@ -238,7 +238,7 @@ object DepositHandler {
               Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
           }
           else
-            Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
+            Failure(InvalidDepositException(id, s"Validation of bag did not succeed: ${otherThanMissingPayloadFilesMessages.mkString("\n")}"))
       }
     }
 
