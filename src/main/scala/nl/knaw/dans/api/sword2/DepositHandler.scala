@@ -175,24 +175,34 @@ object DepositHandler {
     getBagFromDir(bagitDir).getFetchTxt
   }
 
-  def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = Try {
+  def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
-    getFetchTxt(bagitDir).foreach(fetchItem =>
-      fetchItem.asScala.foreach(item =>
-      checkUrlValidity(item.getUrl)))
+
+    for {
+      fetchItem <- Try(getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq.empty))
+      _ <- fetchItem.map(item => checkUrlValidity(item.getUrl)).collectResults
+    } yield ()
   }
 
-  private def checkUrlValidity(url: String)(implicit id: String): Unit = {
+  private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
     // check if the url is syntactically correct
-    try {
-      new URL(url)
-    } catch {
-      case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
+    def urlIsValid: Try[URL] = {
+      Try(new URL(url)).recoverWith {
+        case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
+      }
     }
+
     // check if the url complies with the allowed url-structure
-    val urlPattern = Pattern.compile(SwordProps("url-pattern"))
-    if (!urlPattern.matcher(url).matches)
-      throw InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)")
+    def urlIsAllowed: Try[Unit] = {
+      val urlPattern = Pattern.compile(SwordProps("url-pattern"))
+      if (urlPattern.matcher(url).matches()) Success(())
+      else Failure(InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)"))
+    }
+
+    for {
+      _ <- urlIsValid
+      _ <- urlIsAllowed
+    } yield ()
   }
 
   def checkBagValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI) = {
