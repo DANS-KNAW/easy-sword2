@@ -22,6 +22,7 @@ import java.util.Collections
 import java.net.{MalformedURLException, URI, URL}
 import java.util.regex.Pattern
 
+import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
@@ -213,53 +214,62 @@ object DepositHandler {
     val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
     val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
 
-    resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
-
-    val bag = getBagFromDir(bagitDir)
-    val validationResult = bag.verifyValid
-
-    (fetchItemsInBagStore, validationResult.isSuccess) match {
-      case (Seq(), true) => Success(())
-      case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
-      case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, while all the files are present in the bag."))
-      case (items, false) =>
-        val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages
-          .asScala
-          .filterNot(_.getCode == CompleteVerifier.CODE_PAYLOAD_MANIFEST_CONTAINS_MISSING_FILE)
-
-        if (otherThanMissingPayloadFilesMessages.isEmpty) {
-          val missingPayloadFiles = validationResult.getSimpleMessages
+    def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]) = {
+      (fetchItemsInBagStore, validationResult.isSuccess) match {
+        case (Seq(), true) => Success(())
+        case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
+        case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, while all the files are present in the bag."))
+        case (itemsFromBagStore, false) =>
+          val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages
             .asScala
-            .flatMap(_.getObjects.asScala)
-          val fetchItemFilesFromBagStore = fetchItemsInBagStore.map(_.getFilename)
-          val missingFilesNotInFetchText = missingPayloadFiles diff fetchItemFilesFromBagStore
+            .filterNot(_.getCode == CompleteVerifier.CODE_PAYLOAD_MANIFEST_CONTAINS_MISSING_FILE)
 
-          if (missingFilesNotInFetchText.isEmpty) {
-            noFetchItemsAlreadyInBag(bagitDir, fetchItemsInBagStore)
-              .flatMap(_ => validateChecksumsFetchItems(bag, fetchItemsInBagStore))
+          if (otherThanMissingPayloadFilesMessages.isEmpty) {
+            val missingPayloadFiles = validationResult.getSimpleMessages
+              .asScala
+              .flatMap(_.getObjects.asScala)
+            val fetchItemFilesFromBagStore = itemsFromBagStore.map(_.getFilename)
+            val missingFilesNotInFetchText = missingPayloadFiles diff fetchItemFilesFromBagStore
+
+            if (missingFilesNotInFetchText.isEmpty)
+              noFetchItemsAlreadyInBag(bagitDir, itemsFromBagStore)
+                .flatMap(_ => validateChecksumsFetchItems(bag, itemsFromBagStore))
+            else
+              Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
           }
           else
-            Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
-        }
-        else
-          Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
+            Failure(InvalidDepositException(id, otherThanMissingPayloadFilesMessages.mkString))
+      }
     }
+
+    for {
+      _ <- resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
+      bag = getBagFromDir(bagitDir)
+      validationResult = bag.verifyValid()
+      _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
+    } yield ()
   }
 
-  private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Unit = {
+  private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     if (fetchItems.nonEmpty) {
       log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
-      fetchItems.foreach(item =>
-        Using.urlInputStream(new URL(item.getUrl)).foreach(src => {
+    }
+
+    fetchItems
+      .map(item => Using.urlInputStream(new URL(item.getUrl))
+        .map(src => {
           val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
           if (file.exists()) {
-            Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
-          } else {
+            throw InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag.")
+          }
+          else {
             file.getParentFile.mkdirs()
             Files.copy(src, file.toPath)
           }
-        }))
-    }
+        })
+        .tried)
+      .collectResults
+      .map(_ => ())
   }
 
   private def noFetchItemsAlreadyInBag(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
