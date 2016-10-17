@@ -269,7 +269,7 @@ object DepositHandler {
     if (presentFiles.nonEmpty)
       Failure(InvalidDepositException(id, s"Fetch.txt file ${presentFiles.head.getFilename} is already present in the bag."))
     else
-      Success(Unit)
+      Success(())
   }
 
   private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl]) (implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
@@ -305,7 +305,7 @@ object DepositHandler {
       Failure(InvalidDepositException(id, errorMessage))
     }
     else
-      Success(Unit)
+      Success(())
   }
 
   private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String) (implicit id: String, baseDir: File, baseUrl: URI): Try[Exception] = Try {
@@ -378,7 +378,7 @@ object DepositHandler {
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
     val is = Files.newInputStream(Paths.get(zipFile.getPath))
     try {
-      if (MD5 == DigestUtils.md5Hex(is)) Success(Unit)
+      if (MD5 == DigestUtils.md5Hex(is)) Success(())
       else fail
     } catch {
       case _: Throwable => fail
