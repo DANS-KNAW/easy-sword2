@@ -126,14 +126,17 @@ object DepositHandler {
     }
   }
 
-  def checkBaseDir()(implicit id: String, baseDir: File): Try[Unit] = Try {
-    if (!baseDir.exists()){
+  def checkBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
+    if (!baseDir.exists()) {
       log.error(s"[$id] Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
-      throw FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
+      Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
     }
-    else if (!baseDir.canRead()){
+    else if (!baseDir.canRead) {
       log.error(s"[$id] Bag store base directory ${baseDir.getAbsolutePath} is not readable")
-      throw FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable")
+      Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
+    }
+    else {
+      Success(())
     }
   }
 
