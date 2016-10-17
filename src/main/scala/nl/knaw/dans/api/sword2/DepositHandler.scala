@@ -383,17 +383,14 @@ object DepositHandler {
   def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
     log.debug(s"Checking Content-MD5 (Received: $MD5)")
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
-    val is = Files.newInputStream(Paths.get(zipFile.getPath))
-    try {
-      if (MD5 == DigestUtils.md5Hex(is)) Success(())
-      else fail
-    } catch {
-      case _: Throwable => fail
-    } finally {
-      Try {
-        is.close()
-      }
-    }
+
+    Using.fileInputStream(zipFile)
+      .map(is => {
+        if (MD5 == DigestUtils.md5Hex(is)) Success(())
+        else fail
+      })
+      .tried
+      .flatten
   }
 
   def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
