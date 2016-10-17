@@ -282,29 +282,29 @@ object DepositHandler {
       Success(())
   }
 
-  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl]) (implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     log.debug(s"[$id] Validating checksums of those files in fetch.txt, that refer to the bag store.")
 
     val fetchItemFiles = fetchItems.map(_.getFilename)
-    val checksums = bag.getPayloadManifests.asScala.toList.
-                      flatMap(_.asScala).
-                      filter({case (file, checksum) =>
-                        fetchItemFiles.contains(file)
-                      })
     val urls = fetchItems.map(file => file.getFilename -> file.getUrl).toMap
 
-    val checksumMapping: List[(String, String, String)] =
-      checksums.map { case (file, checksum) =>
-        if (urls isDefinedAt file)
-          (file, checksum, urls(file))
-        else
-          throw InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")
+    val checksumMapping = bag.getPayloadManifests.asScala
+      .flatMap(_.asScala)
+      .filter { case (file, _) => fetchItemFiles.contains(file) }
+      .map { case (file, checksum) =>
+        urls.get(file)
+          .map(url => Try(file, checksum, url))
+          .getOrElse(Failure(InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")))
       }
+      .collectResults
 
-    validateChecksums(checksumMapping)
+    for {
+      csMap <- checksumMapping
+      valid <- validateChecksums(csMap)
+    } yield ()
   }
 
-  private def validateChecksums(checksumMapping: List[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     val errors = checksumMapping.map({case (file, checksum, url) =>
         compareChecksumAgainstReferredBag(file, checksum, url)
       }
