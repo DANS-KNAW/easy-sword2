@@ -411,10 +411,11 @@ object DepositHandler {
 
 
   // TO DO: RETRIEVE VIA AN INTERFACE
-  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): List[(String, String)] = {
-    getBagFromDir(getReferredBagDir(url)).
-      getPayloadManifests.asScala.toList.
-      flatMap(_.asScala)
+  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Seq[(String, String)] = {
+    getBagFromDir(getReferredBagDir(url))
+      .getPayloadManifests
+      .asScala
+      .flatMap(_.asScala)
   }
 
   private def getReferredBagDir(url: String)(implicit baseDir: File, baseUrl: URI): File = {
