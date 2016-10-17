@@ -410,7 +410,7 @@ object DepositHandler {
   }
 
 
-  // TO DO: RETRIEVE VIA AN INTERFACE
+  // TODO: RETRIEVE VIA AN INTERFACE
   private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Seq[(String, String)] = {
     getBagFromDir(getReferredBagDir(url))
       .getPayloadManifests
@@ -420,10 +420,11 @@ object DepositHandler {
 
   private def getReferredBagDir(url: String)(implicit baseDir: File, baseUrl: URI): File = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
-    val uuidPlusVersion = url.stripPrefix(baseUrl.toString).split("/data").head.replaceAll("-", "")
-    val topDir = uuidPlusVersion.splitAt(3)._1
-    val uuidDir = uuidPlusVersion.substring(3, uuidPlusVersion.lastIndexOf("."))
-    val versionDir = uuidPlusVersion.drop(uuidPlusVersion.lastIndexOf(".") + 1)
-    getFile(baseDir, topDir, uuidDir, versionDir)
+    val Array(uuid, version) = url.stripPrefix(baseUrl.toString)
+      .split("/data").head.replaceAll("-", "")
+      .split("\\.")
+    val (topDir, uuidDir) = uuid.splitAt(3)
+
+    getFile(baseDir, topDir, uuidDir, version)
   }
 }
