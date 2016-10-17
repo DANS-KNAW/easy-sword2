@@ -305,30 +305,27 @@ object DepositHandler {
   }
 
   private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
-    val errors = checksumMapping.map({case (file, checksum, url) =>
-        compareChecksumAgainstReferredBag(file, checksum, url)
-      }
-    ).collectResults.get.filter(_!= null)
-
-    if (errors.nonEmpty){
-      val errorMessage = errors.map(_.getMessage).mkString
-      Failure(InvalidDepositException(id, errorMessage))
+    val errors = checksumMapping.flatMap { // we use the fact that an Option is a Seq with 0 or 1 element here!
+      case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
     }
-    else
+
+    if (errors.isEmpty) {
       Success(())
+    }
+    else {
+      Failure(InvalidDepositException(id, errors.mkString))
+    }
   }
 
-  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String) (implicit id: String, baseDir: File, baseUrl: URI): Try[Exception] = Try {
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Option[String] = {
     val referredFile = getReferredFile(url, baseUrl)
     val referredBagChecksums = getReferredBagChecksums(url)
     if (referredBagChecksums.contains(referredFile -> checksum))
-      null
-    else {
-      if (referredBagChecksums.map({case (file, _) => file}).contains(referredFile))
-        InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag.")
-      else
-        InvalidDepositException(id, s"While validating checksums, the file $referredFile not found in the referred bag.")
-    }
+      Option.empty
+    else if (referredBagChecksums.map { case (file, _) => file }.contains(referredFile))
+      Option(s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag.")
+    else
+      Option(s"While validating checksums, the file $referredFile was not found in the referred bag.")
   }
 
   private def getReferredFile(url: String, baseUrl: URI): String = {
