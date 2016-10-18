@@ -39,7 +39,6 @@ import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
 import resource.Using
 import nl.knaw.dans.lib.error.TraversableTryExtensions
-
 import scala.util.control.NonFatal
 
 object DepositHandler {
