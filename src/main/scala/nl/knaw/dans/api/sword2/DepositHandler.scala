@@ -68,11 +68,11 @@ object DepositHandler {
     val tempDir = new File(SwordProps("tempdir"), id)
 
     val result = for {
-      _        <- checkBaseDir()
+      _        <- checkBagStoreBaseDir()
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagitDir)
-      _        <- checkBagValidity(bagitDir)
+      _        <- checkBagVirtualValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
     } yield ()
@@ -127,18 +127,10 @@ object DepositHandler {
     }
   }
 
-  def checkBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
-    if (!baseDir.exists()) {
-      log.error(s"[$id] Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
-      Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-    }
-    else if (!baseDir.canRead) {
-      log.error(s"[$id] Bag store base directory ${baseDir.getAbsolutePath} is not readable")
-      Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
-    }
-    else {
-      Success(())
-    }
+  def checkBagStoreBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
+    if (!baseDir.exists) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
+    else if (!baseDir.canRead) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
+    else Success(Unit)
   }
 
   private def getBagDir(depositDir: File): Try[File] = Try {
@@ -188,27 +180,25 @@ object DepositHandler {
   }
 
   private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
-    // check if the url is syntactically correct
-    def urlIsValid: Try[URL] = {
+    def checkUrlSyntax: Try[URL] = {
       Try(new URL(url)).recoverWith {
         case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
       }
     }
 
-    // check if the url complies with the allowed url-structure
-    def urlIsAllowed: Try[Unit] = {
+    def checkUrlAllowed: Try[Unit] = {
       val urlPattern = Pattern.compile(SwordProps("url-pattern"))
       if (urlPattern.matcher(url).matches()) Success(())
       else Failure(InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)"))
     }
 
     for {
-      _ <- urlIsValid
-      _ <- urlIsAllowed
+      _ <- checkUrlSyntax
+      _ <- checkUrlAllowed
     } yield ()
   }
 
-  def checkBagValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  def checkBagVirtualValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
     val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
@@ -218,7 +208,7 @@ object DepositHandler {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
         case (Seq(), true) => Success(())
         case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
-        case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, while all the files are present in the bag."))
+        case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, but all the files are present in the bag."))
         case (itemsFromBagStore, false) =>
           val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages
             .asScala
@@ -245,7 +235,7 @@ object DepositHandler {
     for {
       _ <- resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
       bag = getBagFromDir(bagitDir)
-      validationResult = bag.verifyValid()
+      validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
   }
@@ -308,13 +298,8 @@ object DepositHandler {
     val errors = checksumMapping.flatMap { // we use the fact that an Option is a Seq with 0 or 1 element here!
       case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
     }
-
-    if (errors.isEmpty) {
-      Success(())
-    }
-    else {
-      Failure(InvalidDepositException(id, errors.mkString))
-    }
+    if (errors.isEmpty) Success(())
+    else Failure(InvalidDepositException(id, errors.mkString))
   }
 
   private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Option[String] = {
