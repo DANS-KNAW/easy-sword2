@@ -39,55 +39,55 @@ class ResolveFetchItems extends Sword2Fixture {
   "resolveFetchItems" should "result in a Success with a valid bag without a fetch.txt" in {
     copyBagFromDirectory(SIMPLE_SEQUENCE_A)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Success with a valid bag with a fetch.txt"  in {
     copyBagFromDirectory(SIMPLE_SEQUENCE_B)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Success with another valid bag with a fetch.txt"  in {
     copyBagFromDirectory(SIMPLE_SEQUENCE_C)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Failure when a required file is missing"  in {
     copyBagFromDirectory(REQUIRED_FILE_MISSING)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Failure when a file is missing in the fetch.txt"  in {
     copyBagFromDirectory(FETCH_ITEM_FILE_MISSING)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Failure when a file checksum is incorrect"  in {
     copyBagFromDirectory(INCORRECT_CHECKSUM)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Failure when there is a nonexistent path in the fetch.txt"  in {
     copyBagFromDirectory(NONEXISTENT_FETCH_ITEM_PATH)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Failure when a file in the fetch.txt is already in the bag"  in {
     copyBagFromDirectory(FETCH_ITEM_ALREADY_IN_BAG)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Success with a valid fetch.txt url referring outside the bagstore"  in {
     copyBagFromDirectory(URL_OUTSIDE_BAGSTORE_BAG)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Failure with a syntactically invalid url in the fetch.txt"  in {
@@ -103,13 +103,13 @@ class ResolveFetchItems extends Sword2Fixture {
   it should "result in a Failure with an empty bag"  in {
     copyBagFromDirectory(NO_DATA_BAG)
     DepositHandler.checkFetchItemUrls(targetBagDir) shouldBe a[Success[_]]
-    DepositHandler.checkBagValidity(targetBagDir) shouldBe a[Failure[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
   }
 
   it should "result in a Failure when the Base Directory doesn't exist"  in {
     copyBagFromDirectory(SIMPLE_SEQUENCE_A)
     baseDir = new File("non/existent/dir")
-    DepositHandler.checkBaseDir() shouldBe a[Failure[_]]
+    DepositHandler.checkBagStoreBaseDir() shouldBe a[Failure[_]]
   }
 
   private def copyBagFromDirectory(sourceDir: File): Unit ={
