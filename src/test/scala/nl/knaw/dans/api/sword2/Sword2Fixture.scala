@@ -16,6 +16,7 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.File
+import java.net.URI
 
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers, OneInstancePerTest}
@@ -30,6 +31,8 @@ abstract class Sword2Fixture extends FlatSpec with Matchers with OneInstancePerT
   FileUtils.deleteQuietly(targetBagDir)
 
   homeDir = new File("src/main/assembly/dist")
+  implicit var baseDir = new File("src/test/resources/bag-store")
+  implicit val baseUrl = new URI("http://deasy.dans.knaw.nl/aips")
 }
 
 

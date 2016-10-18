@@ -1,0 +1,4 @@
+c630514d91d2e2dcc2f00bbdefb09169  data/brochure/dokumentti.txt
+37a65bbbd1b05a02dd6ff7ba56a219f7  data/brochure/folder1/dokumentti_1.txt
+ca2fc0fd736392267238a29636097e5d  data/brochure/Software_Sustainability_DANS_NLeSC_2016.pdf
+
