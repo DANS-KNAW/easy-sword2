@@ -39,6 +39,7 @@ import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
 import resource.Using
 import nl.knaw.dans.lib.error.TraversableTryExtensions
+import scala.util.control.NonFatal
 
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
@@ -84,8 +85,8 @@ object DepositHandler {
       case FailedDepositException(_, msg, cause) =>
         log.error(s"[$id] Failed deposit", cause)
         DepositProperties.set(id, "FAILED", msg, lookInTempFirst = true)
-      case cause: Throwable =>
-        log.error(s"[$id] Unexpected failure in deposit", cause)
+      case NonFatal(e)  =>
+        log.error(s"[$id] Unexpected failure in deposit", e)
         DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
     }
   }
@@ -98,7 +99,7 @@ object DepositHandler {
         f.getName.split('.').last.toInt
       } catch {
         case _: Throwable =>
-          throw new InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
+          throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
       }
 
     Try {
@@ -109,7 +110,7 @@ object DepositHandler {
         case "application/zip" =>
           files.foreach(file => {
             if (!file.isFile)
-              throw new FailedDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
+              throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
             extract(file, tempDir.getPath)
             deleteQuietly(file)
           })
@@ -121,7 +122,7 @@ object DepositHandler {
           files.foreach(deleteQuietly)
           deleteQuietly(mergedZip)
         case _ =>
-          throw new InvalidDepositException(id, s"Invalid content type: $mimeType")
+          throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
       tempDir
     }
@@ -130,7 +131,7 @@ object DepositHandler {
   def checkBagStoreBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
     if (!baseDir.exists) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
     else if (!baseDir.canRead) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
-    else Success(Unit)
+    else Success(())
   }
 
   private def getBagDir(depositDir: File): Try[File] = Try {
@@ -307,7 +308,7 @@ object DepositHandler {
     val referredBagChecksums = getReferredBagChecksums(url)
     if (referredBagChecksums.contains(referredFile -> checksum))
       Option.empty
-    else if (referredBagChecksums.map { case (file, _) => file }.contains(referredFile))
+    else if (referredBagChecksums.map { case (rFile, _) => rFile }.contains(referredFile))
       Option(s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag.")
     else
       Option(s"While validating checksums, the file $referredFile was not found in the referred bag.")
