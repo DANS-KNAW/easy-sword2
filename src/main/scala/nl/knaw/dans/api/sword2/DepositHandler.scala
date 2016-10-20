@@ -16,32 +16,31 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
-import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
-import java.nio.file._
-import java.util.Collections
 import java.net.{MalformedURLException, URI, URL, UnknownHostException}
+import java.nio.file._
+import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
+import java.util.Collections
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
-import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
+import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
+import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
+import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
 import org.swordapp.server.{Deposit, DepositReceipt, SwordError}
+import resource.Using
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
-import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
-import resource.Using
-import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
-import org.joda.time.{DateTime, DateTimeZone}
-
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
