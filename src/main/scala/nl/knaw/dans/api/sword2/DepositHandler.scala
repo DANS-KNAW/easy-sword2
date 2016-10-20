@@ -19,7 +19,7 @@ import java.io.{File, IOException}
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.nio.file._
 import java.util.Collections
-import java.net.{MalformedURLException, URI, URL}
+import java.net.{MalformedURLException, URI, URL, UnknownHostException}
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
@@ -274,20 +274,20 @@ object DepositHandler {
       .map(item => Using.urlInputStream(new URL(item.getUrl))
         .map(src => {
           val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
-          if (file.exists()) {
+          if (file.exists())
             Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
-          }
-          else {
+          else
             Try {
               file.getParentFile.mkdirs()
               Files.copy(src, file.toPath)
-            } recoverWith {
-              case e: IOException => Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt could not be downloaded.", e))
             }
-          }
         })
         .tried
-        .flatten)
+        .flatten
+        .recoverWith {
+          case e: UnknownHostException => Failure(InvalidDepositException(id, s"The URL for ${item.getFilename} contains an unknown host.", e))
+          case e: IOException => Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt could not be downloaded.", e))
+        })
       .collectResults
       .map(_ => ())
       .recoverWith {
