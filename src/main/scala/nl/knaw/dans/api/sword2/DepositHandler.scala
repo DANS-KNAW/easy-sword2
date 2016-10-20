@@ -16,30 +16,31 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
-import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
+import java.net.{MalformedURLException, URI, URL, UnknownHostException}
 import java.nio.file._
+import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.util.Collections
-import java.net.{MalformedURLException, URI, URL}
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
-import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
+import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
+import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
+import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
 import org.swordapp.server.{Deposit, DepositReceipt, SwordError}
+import resource.Using
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
-import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
-import resource.Using
-import nl.knaw.dans.lib.error.TraversableTryExtensions
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object DepositHandler {
   val log = LoggerFactory.getLogger(getClass)
@@ -62,6 +63,17 @@ object DepositHandler {
     } yield createDepositReceipt(deposit, id)
   }
 
+  def genericErrorMessage(implicit id: String): String = {
+
+    val mailaddress = SwordProps("support.mailaddress")
+    val timestamp = DateTime.now(DateTimeZone.UTC).toString
+
+    s"""The server encountered an unexpected condition.
+      |Please contact the SWORD service administrator at $mailaddress.
+      |The error occurred at $timestamp. Your 'DepositID' is $id.
+    """.stripMargin
+  }
+
   def finalizeDeposit(mimeType: String)(implicit id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
     implicit val baseDir: File = new File(SwordProps("bag-store.base-dir"))
@@ -82,12 +94,9 @@ object DepositHandler {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
-      case FailedDepositException(_, msg, cause) =>
-        log.error(s"[$id] Failed deposit", cause)
-        DepositProperties.set(id, "FAILED", msg, lookInTempFirst = true)
-      case NonFatal(e)  =>
-        log.error(s"[$id] Unexpected failure in deposit", e)
-        DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
+      case NonFatal(e) =>
+        log.error(s"[$id] Internal failure in deposit", e)
+        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
     }
   }
 
@@ -97,40 +106,41 @@ object DepositHandler {
     def getSequenceNumber(f: File): Int =
       try {
         f.getName.split('.').last.toInt
-      } catch {
+      }
+      catch {
         case _: Throwable =>
           throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
       }
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val tempDir: File = new File(SwordProps("tempdir"), id)
-      val files = tempDir.listFilesSafe.filter(isPartOfDeposit)
+      val depositDir: File = new File(SwordProps("tempdir"), id)
+      val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
           files.foreach(file => {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
-            extract(file, tempDir.getPath)
+            extract(file, depositDir.getPath)
             deleteQuietly(file)
           })
         case "application/octet-stream" =>
-          val mergedZip = new File(tempDir, "merged.zip")
+          val mergedZip = new File(depositDir, "merged.zip")
           files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
           MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-          extract(mergedZip, tempDir.getPath)
+          extract(mergedZip, depositDir.getPath)
           files.foreach(deleteQuietly)
           deleteQuietly(mergedZip)
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
-      tempDir
+      depositDir
     }
   }
 
   def checkBagStoreBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
-    if (!baseDir.exists) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-    else if (!baseDir.canRead) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
+    if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
+    else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
     else Success(())
   }
 
@@ -139,10 +149,9 @@ object DepositHandler {
   }
 
   def checkDepositIsInDraft(id: String): Try[Unit] =
-    (for {
-      state <- DepositProperties.getState(id)
-      if state.label == "DRAFT"
-    } yield ())
+    DepositProperties.getState(id)
+      .filter(_.label == "DRAFT")
+      .map(_ => ())
       .recoverWith {
         case t => Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
       }
@@ -169,15 +178,26 @@ object DepositHandler {
     getBagFromDir(bagitDir).getFetchTxt
   }
 
+  def formatMessages(seq: Seq[String], in: String): String = {
+    seq match {
+      case Seq() => s"No errors found in $in"
+      case Seq(msg) => s"One error found in $in:\n\t- $msg"
+      case msgs => msgs.map(msg => s"\t- $msg").mkString(s"Multiple errors found in $in:\n", "\n", "")
+    }
+  }
+
   def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
     getFetchTxt(bagitDir)
-      .map(_.asScala)
+      .map(_.asScala) // Option map
       .getOrElse(Seq.empty)
-      .map(item => checkUrlValidity(item.getUrl))
+      .map(item => checkUrlValidity(item.getUrl)) // Seq map
       .collectResults
-      .map(_ => ())
+      .map(_ => ()) // Try map
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "fetch.txt URLs"), e))
+      }
   }
 
   private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
@@ -205,7 +225,7 @@ object DepositHandler {
     val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
     val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
 
-    def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]) = {
+    def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
         case (Seq(), true) => Success(())
         case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
@@ -250,17 +270,25 @@ object DepositHandler {
       .map(item => Using.urlInputStream(new URL(item.getUrl))
         .map(src => {
           val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
-          if (file.exists()) {
-            throw InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag.")
-          }
-          else {
-            file.getParentFile.mkdirs()
-            Files.copy(src, file.toPath)
-          }
+          if (file.exists())
+            Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
+          else
+            Try {
+              file.getParentFile.mkdirs()
+              Files.copy(src, file.toPath)
+            }
         })
-        .tried)
+        .tried
+        .flatten
+        .recoverWith {
+          case e: UnknownHostException => Failure(InvalidDepositException(id, s"The URL for ${item.getFilename} contains an unknown host.", e))
+          case e: IOException => Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt could not be downloaded.", e))
+        })
       .collectResults
       .map(_ => ())
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "resolving files from fetch.txt"), e))
+      }
   }
 
   private def noFetchItemsAlreadyInBag(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
@@ -288,6 +316,9 @@ object DepositHandler {
           .getOrElse(Failure(InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")))
       }
       .collectResults
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+      }
 
     for {
       csMap <- checksumMapping

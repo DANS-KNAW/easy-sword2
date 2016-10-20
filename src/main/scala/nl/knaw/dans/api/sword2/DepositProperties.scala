@@ -37,7 +37,7 @@ object DepositProperties {
         |$stateDescription
         |${if(throwable != null) throwable.getMessage else ""}
       """.stripMargin.trim)
-    if(userId.nonEmpty) props.setProperty("depositor.userId", userId.get)
+    userId.foreach(uid => props.setProperty("depositor.userId", uid))
     props.save()
   }
 
