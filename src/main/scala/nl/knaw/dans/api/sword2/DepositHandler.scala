@@ -38,7 +38,8 @@ import rx.lang.scala.subjects.PublishSubject
 import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
 import resource.Using
-import nl.knaw.dans.lib.error.TraversableTryExtensions
+import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
+
 import scala.util.control.NonFatal
 
 object DepositHandler {
@@ -97,34 +98,35 @@ object DepositHandler {
     def getSequenceNumber(f: File): Int =
       try {
         f.getName.split('.').last.toInt
-      } catch {
+      }
+      catch {
         case _: Throwable =>
           throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
       }
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val tempDir: File = new File(SwordProps("tempdir"), id)
-      val files = tempDir.listFilesSafe.filter(isPartOfDeposit)
+      val depositDir: File = new File(SwordProps("tempdir"), id)
+      val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
           files.foreach(file => {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
-            extract(file, tempDir.getPath)
+            extract(file, depositDir.getPath)
             deleteQuietly(file)
           })
         case "application/octet-stream" =>
-          val mergedZip = new File(tempDir, "merged.zip")
+          val mergedZip = new File(depositDir, "merged.zip")
           files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
           MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-          extract(mergedZip, tempDir.getPath)
+          extract(mergedZip, depositDir.getPath)
           files.foreach(deleteQuietly)
           deleteQuietly(mergedZip)
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
-      tempDir
+      depositDir
     }
   }
 
@@ -139,10 +141,9 @@ object DepositHandler {
   }
 
   def checkDepositIsInDraft(id: String): Try[Unit] =
-    (for {
-      state <- DepositProperties.getState(id)
-      if state.label == "DRAFT"
-    } yield ())
+    DepositProperties.getState(id)
+      .filter(_.label == "DRAFT")
+      .map(_ => ())
       .recoverWith {
         case t => Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
       }
@@ -169,15 +170,26 @@ object DepositHandler {
     getBagFromDir(bagitDir).getFetchTxt
   }
 
+  def formatMessages(seq: Seq[String], in: String): String = {
+    seq match {
+      case Seq() => s"No errors found in $in"
+      case Seq(msg) => s"One error found in $in:\n\t- $msg"
+      case msgs => msgs.map(msg => s"\t- $msg").mkString(s"Multiple errors found in $in:\n", "\n", "")
+    }
+  }
+
   def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
     getFetchTxt(bagitDir)
-      .map(_.asScala)
+      .map(_.asScala) // Option map
       .getOrElse(Seq.empty)
-      .map(item => checkUrlValidity(item.getUrl))
+      .map(item => checkUrlValidity(item.getUrl)) // Seq map
       .collectResults
-      .map(_ => ())
+      .map(_ => ()) // Try map
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "fetch.txt URLs"), e))
+      }
   }
 
   private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
@@ -205,7 +217,7 @@ object DepositHandler {
     val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
     val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
 
-    def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]) = {
+    def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
         case (Seq(), true) => Success(())
         case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
@@ -251,16 +263,24 @@ object DepositHandler {
         .map(src => {
           val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
           if (file.exists()) {
-            throw InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag.")
+            Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
           }
           else {
-            file.getParentFile.mkdirs()
-            Files.copy(src, file.toPath)
+            Try {
+              file.getParentFile.mkdirs()
+              Files.copy(src, file.toPath)
+            } recoverWith {
+              case e: IOException => Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt could not be downloaded.", e))
+            }
           }
         })
-        .tried)
+        .tried
+        .flatten)
       .collectResults
       .map(_ => ())
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "resolving files from fetch.txt"), e))
+      }
   }
 
   private def noFetchItemsAlreadyInBag(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
@@ -288,6 +308,9 @@ object DepositHandler {
           .getOrElse(Failure(InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")))
       }
       .collectResults
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+      }
 
     for {
       csMap <- checksumMapping
