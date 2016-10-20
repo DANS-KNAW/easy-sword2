@@ -94,11 +94,8 @@ object DepositHandler {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
-      case FailedDepositException(_, msg, cause) =>
-        log.error(s"[$id] Failed deposit", cause)
-        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
-      case NonFatal(e)  =>
-        log.error(s"[$id] Unexpected failure in deposit", e)
+      case NonFatal(e) =>
+        log.error(s"[$id] Internal failure in deposit", e)
         DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
     }
   }
@@ -142,8 +139,8 @@ object DepositHandler {
   }
 
   def checkBagStoreBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
-    if (!baseDir.exists) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-    else if (!baseDir.canRead) Failure(FailedDepositException(id, s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
+    if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
+    else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
     else Success(())
   }
 

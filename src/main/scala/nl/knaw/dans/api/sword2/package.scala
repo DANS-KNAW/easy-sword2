@@ -32,7 +32,6 @@ package object sword2 {
   var homeDir: File = null
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
-  case class FailedDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 
