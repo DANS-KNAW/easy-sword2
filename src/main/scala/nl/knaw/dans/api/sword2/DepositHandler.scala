@@ -39,6 +39,7 @@ import scala.util.{Failure, Success, Try}
 import scala.collection.JavaConverters._
 import resource.Using
 import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
+import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.util.control.NonFatal
 
@@ -63,6 +64,17 @@ object DepositHandler {
     } yield createDepositReceipt(deposit, id)
   }
 
+  def genericErrorMessage(implicit id: String): String = {
+
+    val mailaddress = SwordProps("support.mailaddress")
+    val timestamp = DateTime.now(DateTimeZone.UTC).toString
+
+    s"""The server encountered an unexpected condition.
+      |Please contact the SWORD service administrator at $mailaddress.
+      |The error occurred at $timestamp. Your 'DepositID' is $id.
+    """.stripMargin
+  }
+
   def finalizeDeposit(mimeType: String)(implicit id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
     implicit val baseDir: File = new File(SwordProps("bag-store.base-dir"))
@@ -85,10 +97,10 @@ object DepositHandler {
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
       case FailedDepositException(_, msg, cause) =>
         log.error(s"[$id] Failed deposit", cause)
-        DepositProperties.set(id, "FAILED", msg, lookInTempFirst = true)
+        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
       case NonFatal(e)  =>
         log.error(s"[$id] Unexpected failure in deposit", e)
-        DepositProperties.set(id, "FAILED", "Unexpected failure in deposit", lookInTempFirst = true)
+        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
     }
   }
 
