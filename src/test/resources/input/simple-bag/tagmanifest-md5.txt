@@ -1,2 +1,0 @@
-fcb9ccc5fb3bc34782f60e11d369f673  bag-info.txt
-9e5ad981e0d29adc278f6a294b8c2aca  bagit.txt
