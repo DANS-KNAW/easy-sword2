@@ -95,7 +95,7 @@ object DepositHandler {
         log.error(s"[$id] Invalid deposit", cause)
         DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
       case NonFatal(e) =>
-        log.error(s"[$id] Internal failure in deposit", e)
+        log.error(s"[$id] Internal failure in deposit service", e)
         DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
     }
   }
@@ -103,14 +103,22 @@ object DepositHandler {
   private def extractBag(mimeType: String)(implicit id: String): Try[File] = {
     def extract(file: File, outputPath: String): Unit = new ZipFile(file.getPath).extractAll(outputPath)
 
-    def getSequenceNumber(f: File): Int =
+    def getSequenceNumber(f: File): Int = {
       try {
-        f.getName.split('.').last.toInt
+        val seqNumber = f.getName
+          .split('.')
+          .lastOption
+          .getOrElse(throw InvalidDepositException(id, s"Partial file ${f.getName} has no extension. It should be a positive sequence number."))
+          .toInt
+
+        if (seqNumber > 0) seqNumber
+        else throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
       }
       catch {
-        case _: Throwable =>
-          throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a sequence number.")
+        case _: NumberFormatException =>
+          throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a positive sequence number.")
       }
+    }
 
     Try {
       log.debug(s"[$id] Extracting bag")
