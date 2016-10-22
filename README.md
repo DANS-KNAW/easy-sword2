@@ -112,7 +112,7 @@ Header                                  | Content
 `In-Progress`                           | `true` if not the last message, `false` otherwise
 
 Note: you may also use continued deposit with `Content-Type: application/zip`. In that case you need to send valid zip-files in each part. When using
-this option the client must ensure that all partial deposits are disjunct.
+this option the client must ensure that all partial deposits are disjunct. Using the partioning is the recommended form of continued deposit.
 
 [continued deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
 
@@ -215,9 +215,26 @@ When using LDAP authentication credentials are looked up in an LDAP directory. T
 EXAMPLES
 --------
 
-The directory `src/test/resources/input` contains several bags that can be used to test the service. Several helper scripts are provided to
-facilitate testing. The [cURL] command must be installed and on your `PATH` for the scripts to work. 
- 
+The directory `src/test/resources/input` contains several bags that can be used to manually test the service. Several helper bash scripts are provided to
+facilitate testing. 
+
+The following commands must be installed and on the `PATH`: [cURL], `zip` and `md5`.
+
+The following table gives an overview of the scripts.
+
+Script                 | Purpose
+-----------------------|--------------------------------------------------------------------------------------------------------------------
+`get.sh`               | Retrieve a URL, providing credentials configured in `vars.sh`
+`partition-zip.sh`     | Split a zip file into parts that can be sent with `send-continued.sh`
+`send-continued.sh`    | Send a bag in a continued deposit
+`send-simple.sh`       | Send a bag in a simple deposit
+`zip-bag.sh`           | Zip a bag directory into a file
+
+By default the user `user001` with password `user001` is used for authentication. To use different credentials, create a file called `vars.sh`
+in `src/test/resources/input` with the following content:
+
+    USERNAME=<provide username>
+    PASSWORD=<provide password>
  
 [cURL]: https://curl.haxx.se/
 
