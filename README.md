@@ -37,10 +37,10 @@ it is made available for post-submission processing.
 please see the linked specifications. This sections describes how `easy-sword2` implements part of the SWORD v2 protocol.
 Currently the implementation is limited to:
 
-* Retrieving the Service Document
-* Creation of deposit through binary file upload
-* Retrieving the SWORD statement
-* One packaging format, namely BagIt
+* Retrieving the Service Document.
+* Creation of deposits through binary file upload.
+* Retrieving the SWORD statement.
+* One packaging format, namely BagIt.
 
 Note that in this description the [abbreviated IRI-names] from the specification are used.
 
@@ -52,7 +52,7 @@ Note that in this description the [abbreviated IRI-names] from the specification
 #### Service Document
 
 The entry point for clients of a SWORD server is the Service Document, which describes the collections and capabilities of the server.
-The Service Document can be retrieved from the **SD-IRI**, which needs to be known by the client. All other URLs can be retrieved by
+The Service Document can be retrieved from the **SD-IRI**, which needs to be known in advance by the client. All other URLs can be retrieved by
 the client from the various responses sent by the server. For example, the Service Document contains the **Col-IRI**s (collection URLs)
 that the client can use to create deposits. At present only one **Col-IRI** can be used.
 
@@ -86,19 +86,19 @@ For a successful deposit the **Edit-IRI** will be returned in the `Location` hea
 
 ##### Continued Deposit
 
-A continued deposit should be used when the package is too large for a single deposit. SWORD defines a [continued deposit]
+A continued deposit should be used when the package is too large to send in one HTTP session. SWORD defines a [continued deposit]
 as a means to send a package in parts. The first part is sent by a `POST` request to the **Col-IRI**, the same as with a simple deposit.
 Subsequent parts however are sent with a `POST` request to the **SE-IRI** (which was communicated back to the client by the deposit
 receipt for the first part). For every part except the last, the header `In-Progress: false` must be included.
 
 How to split up a large package is not specified by the SWORD protocol. `easy-sword2` requires the following:
 
-* the package is split up by simple partioning of the zipped bag
+* The package is split up by simple partioning of the zipped bag.
 * `Content-Type` is set to `application/octet-stream` to signal that the content is in a format bilaterally agreed by client and server
   (namely the partioning specified here).
-* the order of the parts is communicated by extending the `Content-Disposition`'s `filename` field value with `.<sequence number>`,
+* The order of the parts is communicated by extending the `Content-Disposition`'s `filename` field value with `.<sequence number>`,
   e.g., `filename=mypackage.zip.1`, `filename=mypackage.zip.2`, etc.
-* the parts may be send out-of-order and/or in parallel, but the client must not send the last part before it has received
+* The parts may be send out-of-order and/or in parallel, but the client must not send the last part before it has received
   the deposit receipts for all the other parts.
   
 Summarizing, the following headers must be included in a continued deposit.
@@ -110,6 +110,9 @@ Header                                  | Content
 `Packaging`                             | `http://purl.org/net/sword/package/BagIt`
 `Content-MD5`                           | the MD5 of the binary content of this part, encoded in base-16
 `In-Progress`                           | `true` if not the last message, `false` otherwise
+
+Note: you may also use continued deposit with `Content-Type: application/zip`. In that case you need to send valid zip-files in each part. When using
+this option the client must ensure that all partial deposits are disjunct.
 
 [continued deposit]: http://swordapp.github.io/SWORDv2-Profile/SWORDProfile.html#continueddeposit
 
@@ -135,11 +138,11 @@ deposited files themselves). When being processed by `easy-sword2` the deposit g
 
 State                                    | Description
 -----------------------------------------|--------------------------------------------------------------------------------------
-`DRAFT`                                  | Deposit is being created by the client (e.g., during a continued deposit)
-`FINALIZING`                             | Deposit process has been finished by the client. Server is reassembling and validating the bag
-`INVALID`                                | Deposit was reassembled but turned out not to be valid
-`FAILED`                                 | Processing failed because of some unforeseen condition
-`SUBMITTED`                              | Deposit was reassembled and found to be valid; it is ready for post-submission processing
+`DRAFT`                                  | Deposit is being created by the client (e.g., during a continued deposit).
+`FINALIZING`                             | Deposit process has been finished by the client. Server is reassembling and validating the bag.
+`INVALID`                                | The deposit sent by the client was not valid (i.e. could not be reassemble or contained an invalid bag).
+`FAILED`                                 | Processing failed because of some unforeseen condition.
+`SUBMITTED`                              | Deposit was reassembled and found to be valid; it is ready for post-submission processing.
 
 If and when the deposit reaches the `SUBMITTED` state `easy-sword2` will treat it as read-only (see also next section). It will, however,
 continue returning the statement to clients that request it. Post-submission workflows may extend above list of states to enable clients to
@@ -167,7 +170,7 @@ The **deposit-dir**s in `invalid`, `failed` and `submitted` will be treated as r
 retrieve SWORD statements from these deposits when requested by clients. Other processes may delete or modify these deposits, 
 provided that their layout and contents stay conformant with the requirements stated in the next section.
 
-By default the name of the **deposit-dir** is contructed with the following scheme: [`<user ID>` `-`] `<Unix timestamp>`. The user ID is only
+By default the name of the **deposit-dir** is contructed with the following scheme: [`<user ID>` `-`] `<Unix timestamp creation time>`. The user ID is only
 used if the service is running in [LDAP mode](#ldap). The client may override the unix timestamp by sending a different name in the `Slug` header.
 
 #### Layout and Contents
@@ -188,8 +191,8 @@ Key                                      | Description
 
 ### Authentication and Authorization
 
-`easy-sword2` uses http basic access authentication. This method of authentication is only safe over a secure http connection.
- For requests to the **SD-IR** the credentials are not checked. For all other actions the credentials are checked and the client
+`easy-sword2` uses HTTP basic access authentication. This method of authentication is only safe over a secure HTTP connection.
+ For requests to the **SD-IRI** the credentials are not checked. For all other actions the credentials are checked and the client
  is only granted access to its own deposits.
 
 `easy-sword2` can be configured in one of two modes: "single" or "LDAP".
@@ -203,11 +206,20 @@ salted with the user name is stored.
 
 When using LDAP authentication credentials are looked up in an LDAP directory. The following is assumed about the layout of the directory:
 
-* the user entries all have a common parent
-* the user entries must have a relative distinguished name "uid" with as the value the user ID
-* the user entries must also have an attribute to indicate whether the user is authorized to use the SWORD deposit service. The name of this 
+* The user entries all have a common parent.
+* The user entries must have a relative distinguished name "uid" with as the value the user ID.
+* The user entries must also have an attribute to indicate whether the user is authorized to use the SWORD deposit service. The name of this 
   attribute and the value that means "enabled" are configurable.
+  
+
+EXAMPLES
+--------
+
+The directory `src/test/resources/input` contains several bags that can be used to test the service. Several helper scripts are provided to
+facilitate testing. The [cURL] command must be installed and on your `PATH` for the scripts to work. 
  
+ 
+[cURL]: https://curl.haxx.se/
 
 INSTALLATION AND CONFIGURATION
 ------------------------------

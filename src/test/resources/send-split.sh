@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 CONTENT_TYPE=application/octet-stream
 FILENAME=$1

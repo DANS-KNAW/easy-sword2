@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 CONTENT_TYPE=application/zip
 FILENAME=$1

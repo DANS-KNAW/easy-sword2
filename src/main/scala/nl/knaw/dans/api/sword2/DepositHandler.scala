@@ -262,15 +262,13 @@ object DepositHandler {
   }
 
   private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
-    if (fetchItems.nonEmpty) {
-      log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
-    }
+    if (fetchItems.nonEmpty) log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
 
     fetchItems
       .map(item => Using.urlInputStream(new URL(item.getUrl))
         .map(src => {
           val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
-          if (file.exists())
+          if (file.exists)
             Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
           else
             Try {
@@ -294,7 +292,7 @@ object DepositHandler {
   private def noFetchItemsAlreadyInBag(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking that the files in fetch.txt are absent in the bag.")
 
-    val presentFiles = fetchItems.filter(item => new File(bagitDir.getAbsoluteFile, item.getFilename).exists())
+    val presentFiles = fetchItems.filter(item => new File(bagitDir.getAbsoluteFile, item.getFilename).exists)
     if (presentFiles.nonEmpty)
       Failure(InvalidDepositException(id, s"Fetch.txt file ${presentFiles.head.getFilename} is already present in the bag."))
     else
