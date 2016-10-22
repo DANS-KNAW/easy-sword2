@@ -16,15 +16,17 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.File
+import java.net.URI
 
 import org.apache.commons.io.FileUtils
 import org.scalatest.{FlatSpec, Matchers, OneInstancePerTest}
 
-trait Sword2Fixture extends FlatSpec with Matchers with OneInstancePerTest {
-  implicit val depositId = "test"
-  homeDir = new File("src/main/assembly/dist")
-
-  val targetBagDir = new File(s"target/test/resultBagDir")
-  FileUtils.deleteQuietly(targetBagDir)
-  protected def copyToTargetBagDir(sourceDir: File): Unit = FileUtils.copyDirectory(sourceDir, targetBagDir)
+/**
+ * Adds the implicits for calling the easy-bag-store functions.
+ */
+trait BagStoreFixture  {
+  implicit val baseDir = new File("src/test/resources/input/bag-store")
+  implicit val baseUrl = new URI("http://deasy.dans.knaw.nl/aips")
 }
+
+
