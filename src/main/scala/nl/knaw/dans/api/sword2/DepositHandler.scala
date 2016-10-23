@@ -48,24 +48,26 @@ object DepositHandler {
 
   val depositProcessingStream = PublishSubject[(String, Deposit)]()
 
-  depositProcessingStream
-    .onBackpressureBuffer
-    .observeOn(NewThreadScheduler())
-    .doOnEach(_ match { case (id, deposit) => finalizeDeposit(deposit.getMimeType)(id) })
-    .subscribe(_ match { case (id, deposit) => log.info(s"Done finalizing deposit $id") })
+  def startDepositProcessingStream(settings: Settings): Unit = {
+    depositProcessingStream
+      .onBackpressureBuffer
+      .observeOn(NewThreadScheduler())
+      .doOnEach(_ match { case (id, deposit) => finalizeDeposit(deposit.getMimeType)(settings, id) })
+      .subscribe(_ match { case (id, deposit) => log.info(s"Done finalizing deposit $id") })
+  }
 
-  def handleDeposit(deposit: Deposit)(implicit id: String): Try[DepositReceipt] = {
-    val payload = Paths.get(SwordProps("tempdir"), id, deposit.getFilename.split("/").last).toFile
+  def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: String): Try[DepositReceipt] = {
+    val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     for {
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
-    } yield createDepositReceipt(deposit, id)
+    } yield createDepositReceipt(deposit, settings, id)
   }
 
-  def genericErrorMessage(implicit id: String): String = {
+  def genericErrorMessage(implicit settings: Settings, id: String): String = {
 
-    val mailaddress = SwordProps("support.mailaddress")
+    val mailaddress = settings.supportMailAddress
     val timestamp = DateTime.now(DateTimeZone.UTC).toString
 
     s"""The server encountered an unexpected condition.
@@ -74,17 +76,17 @@ object DepositHandler {
     """.stripMargin
   }
 
-  def finalizeDeposit(mimeType: String)(implicit id: String): Try[Unit] = {
+  def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    implicit val baseDir: File = new File(SwordProps("bag-store.base-dir"))
-    implicit val baseUrl: URI  = new URI(SwordProps("bag-store.base-url"))
-    val tempDir = new File(SwordProps("tempdir"), id)
+    implicit val baseDir: File = new File(settings.bagStoreBaseDir)
+    implicit val baseUrl: URI  = new URI(settings.bagStoreBaseUri)
+    val tempDir = new File(settings.tempDir, id)
 
     val result = for {
       _        <- checkBagStoreBaseDir()
       _        <- extractBag(mimeType)
       bagitDir <- getBagDir(tempDir)
-      _        <- checkFetchItemUrls(bagitDir)
+      _        <- checkFetchItemUrls(bagitDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagitDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
@@ -100,7 +102,7 @@ object DepositHandler {
     }
   }
 
-  private def extractBag(mimeType: String)(implicit id: String): Try[File] = {
+  private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
     def extract(file: File, outputPath: String): Unit = new ZipFile(file.getPath).extractAll(outputPath)
 
     def getSequenceNumber(f: File): Int = {
@@ -122,7 +124,7 @@ object DepositHandler {
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val depositDir: File = new File(SwordProps("tempdir"), id)
+      val depositDir: File = new File(settings.tempDir, id)
       val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -156,7 +158,7 @@ object DepositHandler {
     depositDir.listFiles.find(f => f.isDirectory && isPartOfDeposit(f)).get
   }
 
-  def checkDepositIsInDraft(id: String): Try[Unit] =
+  def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] =
     DepositProperties.getState(id)
       .filter(_.label == "DRAFT")
       .map(_ => ())
@@ -172,7 +174,7 @@ object DepositHandler {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  def handleDepositAsync(deposit: Deposit)(implicit id: String): Try[Unit] = Try {
+  def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
       DepositProperties.set(id, "FINALIZING", "Deposit is being reassembled and validated", lookInTempFirst = true)
@@ -194,13 +196,13 @@ object DepositHandler {
     }
   }
 
-  def checkFetchItemUrls(bagitDir: File)(implicit id: String): Try[Unit] = {
+  def checkFetchItemUrls(bagitDir: File, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
     getFetchTxt(bagitDir)
       .map(_.asScala) // Option map
       .getOrElse(Seq.empty)
-      .map(item => checkUrlValidity(item.getUrl)) // Seq map
+      .map(item => checkUrlValidity(item.getUrl, urlPattern)) // Seq map
       .collectResults
       .map(_ => ()) // Try map
       .recoverWith {
@@ -208,7 +210,7 @@ object DepositHandler {
       }
   }
 
-  private def checkUrlValidity(url: String)(implicit id: String): Try[Unit] = {
+  private def checkUrlValidity(url: String, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
     def checkUrlSyntax: Try[URL] = {
       Try(new URL(url)).recoverWith {
         case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
@@ -216,7 +218,6 @@ object DepositHandler {
     }
 
     def checkUrlAllowed: Try[Unit] = {
-      val urlPattern = Pattern.compile(SwordProps("url-pattern"))
       if (urlPattern.matcher(url).matches()) Success(())
       else Failure(InvalidDepositException(id, s"Not allowed url in Fetch Items ($url)"))
     }
@@ -227,11 +228,11 @@ object DepositHandler {
     } yield ()
   }
 
-  def checkBagVirtualValidity(bagitDir: File)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  def checkBagVirtualValidity(bagitDir: File)(implicit id: String, bagStoreBaseDir: File, bagStoreBaseUri: URI): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
     val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
-    val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(baseUrl.toString))
+    val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(bagStoreBaseUri.toString))
 
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
@@ -392,13 +393,13 @@ object DepositHandler {
     }
   }
 
-  def moveBagToStorage()(implicit id: String): Try[File] =
+  def moveBagToStorage()(implicit settings: Settings, id: String): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
-      val tempDir = new File(SwordProps("tempdir"), id)
-      val storageDir = new File(SwordProps("deposits.rootdir"), id)
+      val tempDir = new File(settings.tempDir, id)
+      val storageDir = new File(settings.depositRootDir, id)
       if (isOnPosixFileSystem(tempDir))
-        Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(SwordProps("deposits.permissions")))
+        Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
       if (!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
       storageDir
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
@@ -416,11 +417,11 @@ object DepositHandler {
       .flatten
   }
 
-  def createDepositReceipt(deposit: Deposit, id: String): DepositReceipt = {
+  def createDepositReceipt(deposit: Deposit, settings: Settings, id: String): DepositReceipt = {
     val dr = new DepositReceipt
-    val editIRI = new IRI(SwordProps("base-url") + "/container/" + id)
-    val editMediaIri = new IRI(SwordProps("base-url") + "/media/" + id)
-    val stateIri = SwordProps("base-url") + "/statement/" + id
+    val editIRI = new IRI(settings.baseUrl + "/container/" + id)
+    val editMediaIri = new IRI(settings.baseUrl + "/media/" + id)
+    val stateIri = settings.baseUrl + "/statement/" + id
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editMediaIri)

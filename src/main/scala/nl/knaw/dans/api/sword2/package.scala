@@ -16,6 +16,8 @@
 package nl.knaw.dans.api
 
 import java.io.File
+import java.net.{URI, URL}
+import java.util.regex.Pattern
 
 import nl.knaw.dans.api.sword2.DepositHandler._
 import org.swordapp.server.DepositReceipt
@@ -23,13 +25,23 @@ import org.swordapp.server.DepositReceipt
 import scala.util.{Failure, Success, Try}
 
 package object sword2 {
-  /*
-   * HACK ALERT:
-   *
-   * This is a global variable. It's GLOBAL and VARIABLE, which is bad, but I can see no other way to get
-   * a Servlet Init Parameter into the global scope. If there is a better way, please let me know (JvM).
-   */
-  var homeDir: File = null
+  case class Settings(
+                       depositRootDir: File,
+                       depositPermissions: String,
+                       tempDir: File,
+                       baseUrl: String, // TODO: refactor to URL?
+                       collectionIri: String,
+                       authMode: String,
+                       authLdapUrl: Option[String],
+                       authUsersParentEntry: Option[String],
+                       authSwordEnabledAttributeName: Option[String],
+                       authSwordEnabledAttributeValue: Option[String],
+                       authSingleUser: Option[String],
+                       authSinglePassword: Option[String],
+                       urlPattern: Pattern,
+                       bagStoreBaseUri: String,
+                       bagStoreBaseDir: String,
+                       supportMailAddress: String)
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 

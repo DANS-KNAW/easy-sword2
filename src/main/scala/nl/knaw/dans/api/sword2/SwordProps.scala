@@ -19,25 +19,25 @@ import java.io.{IOException, FileInputStream, InputStream}
 import java.util.Properties
 import java.io.File
 
-object SwordProps {
-  private val props: Properties = new Properties
-
-  var input: InputStream = null
-  try {
-    input = new FileInputStream(new File(homeDir, "cfg/application.properties"))
-    props.load(input)
-  }
-  catch {
-    case e: IOException => e.printStackTrace()
-  } finally {
-    if (input != null) {
-      try {
-        input.close()
-      } catch {
-        case e: IOException => e.printStackTrace()
-      }
-    }
-  }
-
-  def apply(key: String): String = props.getProperty(key)
-}
+//object SwordProps {
+//  private val props: Properties = new Properties
+//
+//  var input: InputStream = null
+//  try {
+//    input = new FileInputStream(new File(homeDir, "cfg/application.properties"))
+//    props.load(input)
+//  }
+//  catch {
+//    case e: IOException => e.printStackTrace()
+//  } finally {
+//    if (input != null) {
+//      try {
+//        input.close()
+//      } catch {
+//        case e: IOException => e.printStackTrace()
+//      }
+//    }
+//  }
+//
+//  def apply(key: String): String = props.getProperty(key)
+//}

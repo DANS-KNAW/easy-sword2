@@ -18,9 +18,9 @@ package nl.knaw.dans.api.sword2
 import org.swordapp.server.SwordConfigurationDefault
 
 class SwordConfig extends SwordConfigurationDefault {
-
   override def getAuthType: String = "Basic"
 
   override def getMaxUploadSize: Int = -1
 
+  var settings: Settings = null
 }

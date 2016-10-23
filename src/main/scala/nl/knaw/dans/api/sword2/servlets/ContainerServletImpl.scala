@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.api.sword2
+package nl.knaw.dans.api.sword2.servlets
 
-import java.io.File
+import nl.knaw.dans.api.sword2.{Settings, SwordConfig}
+import org.swordapp.server.servlets.ContainerServletDefault
 
-import org.apache.commons.io.FileUtils
-import org.scalatest.{FlatSpec, Matchers, OneInstancePerTest}
-
-trait Sword2Fixture extends FlatSpec with Matchers with OneInstancePerTest {
-  implicit val depositId = "test"
-
-
-  val targetBagDir = new File(s"target/test/resultBagDir")
-  FileUtils.deleteQuietly(targetBagDir)
-  protected def copyToTargetBagDir(sourceDir: File): Unit = FileUtils.copyDirectory(sourceDir, targetBagDir)
+class ContainerServletImpl extends  ContainerServletDefault{
+  override def init(): Unit = {
+    super.init()
+    config.asInstanceOf[SwordConfig].settings = getServletContext.getAttribute(EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY).asInstanceOf[Settings]
+  }
 }

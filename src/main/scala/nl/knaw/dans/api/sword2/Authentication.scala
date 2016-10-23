@@ -40,36 +40,36 @@ object Authentication {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials) {
+  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings) {
     log.debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf)) {
       throw new SwordError("http://purl.org/net/sword/error/MediationNotAllowed")
     }
-    log.debug(s"Checking credentials for user ${auth.getUsername} using auth.mode: ${SwordProps("auth.mode")}")
-    SwordProps("auth.mode") match {
-      case "single" => if (SwordProps("auth.single.user") != auth.getUsername || hash(auth.getPassword, auth.getUsername) != SwordProps("auth.single.password")) throw new SwordAuthException
+    log.debug(s"Checking credentials for user ${auth.getUsername} using auth.mode: ${settings.authMode}")
+    settings.authMode match {
+      case "single" => if (settings.authSingleUser != auth.getUsername || hash(auth.getPassword, auth.getUsername) != settings.authSinglePassword) throw new SwordAuthException
       case "ldap" => if(!authenticateThroughLdap(auth.getUsername, auth.getPassword).get) throw new SwordAuthException
       case _ => throw new RuntimeException("Authentication not properly configured. Contact service admin")
     }
     log.debug("Authentication SUCCESS")
   }
 
-  private def authenticateThroughLdap(user: String, password: String): Try[Boolean] = Try {
+  private def authenticateThroughLdap(user: String, password: String)(implicit settings: Settings): Try[Boolean] = Try {
     getInitialContext(user, password) match {
       case Success(context) =>
-        val attrs = context.getAttributes(s"uid=$user, ${SwordProps("auth.ldap.users.parent-entry")}")
-        val enabled = attrs.get(SwordProps("auth.ldap.sword-enabled-attribute-name"))
-        enabled != null && enabled.size == 1 && enabled.get(0) == SwordProps("auth.ldap.sword-enabled-attribute-value")
+        val attrs = context.getAttributes(s"uid=$user, ${settings.authUsersParentEntry.get}") // TODO: Refactor away get call
+        val enabled = attrs.get(settings.authSwordEnabledAttributeName.get) // TODO: Refactor away get call
+        enabled != null && enabled.size == 1 && enabled.get(0) == settings.authSwordEnabledAttributeValue.get // TODO: Refactor away get call
       case Failure(t: AuthenticationException) => false
       case Failure(t) => throw new RuntimeException("Error trying to authenticate", t)
     }
   }
 
-  private def getInitialContext(user: String, password: String): Try[InitialLdapContext] = Try {
+  private def getInitialContext(user: String, password: String)(implicit settings: Settings): Try[InitialLdapContext] = Try {
     val env = new util.Hashtable[String, String]()
-    env.put(Context.PROVIDER_URL, SwordProps("auth.ldap.url"))
+    env.put(Context.PROVIDER_URL, settings.authLdapUrl.get) // TODO: Refactor away get call
     env.put(Context.SECURITY_AUTHENTICATION, "simple")
-    env.put(Context.SECURITY_PRINCIPAL, s"uid=$user, ${SwordProps("auth.ldap.users.parent-entry")}")
+    env.put(Context.SECURITY_PRINCIPAL, s"uid=$user, ${settings.authUsersParentEntry.get}") // TODO: Refactor away get call
     env.put(Context.SECURITY_CREDENTIALS, password)
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
     new InitialLdapContext(env, null)

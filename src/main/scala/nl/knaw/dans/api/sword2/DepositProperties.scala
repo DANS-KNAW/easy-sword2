@@ -27,9 +27,9 @@ object DepositProperties {
   val log = LoggerFactory.getLogger(getClass)
   case class State(label: String, description: String, timeStamp: String)
 
-  def set(id: String, stateLabel: String, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null): Try[Unit] = Try {
-    val depositDir = new File(if (lookInTempFirst) SwordProps("tempdir")
-                              else SwordProps("deposits.rootdir"), id)
+  def set(id: String, stateLabel: String, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
+    val depositDir = new File(if (lookInTempFirst) settings.tempDir
+                              else settings.depositRootDir, id)
     val props = readProperties(new File(depositDir, "deposit.properties"))
     props.setProperty("state.label", stateLabel)
     props.setProperty("state.description",
@@ -41,10 +41,10 @@ object DepositProperties {
     props.save()
   }
 
-  def getState(id: String): Try[State] = {
+  def getState(id: String)(implicit settings: Settings): Try[State] = {
     log.debug(s"[$id] Trying to retrieve state")
-    readState(id, new File(SwordProps("tempdir"), s"$id/deposit.properties")).recoverWith {
-      case f: IOException => readState(id, new File(SwordProps("deposits.rootdir"), s"$id/deposit.properties"))
+    readState(id, new File(settings.tempDir, s"$id/deposit.properties")).recoverWith {
+      case f: IOException => readState(id, new File(settings.depositRootDir, s"$id/deposit.properties"))
     }
   }
   private def readState(id: String, f: File): Try[State] = Try {

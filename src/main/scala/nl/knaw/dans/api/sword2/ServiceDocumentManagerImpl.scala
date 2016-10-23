@@ -25,7 +25,8 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
-  def getServiceDocument(s: String, authCredentials: AuthCredentials, swordConfiguration: SwordConfiguration): ServiceDocument = {
+  def getServiceDocument(s: String, authCredentials: AuthCredentials, config: SwordConfiguration): ServiceDocument = {
+    implicit val settings = config.asInstanceOf[SwordConfig].settings
     log.info("Service document retrieved by {}",
       if (authCredentials.getUsername.isEmpty) "Anonymous user"
       else authCredentials.getUsername)
@@ -35,7 +36,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
     val sc: SwordCollection = new SwordCollection
     sc.setTitle("DANS Default Data Collection")
     sc.addAcceptPackaging(BAGIT_URI)
-    sc.setLocation(SwordProps("collection.iri"))
+    sc.setLocation(settings.collectionIri)
     sw.addCollection(sc)
     sdoc.addWorkspace(sw)
     sdoc
