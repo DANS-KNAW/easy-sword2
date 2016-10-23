@@ -1,2 +1,0 @@
-c630514d91d2e2dcc2f00bbdefb09169  data/simple/dokumentti.txt
-37a65bbbd1b05a02dd6ff7ba56a219f7  data/simple/folder1/dokumentti_1.txt
