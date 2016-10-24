@@ -78,6 +78,7 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
+    // TODO pass on the combination object of baseDir and baseURL
     implicit val baseDir: File = new File(settings.bagStoreBaseDir)
     implicit val baseUrl: URI  = new URI(settings.bagStoreBaseUri)
     val tempDir = new File(settings.tempDir, id)
