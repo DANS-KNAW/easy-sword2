@@ -419,9 +419,9 @@ object DepositHandler {
 
   def createDepositReceipt(deposit: Deposit, settings: Settings, id: String): DepositReceipt = {
     val dr = new DepositReceipt
-    val editIRI = new IRI(settings.baseUrl + "/container/" + id)
-    val editMediaIri = new IRI(settings.baseUrl + "/media/" + id)
-    val stateIri = settings.baseUrl + "/statement/" + id
+    val editIRI = new IRI(settings.serviceBaseUrl + "/container/" + id)
+    val editMediaIri = new IRI(settings.serviceBaseUrl + "/media/" + id)
+    val stateIri = settings.serviceBaseUrl + "/statement/" + id
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editMediaIri)

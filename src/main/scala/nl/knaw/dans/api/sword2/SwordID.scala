@@ -25,8 +25,8 @@ object SwordID {
       case Some(slug) => slug
       case None => generateTimeBasedPostfix.get
     }
-    val prefix = settings.authMode match {
-      case "single" => ""
+    val prefix = settings.auth match {
+      case _ : SingleUserAuthSettings => ""
       case _ => s"$user-"
     }
     s"$prefix$postfix"

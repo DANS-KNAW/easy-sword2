@@ -25,19 +25,17 @@ import org.swordapp.server.DepositReceipt
 import scala.util.{Failure, Success, Try}
 
 package object sword2 {
+  sealed abstract class AuthenticationSettings()
+  case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
+  case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
+
   case class Settings(
                        depositRootDir: File,
                        depositPermissions: String,
                        tempDir: File,
-                       baseUrl: String, // TODO: refactor to URL?
+                       serviceBaseUrl: String, // TODO: refactor to URL?
                        collectionIri: String,
-                       authMode: String,
-                       authLdapUrl: Option[String],
-                       authUsersParentEntry: Option[String],
-                       authSwordEnabledAttributeName: Option[String],
-                       authSwordEnabledAttributeValue: Option[String],
-                       authSingleUser: Option[String],
-                       authSinglePassword: Option[String],
+                       auth: AuthenticationSettings,
                        urlPattern: Pattern,
                        bagStoreBaseUri: String,
                        bagStoreBaseDir: String,

@@ -16,12 +16,13 @@
 package nl.knaw.dans.api.sword2.servlets
 
 import java.io.File
+import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.{ServletContextEvent, ServletContextListener, ServletException}
 
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
-import nl.knaw.dans.api.sword2.{DepositHandler, Settings}
+import nl.knaw.dans.api.sword2.{DepositHandler, LdapAuthSettings, Settings, SingleUserAuthSettings}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.slf4j.LoggerFactory
 
@@ -78,21 +79,21 @@ class ServiceInitializer extends ServletContextListener {
     if (!tempDir.canRead) throw new ServletException("Cannot read tempdir")
     val baseUrl = config.getString("base-url")
     val collectionIri = config.getString("collection.iri")
-    val authMode = config.getString("auth.mode")
-    val authLdapUrl = Option(config.getString("auth.ldap.url"))
-    val authUsersParentEntry = Option(config.getString("auth.ldap.users.parent-entry"))
-    val authSwordEnabledAttributeName = Option(config.getString("auth.ldap.sword-enabled-attribute-name"))
-    val authSwordEnabledAttributeValue = Option(config.getString("auth.ldap.sword-enabled-attribute-value"))
-    val authSingleUser = Option(config.getString("auth.single.user"))
-    val authSinglePassword = Option(config.getString("auth.single.password"))
+    val auth = config.getString("auth.mode") match {
+      case "ldap" => LdapAuthSettings(new URI(config.getString("auth.ldap.url")),
+        config.getString("auth.ldap.users.parent-entry"),
+        config.getString("auth.ldap.sword-enabled-attribute-name"),
+        config.getString("auth.ldap.sword-enabled-attribute-value"))
+      case "single" => SingleUserAuthSettings(config.getString("auth.single.user"), config.getString("auth.single.password"))
+      case _ => throw new RuntimeException(s"Invalid authentication settings: ${config.getString("auth.mode")}")
+    }
     val urlPattern = Pattern.compile(config.getString("url-pattern"))
     // TODO: make use of bag-store optional through configuration
     val bagStoreBaseUri = config.getString("bag-store.base-url") // TODO: make File, check existence
     val bagStoreBaseDir = config.getString("bag-store.base-dir") // TODO: make File, check existence
     val supportMailAddress = config.getString("support.mailaddress")
     Settings(
-      depositRootDir, depositPermissions, tempDir, baseUrl, collectionIri, authMode, authLdapUrl, authUsersParentEntry,
-      authSwordEnabledAttributeName, authSwordEnabledAttributeValue, authSingleUser, authSinglePassword, urlPattern,
+      depositRootDir, depositPermissions, tempDir, baseUrl, collectionIri, auth, urlPattern,
       bagStoreBaseUri, bagStoreBaseDir, supportMailAddress)
   }
 
