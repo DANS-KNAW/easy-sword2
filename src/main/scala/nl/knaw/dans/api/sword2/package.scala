@@ -25,6 +25,11 @@ import org.swordapp.server.DepositReceipt
 import scala.util.{Failure, Success, Try}
 
 package object sword2 {
+
+  // TODO make authMode + authentication into separate class structure (sealed abstract class + 2 case classes)
+  // TODO make bagStoreBaseXXX into class and give the Settings an Option of this object
+  // TODO field naming (baseUrl occurs in multiple contexts within DepositHandler)
+
   case class Settings(
                        depositRootDir: File,
                        depositPermissions: String,
@@ -39,8 +44,8 @@ package object sword2 {
                        authSingleUser: Option[String],
                        authSinglePassword: Option[String],
                        urlPattern: Pattern,
-                       bagStoreBaseUri: String,
-                       bagStoreBaseDir: String,
+                       bagStoreBaseUri: String, // TODO refactor to URI
+                       bagStoreBaseDir: String, // TODO refactor to File
                        supportMailAddress: String)
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
