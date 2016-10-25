@@ -83,8 +83,8 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordAuthException])
   def addResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-    Authentication.checkAuthentication(auth)
     val result = for {
+      _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
       _ = settings.auth match {
           case _ :LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)

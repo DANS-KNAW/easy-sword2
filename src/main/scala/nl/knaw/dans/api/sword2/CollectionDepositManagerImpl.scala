@@ -27,8 +27,8 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-    Authentication.checkAuthentication(auth)
     val result = for {
+      _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
       maybeSlug = if(isNotBlank(deposit.getSlug)) Some(deposit.getSlug) else None
       id <- SwordID.generate(maybeSlug, auth.getUsername)

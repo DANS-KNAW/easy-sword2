@@ -40,31 +40,40 @@ object Authentication {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings) {
+  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     log.debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf)) {
-      throw new SwordError("http://purl.org/net/sword/error/MediationNotAllowed")
+      Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
     }
-    log.debug(s"Checking credentials for user ${auth.getUsername}")
-    settings.auth match {
-      case SingleUserAuthSettings(user, password) => if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) throw new SwordAuthException
-      case authSettings@LdapAuthSettings(ldapUrl, parentEntry, attrName, attrValue) => authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings).map {
-          case false => throw new SwordAuthException
+    else {
+      log.debug(s"Checking credentials for user ${auth.getUsername}")
+      settings.auth match {
+        case SingleUserAuthSettings(user, password) =>
+          if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) Failure(new SwordAuthException)
+          else {
+            log.info("Single user log in SUCCESS")
+            Success(())
+          }
+        case authSettings: LdapAuthSettings => authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings).map {
+          case false => Failure(new SwordAuthException)
           case true => log.info(s"User ${auth.getUsername} authentication through LDAP successful")
-      }.get
-      case _ => throw new RuntimeException("Authentication not properly configured. Contact service admin")
+            log.info("LDAP log in SUCCESS")
+            Success(())
+        }
+        case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
+      }
     }
-    log.debug("Authentication SUCCESS")
   }
 
-  private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings): Try[Boolean] = Try {
-    getInitialContext(user, password, authSettings) match {
-      case Success(context) =>
+  private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings): Try[Boolean] = {
+    getInitialContext(user, password, authSettings).map {
+      context =>
         val attrs = context.getAttributes(s"uid=$user, ${authSettings.usersParentEntry}")
         val enabled = attrs.get(authSettings.swordEnabledAttributeName)
         enabled != null && enabled.size == 1 && enabled.get(0) == authSettings.swordEnabledAttributeValue
-      case Failure(t: AuthenticationException) => false
-      case Failure(t) => throw new RuntimeException("Error trying to authenticate", t)
+    }.recoverWith {
+        case t: AuthenticationException => Success(false)
+        case t => Failure(new RuntimeException("Error trying to authenticate", t))
     }
   }
 

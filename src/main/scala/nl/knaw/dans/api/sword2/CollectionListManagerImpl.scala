@@ -28,7 +28,7 @@ class CollectionListManagerImpl extends CollectionListManager {
   @throws(classOf[SwordError])
   def listCollectionContents(collectionIRI: IRI, auth: AuthCredentials, config: SwordConfiguration): Feed = {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-    Authentication.checkAuthentication(auth)
+    Authentication.checkAuthentication(auth).get
     val abdera = new Abdera
     SwordID.extract(collectionIRI.toString) match {
       case Success(id) => abdera.newFeed.addEntry(createEntry(id, abdera))
