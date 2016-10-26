@@ -18,7 +18,7 @@ package nl.knaw.dans.api.sword2.servlets
 import nl.knaw.dans.api.sword2.{Settings, SwordConfig}
 import org.swordapp.server.servlets.MediaResourceServletDefault
 
-class MediaResourceServletImpl extends  MediaResourceServletDefault{
+class MediaResourceServletImpl extends MediaResourceServletDefault{
   override def init(): Unit = {
     super.init()
     config.asInstanceOf[SwordConfig].settings = getServletContext.getAttribute(EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY).asInstanceOf[Settings]

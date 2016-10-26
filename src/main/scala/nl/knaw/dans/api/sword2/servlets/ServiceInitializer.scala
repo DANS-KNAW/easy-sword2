@@ -46,7 +46,7 @@ class ServiceInitializer extends ServletContextListener {
   def initLogging(homeDir: File): Unit = {
     try {
       LoggerFactory.getILoggerFactory match {
-        case lc: LoggerContext => {
+        case lc: LoggerContext =>
           val logConfigFile = new File(homeDir, "cfg/logback.xml")
           val configurator = new JoranConfigurator
           configurator.setContext(lc)
@@ -55,7 +55,6 @@ class ServiceInitializer extends ServletContextListener {
           val log = LoggerFactory.getLogger(getClass)
           log.info(s"Home directory = $homeDir")
           log.info(s"Logback configuration file = $logConfigFile")
-        }
         case _ => println("Logback not found. Could not configure logging")
       }
     } catch {
@@ -65,7 +64,6 @@ class ServiceInitializer extends ServletContextListener {
   }
 
   def readSettings(homeDir: File): Settings = {
-    val log = LoggerFactory.getLogger(getClass)
     val config = {
       val ps = new PropertiesConfiguration()
       ps.setDelimiterParsingDisabled(true)
@@ -97,7 +95,7 @@ class ServiceInitializer extends ServletContextListener {
       bagStoreBaseUri, bagStoreBaseDir, supportMailAddress)
   }
 
-  def contextDestroyed(sce: ServletContextEvent) = Unit
+  override def contextDestroyed(sce: ServletContextEvent): Unit = {}
 }
 
 

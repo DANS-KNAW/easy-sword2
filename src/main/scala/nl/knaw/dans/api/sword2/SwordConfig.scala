@@ -22,5 +22,5 @@ class SwordConfig extends SwordConfigurationDefault {
 
   override def getMaxUploadSize: Int = -1
 
-  var settings: Settings = null
+  var settings: Settings = _
 }
