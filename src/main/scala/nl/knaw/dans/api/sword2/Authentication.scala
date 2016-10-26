@@ -40,36 +40,48 @@ object Authentication {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials) {
+  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     log.debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf)) {
-      throw new SwordError("http://purl.org/net/sword/error/MediationNotAllowed")
+      Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
     }
-    log.debug(s"Checking credentials for user ${auth.getUsername} using auth.mode: ${SwordProps("auth.mode")}")
-    SwordProps("auth.mode") match {
-      case "single" => if (SwordProps("auth.single.user") != auth.getUsername || hash(auth.getPassword, auth.getUsername) != SwordProps("auth.single.password")) throw new SwordAuthException
-      case "ldap" => if(!authenticateThroughLdap(auth.getUsername, auth.getPassword).get) throw new SwordAuthException
-      case _ => throw new RuntimeException("Authentication not properly configured. Contact service admin")
+    else {
+      log.debug(s"Checking credentials for user ${auth.getUsername}")
+      settings.auth match {
+        case SingleUserAuthSettings(user, password) =>
+          if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) Failure(new SwordAuthException)
+          else {
+            log.info("Single user log in SUCCESS")
+            Success(())
+          }
+        case authSettings: LdapAuthSettings => authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings).map {
+          case false => Failure(new SwordAuthException)
+          case true => log.info(s"User ${auth.getUsername} authentication through LDAP successful")
+            log.info("LDAP log in SUCCESS")
+            Success(())
+        }
+        case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
+      }
     }
-    log.debug("Authentication SUCCESS")
   }
 
-  private def authenticateThroughLdap(user: String, password: String): Try[Boolean] = Try {
-    getInitialContext(user, password) match {
-      case Success(context) =>
-        val attrs = context.getAttributes(s"uid=$user, ${SwordProps("auth.ldap.users.parent-entry")}")
-        val enabled = attrs.get(SwordProps("auth.ldap.sword-enabled-attribute-name"))
-        enabled != null && enabled.size == 1 && enabled.get(0) == SwordProps("auth.ldap.sword-enabled-attribute-value")
-      case Failure(t: AuthenticationException) => false
-      case Failure(t) => throw new RuntimeException("Error trying to authenticate", t)
+  private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings): Try[Boolean] = {
+    getInitialContext(user, password, authSettings).map {
+      context =>
+        val attrs = context.getAttributes(s"uid=$user, ${authSettings.usersParentEntry}")
+        val enabled = attrs.get(authSettings.swordEnabledAttributeName)
+        enabled != null && enabled.size == 1 && enabled.get(0) == authSettings.swordEnabledAttributeValue
+    }.recoverWith {
+        case t: AuthenticationException => Success(false)
+        case t => Failure(new RuntimeException("Error trying to authenticate", t))
     }
   }
 
-  private def getInitialContext(user: String, password: String): Try[InitialLdapContext] = Try {
+  private def getInitialContext(user: String, password: String, authSettings: LdapAuthSettings): Try[InitialLdapContext] = Try {
     val env = new util.Hashtable[String, String]()
-    env.put(Context.PROVIDER_URL, SwordProps("auth.ldap.url"))
+    env.put(Context.PROVIDER_URL, authSettings.ldapUrl.toString)
     env.put(Context.SECURITY_AUTHENTICATION, "simple")
-    env.put(Context.SECURITY_PRINCIPAL, s"uid=$user, ${SwordProps("auth.ldap.users.parent-entry")}")
+    env.put(Context.SECURITY_PRINCIPAL, s"uid=$user, ${authSettings.usersParentEntry}")
     env.put(Context.SECURITY_CREDENTIALS, password)
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
     new InitialLdapContext(env, null)

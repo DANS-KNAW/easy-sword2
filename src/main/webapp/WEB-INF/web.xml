@@ -80,11 +80,7 @@
     </context-param>
 
     <listener>
-        <listener-class>nl.knaw.dans.api.sword2.HomeDirInitializer</listener-class>
-    </listener>
-
-    <listener>
-        <listener-class>nl.knaw.dans.api.sword2.LoggingInitializer</listener-class>
+        <listener-class>nl.knaw.dans.api.sword2.servlets.ServiceInitializer</listener-class>
     </listener>
 
     <servlet>
@@ -94,27 +90,27 @@
 
     <servlet>
         <servlet-name>servicedocument</servlet-name>
-        <servlet-class>org.swordapp.server.servlets.ServiceDocumentServletDefault</servlet-class>
+        <servlet-class>nl.knaw.dans.api.sword2.servlets.ServiceDocumentServletImpl</servlet-class>
     </servlet>
 
     <servlet>
         <servlet-name>collection</servlet-name>
-        <servlet-class>org.swordapp.server.servlets.CollectionServletDefault</servlet-class>
+        <servlet-class>nl.knaw.dans.api.sword2.servlets.CollectionServletImpl</servlet-class>
     </servlet>
 
     <servlet>
         <servlet-name>container</servlet-name>
-        <servlet-class>org.swordapp.server.servlets.ContainerServletDefault</servlet-class>
+        <servlet-class>nl.knaw.dans.api.sword2.servlets.ContainerServletImpl</servlet-class>
     </servlet>
 
     <servlet>
         <servlet-name>media</servlet-name>
-        <servlet-class>org.swordapp.server.servlets.MediaResourceServletDefault</servlet-class>
+        <servlet-class>nl.knaw.dans.api.sword2.servlets.MediaResourceServletImpl</servlet-class>
     </servlet>
 
     <servlet>
         <servlet-name>statement</servlet-name>
-        <servlet-class>org.swordapp.server.servlets.StatementServletDefault</servlet-class>
+        <servlet-class>nl.knaw.dans.api.sword2.servlets.StatementServletImpl</servlet-class>
     </servlet>
 
     <servlet-mapping>

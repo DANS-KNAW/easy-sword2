@@ -31,9 +31,10 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
+    implicit val settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        val dir: File = new File(SwordProps("deposits.rootdir") + "/" + id)
+        val dir: File = new File(settings.depositRootDir, id)
         if (!dir.exists) {
           throw new SwordError(404)
         }
@@ -81,13 +82,17 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    Authentication.checkAuthentication(auth)
+    implicit val settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
+      _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
-      _ = if(SwordProps("auth.mode") == "ldap") checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+      _ = settings.auth match {
+          case _ :LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+          case _ => ()
+        }
       _ = log.debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
-      depositReceipt <- handleDeposit(deposit)(id)
+      depositReceipt <- handleDeposit(deposit)(settings, id)
     } yield (id, depositReceipt)
 
     result.getOrThrow

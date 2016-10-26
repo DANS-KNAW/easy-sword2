@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.api.sword2
+package nl.knaw.dans.api.sword2.servlets
 
-import org.swordapp.server.SwordConfigurationDefault
+import nl.knaw.dans.api.sword2.{Settings, SwordConfig}
+import org.swordapp.server.servlets.ServiceDocumentServletDefault
 
-class SwordConfig extends SwordConfigurationDefault {
-  override def getAuthType: String = "Basic"
-
-  override def getMaxUploadSize: Int = -1
-
-  var settings: Settings = _
+class ServiceDocumentServletImpl extends ServiceDocumentServletDefault{
+  override def init(): Unit = {
+    super.init()
+    config.asInstanceOf[SwordConfig].settings = getServletContext.getAttribute(EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY).asInstanceOf[Settings]
+  }
 }

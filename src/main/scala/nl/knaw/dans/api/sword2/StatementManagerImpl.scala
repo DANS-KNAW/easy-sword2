@@ -26,9 +26,10 @@ class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
-    Authentication.checkAuthentication(auth)
+    implicit val settings = config.asInstanceOf[SwordConfig].settings
 
     // TODO: REFACTOR THIS MESS
+    Authentication.checkAuthentication(auth).get
     val maybeState = SwordID.extract(iri) match {
       case Success(id) => DepositProperties.getState(id)
       case Failure(t) => throw new SwordError(404)

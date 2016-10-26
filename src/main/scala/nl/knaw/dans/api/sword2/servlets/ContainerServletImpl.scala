@@ -13,31 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.api.sword2
+package nl.knaw.dans.api.sword2.servlets
 
-import java.io.{IOException, FileInputStream, InputStream}
-import java.util.Properties
-import java.io.File
+import nl.knaw.dans.api.sword2.{Settings, SwordConfig}
+import org.swordapp.server.servlets.ContainerServletDefault
 
-object SwordProps {
-  private val props: Properties = new Properties
-
-  var input: InputStream = null
-  try {
-    input = new FileInputStream(new File(homeDir, "cfg/application.properties"))
-    props.load(input)
+class ContainerServletImpl extends ContainerServletDefault{
+  override def init(): Unit = {
+    super.init()
+    config.asInstanceOf[SwordConfig].settings = getServletContext.getAttribute(EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY).asInstanceOf[Settings]
   }
-  catch {
-    case e: IOException => e.printStackTrace()
-  } finally {
-    if (input != null) {
-      try {
-        input.close()
-      } catch {
-        case e: IOException => e.printStackTrace()
-      }
-    }
-  }
-
-  def apply(key: String): String = props.getProperty(key)
 }

@@ -20,13 +20,13 @@ import org.swordapp.server.SwordError
 import scala.util.{Failure, Success, Try}
 
 object SwordID {
-  def generate(maybeSlug: Option[String], user: String): Try[String] = Try {
+  def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[String] = Try {
     val postfix = maybeSlug match {
       case Some(slug) => slug
       case None => generateTimeBasedPostfix.get
     }
-    val prefix = SwordProps("auth.mode") match {
-      case "single" => ""
+    val prefix = settings.auth match {
+      case _ : SingleUserAuthSettings => ""
       case _ => s"$user-"
     }
     s"$prefix$postfix"
