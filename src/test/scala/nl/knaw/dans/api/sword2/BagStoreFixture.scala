@@ -18,9 +18,6 @@ package nl.knaw.dans.api.sword2
 import java.io.File
 import java.net.URI
 
-import org.apache.commons.io.FileUtils
-import org.scalatest.{FlatSpec, Matchers, OneInstancePerTest}
-
 /**
  * Adds the implicits for calling the easy-bag-store functions.
  */

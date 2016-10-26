@@ -16,7 +16,7 @@
 package nl.knaw.dans.api
 
 import java.io.File
-import java.net.{URI, URL}
+import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.api.sword2.DepositHandler._

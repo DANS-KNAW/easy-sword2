@@ -15,9 +15,8 @@
  */
 package nl.knaw.dans.api.sword2.servlets
 
-import nl.knaw.dans.api.sword2.SwordConfig
+import nl.knaw.dans.api.sword2.{Settings, SwordConfig}
 import org.swordapp.server.servlets.CollectionServletDefault
-import nl.knaw.dans.api.sword2.Settings
 
 class CollectionServletImpl extends CollectionServletDefault {
   override def init(): Unit = {

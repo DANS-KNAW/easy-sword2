@@ -16,10 +16,10 @@
 package nl.knaw.dans.api.sword2
 
 import java.util
-import javax.crypto.{Mac, SecretKeyFactory}
-import javax.crypto.spec.{SecretKeySpec, PBEKeySpec}
-import javax.naming.{AuthenticationException, Context}
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import javax.naming.ldap.InitialLdapContext
+import javax.naming.{AuthenticationException, Context}
 
 import org.apache.commons.lang.StringUtils._
 import org.slf4j.LoggerFactory

@@ -15,7 +15,7 @@
  */
 package nl.knaw.dans.api.sword2
 
-import java.io.{PrintWriter, StringWriter, File, IOException}
+import java.io.{File, IOException, PrintWriter, StringWriter}
 
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.joda.time.{DateTime, DateTimeZone}

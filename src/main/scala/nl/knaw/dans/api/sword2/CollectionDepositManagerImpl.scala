@@ -16,10 +16,10 @@
 package nl.knaw.dans.api.sword2
 
 import nl.knaw.dans.api.sword2.DepositHandler._
-import org.swordapp.server._
 import org.apache.commons.lang.StringUtils._
+import org.swordapp.server._
 
-import scala.util.{Try, Failure, Success}
+import scala.util.Try
 
 class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordError])

@@ -18,8 +18,6 @@ package nl.knaw.dans.api.sword2
 import java.io.File
 import java.util.regex.Pattern
 
-import org.apache.commons.io.FileUtils
-
 import scala.util.{Failure, Success}
 
 class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {

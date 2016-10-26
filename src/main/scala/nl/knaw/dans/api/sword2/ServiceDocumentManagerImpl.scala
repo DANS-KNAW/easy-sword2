@@ -15,8 +15,8 @@
  */
 package nl.knaw.dans.api.sword2
 
-import org.swordapp.server._
 import org.slf4j.LoggerFactory
+import org.swordapp.server._
 
 class ServiceDocumentManagerImpl extends ServiceDocumentManager {
   val log = LoggerFactory.getLogger(getClass)

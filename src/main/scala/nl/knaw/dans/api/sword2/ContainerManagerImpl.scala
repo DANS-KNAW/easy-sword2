@@ -23,7 +23,7 @@ import org.apache.abdera.i18n.iri.IRI
 import org.swordapp.server._
 
 import scala.collection.JavaConversions._
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 class ContainerManagerImpl extends ContainerManager {
 
