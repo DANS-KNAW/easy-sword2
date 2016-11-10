@@ -51,7 +51,15 @@ object DepositProperties {
     val s = readProperties(f)
     log.debug(s"[$id] Trying to retrieve state from $f")
     if(!f.exists()) throw new IOException(s"$f does not exist")
-    State(s.getString("state.label"), s.getString("state.description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+    val state = Option(s.getString("state.label")).getOrElse("")
+    val userId = Option(s.getString("depositor.userId")).getOrElse("")
+    if(state.isEmpty || userId.isEmpty) {
+      if (state.isEmpty) log.error(s"[$id] State not present in $f")
+      if (userId.isEmpty) log.error(s"[$id] User ID not present in $f")
+      State("FAILED", "There occured unexpected failure in deposit", new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+    }
+    else
+      State(state, s.getString("state.description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
   }
 
   private def stackTraceToString(t: Throwable): String = {
