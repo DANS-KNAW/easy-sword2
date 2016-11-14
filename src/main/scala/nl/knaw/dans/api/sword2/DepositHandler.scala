@@ -25,6 +25,7 @@ import java.util.regex.Pattern
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
+import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
 import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
@@ -263,12 +264,22 @@ object DepositHandler {
       }
     }
 
+    val itemsToResolve = fetchItems diff fetchItemsInBagStore
     for {
-      _ <- resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
+      _ <- resolveFetchItems(bagitDir, itemsToResolve)
+      _ <- removeFromFetchTxt(bagitDir, itemsToResolve)
       bag = getBagFromDir(bagitDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
+  }
+
+  private def removeFromFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] = Try {
+    getFetchTxt(bagDir).foreach { case fetchTxt =>
+        items.foreach(fetchTxt.remove)
+        if(fetchTxt.isEmpty) new File(bagDir, "fetch.txt").delete()
+        getBagFromDir(bagDir).write(new FileSystemWriter(bagFactory), bagDir);
+    }
   }
 
   private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
