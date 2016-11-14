@@ -274,13 +274,14 @@ object DepositHandler {
     } yield ()
   }
 
-  private def removeFromFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] = Try {
-    getFetchTxt(bagDir).foreach { case fetchTxt =>
-        items.foreach(fetchTxt.remove)
-        if(fetchTxt.isEmpty) new File(bagDir, "fetch.txt").delete()
-        getBagFromDir(bagDir).write(new FileSystemWriter(bagFactory), bagDir);
-    }
-  }
+  private def removeFromFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
+    getFetchTxt(bagDir).map(fetchTxt => Try {
+      items.foreach(fetchTxt.remove)
+      if (fetchTxt.isEmpty && !new File(bagDir, "fetch.txt").delete()) throw new IllegalStateException("Unable to remove empty fetch.txt")
+      getBagFromDir(bagDir).write(new FileSystemWriter(bagFactory), bagDir)
+    }.map(_ => ()))
+    .getOrElse(Success(()))
+
 
   private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     if (fetchItems.nonEmpty) log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
