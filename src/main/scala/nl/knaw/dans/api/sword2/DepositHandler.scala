@@ -269,7 +269,7 @@ object DepositHandler {
     val itemsToResolve = fetchItems diff fetchItemsInBagStore
     for {
       _ <- resolveFetchItems(bagitDir, itemsToResolve)
-      _ <- pruneFetchTxt(bagitDir, itemsToResolve)
+      _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagitDir, itemsToResolve)
       bag = getBagFromDir(bagitDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
