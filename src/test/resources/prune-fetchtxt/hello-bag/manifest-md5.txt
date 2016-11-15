@@ -1,0 +1,2 @@
+ce808835f8d3210df524c0893d2c5987  data/file.txt
+2ebdaa8c53bc1dca82e427cd1ba27363  data/hello.jpg

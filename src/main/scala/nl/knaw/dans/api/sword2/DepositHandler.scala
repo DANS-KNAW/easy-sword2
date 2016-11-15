@@ -23,6 +23,8 @@ import java.util.Collections
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
+import gov.loc.repository.bagit.Manifest.Algorithm
+import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
@@ -267,21 +269,31 @@ object DepositHandler {
     val itemsToResolve = fetchItems diff fetchItemsInBagStore
     for {
       _ <- resolveFetchItems(bagitDir, itemsToResolve)
-      _ <- removeFromFetchTxt(bagitDir, itemsToResolve)
+      _ <- pruneFetchTxt(bagitDir, itemsToResolve)
       bag = getBagFromDir(bagitDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
   }
 
-  private def removeFromFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
-    getFetchTxt(bagDir).map(fetchTxt => Try {
-      items.foreach(fetchTxt.remove)
-      if (fetchTxt.isEmpty && !new File(bagDir, "fetch.txt").delete()) throw new IllegalStateException("Unable to remove empty fetch.txt")
-      getBagFromDir(bagDir).write(new FileSystemWriter(bagFactory), bagDir)
-    }.map(_ => ()))
-    .getOrElse(Success(()))
+  def pruneFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
+    getBagFromDir2(bagDir).map {
+      case bag =>
+        bag.getFetchTxt.removeAll(items.asJava)
+        if (bag.getFetchTxt.isEmpty) bag.removeBagFile("fetch.txt")
+        bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
+          val completer = new TagManifestCompleter(bagFactory)
+          completer.setTagManifestAlgorithm(a)
+          completer complete bag
+        })
+        val writer = new FileSystemWriter(bagFactory)
+        writer.setTagFilesOnly(true)
+        bag.write(writer, bagDir)
+    }
 
+  private def getBagFromDir2(bagDir: File): Try[Bag] =  Try {
+    getBagFromDir(bagDir)
+  }
 
   private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     if (fetchItems.nonEmpty) log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")

@@ -1,0 +1,2 @@
+http://some/url - data/file/in/bag
+http://some/other/url - data/other/file/in/bag
