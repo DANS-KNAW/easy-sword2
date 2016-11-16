@@ -38,7 +38,7 @@ class PruneFetchTxtSpec extends Sword2Fixture {
   "pruneFetchTxt" should "remove fetch items listed in second argument" in {
     copyToTargetBagDir(TEST_BAG)
     DepositHandler.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1))
-    getFetchTxtSrc shouldNot include("data/file/in/bag")
+    getFetchTxtSrc should not include "data/file/in/bag"
   }
 
   it should "leave fetch items that are not listed in second argument" in {
@@ -55,9 +55,9 @@ class PruneFetchTxtSpec extends Sword2Fixture {
 
   it should "update checksum for fetch.txt in tagmanifest if fetch.txt is changed" in {
     copyToTargetBagDir(TEST_BAG)
-    getTagManifestSrc should include regex(s"""${CHECKSUM_FETCH_TXT_WITH_BOTH_FETCH_ITEMS}\\s+fetch.txt""") // Double-check preconditions
+    getTagManifestSrc should include regex s"""$CHECKSUM_FETCH_TXT_WITH_BOTH_FETCH_ITEMS\\s+fetch.txt""" // Double-check preconditions
     DepositHandler.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url")))
-    getTagManifestSrc should include regex(s"""${CHECKSUM_FETCH_TXT_WITH_ONLY_FETCH_ITEM_2}\\s+fetch.txt""") // Checksum of fetch.txt has changed because one item was deleted
+    getTagManifestSrc should include regex s"""$CHECKSUM_FETCH_TXT_WITH_ONLY_FETCH_ITEM_2\\s+fetch.txt""" // Checksum of fetch.txt has changed because one item was deleted
   }
 
   it should "remove fetch.txt from tagmanifest if fetch.txt is removed" in {
@@ -65,7 +65,7 @@ class PruneFetchTxtSpec extends Sword2Fixture {
     DepositHandler.pruneFetchTxt(targetBagDir,
       Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
         new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url")))
-    getTagManifestSrc shouldNot include("fetch.txt")
+    getTagManifestSrc should not include "fetch.txt"
   }
 
   it should "fail if no fetch.txt is present" in {
