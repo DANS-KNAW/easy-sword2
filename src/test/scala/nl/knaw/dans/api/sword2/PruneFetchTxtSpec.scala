@@ -20,6 +20,7 @@ import java.io.File
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 
 import scala.io.{Codec, Source}
+import scala.util.{Failure, Success}
 
 class PruneFetchTxtSpec extends Sword2Fixture {
   implicit val codec =Codec.UTF8
@@ -65,5 +66,12 @@ class PruneFetchTxtSpec extends Sword2Fixture {
       Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
         new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url")))
     getTagManifestSrc shouldNot include("fetch.txt")
+  }
+
+  it should "fail if no fetch.txt is present" in {
+    copyToTargetBagDir(TEST_BAG)
+    FETCH_TXT.delete()
+    DepositHandler.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
+      new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url"))) shouldBe a[Failure[_]]
   }
 }
