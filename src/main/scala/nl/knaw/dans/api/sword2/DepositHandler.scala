@@ -23,8 +23,11 @@ import java.util.Collections
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
+import gov.loc.repository.bagit.Manifest.Algorithm
+import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
+import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
 import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
@@ -86,9 +89,9 @@ object DepositHandler {
     val result = for {
       _        <- checkBagStoreBaseDir()
       _        <- extractBag(mimeType)
-      bagitDir <- getBagDir(tempDir)
-      _        <- checkFetchItemUrls(bagitDir, settings.urlPattern)
-      _        <- checkBagVirtualValidity(bagitDir)
+      bagDir   <- getBagDir(tempDir)
+      _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
+      _        <- checkBagVirtualValidity(bagDir)
       _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
     } yield ()
@@ -185,10 +188,6 @@ object DepositHandler {
     }
   }
 
-  private def getFetchTxt(bagitDir: File): Option[FetchTxt] = Option {
-    getBagFromDir(bagitDir).getFetchTxt
-  }
-
   def formatMessages(seq: Seq[String], in: String): String = {
     seq match {
       case Seq() => s"No errors found in $in"
@@ -197,10 +196,10 @@ object DepositHandler {
     }
   }
 
-  def checkFetchItemUrls(bagitDir: File, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
+  def checkFetchItemUrls(bagDir: File, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
-    getFetchTxt(bagitDir)
+    getFetchTxt(bagDir)
       .map(_.asScala) // Option map
       .getOrElse(Seq.empty)
       .map(item => checkUrlValidity(item.getUrl, urlPattern)) // Seq map
@@ -229,10 +228,10 @@ object DepositHandler {
     } yield ()
   }
 
-  def checkBagVirtualValidity(bagitDir: File)(implicit id: String, bagStoreBaseDir: File, bagStoreBaseUri: URI): Try[Unit] = {
+  def checkBagVirtualValidity(bagDir: File)(implicit id: String, bagStoreBaseDir: File, bagStoreBaseUri: URI): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
-    val fetchItems = getFetchTxt(bagitDir).map(_.asScala).getOrElse(Seq())
+    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
     val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(bagStoreBaseUri.toString))
 
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
@@ -253,7 +252,7 @@ object DepositHandler {
             val missingFilesNotInFetchText = missingPayloadFiles diff fetchItemFilesFromBagStore
 
             if (missingFilesNotInFetchText.isEmpty)
-              noFetchItemsAlreadyInBag(bagitDir, itemsFromBagStore)
+              noFetchItemsAlreadyInBag(bagDir, itemsFromBagStore)
                 .flatMap(_ => validateChecksumsFetchItems(bag, itemsFromBagStore))
             else
               Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
@@ -263,21 +262,46 @@ object DepositHandler {
       }
     }
 
+    val itemsToResolve = fetchItems diff fetchItemsInBagStore
     for {
-      _ <- resolveFetchItems(bagitDir, fetchItems diff fetchItemsInBagStore)
-      bag = getBagFromDir(bagitDir)
+      _ <- resolveFetchItems(bagDir, itemsToResolve)
+      _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
+      bag <- getBag(bagDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
   }
 
-  private def resolveFetchItems(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
+  def getFetchTxt(bagDir: File): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)
+
+  def pruneFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
+    getBag(bagDir)
+      .map(bag => {
+        Option(bag.getFetchTxt).map(fetchTxt => Try {
+          fetchTxt.removeAll(items.asJava)
+          if (fetchTxt.isEmpty) bag.removeBagFile(bag.getBagConstants.getFetchTxt)
+          bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
+            val completer = new TagManifestCompleter(bagFactory)
+            completer.setTagManifestAlgorithm(a)
+            completer complete bag
+          })
+          val writer = new FileSystemWriter(bagFactory)
+          writer.setTagFilesOnly(true)
+          bag.write(writer, bagDir)
+        }).getOrElse(Success(()))
+      })
+
+  private def getBag(bagDir: File): Try[Bag] =  Try {
+    bagFactory.createBag(bagDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+  }
+
+  private def resolveFetchItems(bagDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     if (fetchItems.nonEmpty) log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
 
     fetchItems
       .map(item => Using.urlInputStream(new URL(item.getUrl))
         .map(src => {
-          val file = new File(bagitDir.getAbsoluteFile, item.getFilename)
+          val file = new File(bagDir.getAbsoluteFile, item.getFilename)
           if (file.exists)
             Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
           else
@@ -299,10 +323,10 @@ object DepositHandler {
       }
   }
 
-  private def noFetchItemsAlreadyInBag(bagitDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
+  private def noFetchItemsAlreadyInBag(bagDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking that the files in fetch.txt are absent in the bag.")
 
-    val presentFiles = fetchItems.filter(item => new File(bagitDir.getAbsoluteFile, item.getFilename).exists)
+    val presentFiles = fetchItems.filter(item => new File(bagDir.getAbsoluteFile, item.getFilename).exists)
     if (presentFiles.nonEmpty)
       Failure(InvalidDepositException(id, s"Fetch.txt file ${presentFiles.head.getFilename} is already present in the bag."))
     else
@@ -316,50 +340,38 @@ object DepositHandler {
     val urls = fetchItems.map(file => file.getFilename -> file.getUrl).toMap
 
     val checksumMapping = bag.getPayloadManifests.asScala
-      .flatMap(_.asScala)
+      .flatMap(_.asScala) // mapping from file -> checksum
       .filter { case (file, _) => fetchItemFiles.contains(file) }
-      .map { case (file, checksum) =>
-        urls.get(file)
-          .map(url => Try(file, checksum, url))
-          .getOrElse(Failure(InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")))
-      }
-      .collectResults
-      .recoverWith {
-        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
-      }
-
-    for {
-      csMap <- checksumMapping
-      valid <- validateChecksums(csMap)
-    } yield ()
+      .map { case (file, checksum) => (file, checksum, urls(file)) }
+    validateChecksums(checksumMapping)
   }
 
   private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
-    val errors = checksumMapping.flatMap { // we use the fact that an Option is a Seq with 0 or 1 element here!
-      case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
-    }
-    if (errors.isEmpty) Success(())
-    else Failure(InvalidDepositException(id, errors.mkString))
+    checksumMapping
+      .map {
+        case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
+      }.collectResults
+      .map(_ => ())
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+      }
   }
 
-  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Option[String] = {
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     val referredFile = getReferredFile(url, baseUrl)
-    val referredBagChecksums = getReferredBagChecksums(url)
-    if (referredBagChecksums.contains(referredFile -> checksum))
-      Option.empty
-    else if (referredBagChecksums.map { case (rFile, _) => rFile }.contains(referredFile))
-      Option(s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag.")
-    else
-      Option(s"While validating checksums, the file $referredFile was not found in the referred bag.")
+    getReferredBagChecksums(url).flatMap(seq => {
+      if (seq.contains(referredFile -> checksum))
+        Success(())
+      else if (seq.map { case (rFile, _) => rFile }.contains(referredFile))
+        Failure(InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag."))
+      else
+        Failure(InvalidDepositException(id, s"While validating checksums, the file $referredFile was not found in the referred bag."))
+    })
   }
 
   private def getReferredFile(url: String, baseUrl: URI): String = {
     val afterBaseUrl = url.stripPrefix(baseUrl.toString)
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
-  }
-
-  private def getBagFromDir(dir: File): Bag = {
-    bagFactory.createBag(dir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
   case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
@@ -436,12 +448,12 @@ object DepositHandler {
 
 
   // TODO: RETRIEVE VIA AN INTERFACE
-  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Seq[(String, String)] = {
-    getBagFromDir(getReferredBagDir(url))
-      .getPayloadManifests
-      .asScala
-      .flatMap(_.asScala)
-  }
+  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Try[Seq[(String, String)]] =
+    getBag(getReferredBagDir(url)).map(bag => {
+      bag.getPayloadManifests
+        .asScala
+        .flatMap(_.asScala)
+    })
 
   private def getReferredBagDir(url: String)(implicit baseDir: File, baseUrl: URI): File = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
