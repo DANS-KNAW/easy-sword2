@@ -199,9 +199,7 @@ object DepositHandler {
   def checkFetchItemUrls(bagDir: File, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
-    getBagFromDir(bagDir)
-      .map(_.getFetchTxt)
-      .filter(_ != null)
+    getFetchTxt(bagDir)
       .map(_.asScala) // Option map
       .getOrElse(Seq.empty)
       .map(item => checkUrlValidity(item.getUrl, urlPattern)) // Seq map
@@ -233,7 +231,7 @@ object DepositHandler {
   def checkBagVirtualValidity(bagDir: File)(implicit id: String, bagStoreBaseDir: File, bagStoreBaseUri: URI): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
-    val fetchItems = getBagFromDir(bagDir).map(_.getFetchTxt).filter(_ != null).map(_.asScala).getOrElse(Seq())
+    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
     val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(bagStoreBaseUri.toString))
 
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
@@ -268,28 +266,32 @@ object DepositHandler {
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
       _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
-      bag <- getBagFromDir(bagDir)
+      bag <- getBag(bagDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
   }
 
+  def getFetchTxt(bagDir: File): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)
+
   def pruneFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
-    getBagFromDir(bagDir)
+    getBag(bagDir)
       .map(bag => {
-        bag.getFetchTxt.removeAll(items.asJava)
-        if (bag.getFetchTxt.isEmpty) bag.removeBagFile("fetch.txt")
-        bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
-          val completer = new TagManifestCompleter(bagFactory)
-          completer.setTagManifestAlgorithm(a)
-          completer complete bag
-        })
-        val writer = new FileSystemWriter(bagFactory)
-        writer.setTagFilesOnly(true)
-        bag.write(writer, bagDir)
+        Option(bag.getFetchTxt).map(fetchTxt => Try {
+          fetchTxt.removeAll(items.asJava)
+          if (fetchTxt.isEmpty) bag.removeBagFile(bag.getBagConstants.getFetchTxt)
+          bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
+            val completer = new TagManifestCompleter(bagFactory)
+            completer.setTagManifestAlgorithm(a)
+            completer complete bag
+          })
+          val writer = new FileSystemWriter(bagFactory)
+          writer.setTagFilesOnly(true)
+          bag.write(writer, bagDir)
+        }).getOrElse(Success(()))
       })
 
-  private def getBagFromDir(bagDir: File): Try[Bag] =  Try {
+  private def getBag(bagDir: File): Try[Bag] =  Try {
     bagFactory.createBag(bagDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
@@ -338,41 +340,33 @@ object DepositHandler {
     val urls = fetchItems.map(file => file.getFilename -> file.getUrl).toMap
 
     val checksumMapping = bag.getPayloadManifests.asScala
-      .flatMap(_.asScala)
+      .flatMap(_.asScala) // mapping from file -> checksum
       .filter { case (file, _) => fetchItemFiles.contains(file) }
-      .map { case (file, checksum) =>
-        urls.get(file)
-          .map(url => Try(file, checksum, url))
-          .getOrElse(Failure(InvalidDepositException(id, s"Checksum validation failed: missing Payload Manifest file $file not found in the fetch.txt.")))
-      }
-      .collectResults
-      .recoverWith {
-        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
-      }
-
-    for {
-      csMap <- checksumMapping
-      valid <- validateChecksums(csMap)
-    } yield ()
+      .map { case (file, checksum) => (file, checksum, urls(file)) }
+    validateChecksums(checksumMapping)
   }
 
   private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
-    val errors = checksumMapping.flatMap { // we use the fact that an Option is a Seq with 0 or 1 element here!
-      case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
-    }
-    if (errors.isEmpty) Success(())
-    else Failure(InvalidDepositException(id, errors.mkString))
+    checksumMapping
+      .map {
+        case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
+      }.collectResults
+      .map(_ => ())
+      .recoverWith {
+        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+      }
   }
 
-  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Option[String] = {
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
     val referredFile = getReferredFile(url, baseUrl)
-    val referredBagChecksums = getReferredBagChecksums(url)
-    if (referredBagChecksums.contains(referredFile -> checksum))
-      Option.empty
-    else if (referredBagChecksums.map { case (rFile, _) => rFile }.contains(referredFile))
-      Option(s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag.")
-    else
-      Option(s"While validating checksums, the file $referredFile was not found in the referred bag.")
+    getReferredBagChecksums(url).flatMap(seq => {
+      if (seq.contains(referredFile -> checksum))
+        Success(())
+      else if (seq.map { case (rFile, _) => rFile }.contains(referredFile))
+        Failure(InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag."))
+      else
+        Failure(InvalidDepositException(id, s"While validating checksums, the file $referredFile was not found in the referred bag."))
+    })
   }
 
   private def getReferredFile(url: String, baseUrl: URI): String = {
@@ -454,12 +448,12 @@ object DepositHandler {
 
 
   // TODO: RETRIEVE VIA AN INTERFACE
-  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Seq[(String, String)] =
-    getBagFromDir(getReferredBagDir(url)).map(bag => {
+  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Try[Seq[(String, String)]] =
+    getBag(getReferredBagDir(url)).map(bag => {
       bag.getPayloadManifests
         .asScala
         .flatMap(_.asScala)
-    }).getOrElse(Seq.empty)
+    })
 
   private def getReferredBagDir(url: String)(implicit baseDir: File, baseUrl: URI): File = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2

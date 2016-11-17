@@ -68,10 +68,10 @@ class PruneFetchTxtSpec extends Sword2Fixture {
     getTagManifestSrc should not include "fetch.txt"
   }
 
-  it should "fail if no fetch.txt is present" in {
+  it should "succeed if no fetch.txt is present" in {
     copyToTargetBagDir(TEST_BAG)
     FETCH_TXT.delete()
     DepositHandler.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
-      new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url"))) shouldBe a[Failure[_]]
+      new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url"))) shouldBe a[Success[_]]
   }
 }
