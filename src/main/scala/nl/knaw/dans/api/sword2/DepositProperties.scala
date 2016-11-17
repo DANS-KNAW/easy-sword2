@@ -17,6 +17,7 @@ package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException, PrintWriter, StringWriter}
 
+import nl.knaw.dans.api.sword2.State._
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
@@ -25,9 +26,9 @@ import scala.util.Try
 
 object DepositProperties {
   val log = LoggerFactory.getLogger(getClass)
-  case class State(label: String, description: String, timeStamp: String)
+  case class Statement(label: String, description: String, timeStamp: String)
 
-  def set(id: String, stateLabel: String, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
+  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
     val depositDir = new File(if (lookInTempFirst) settings.tempDir
                               else settings.depositRootDir, id)
     val props = readProperties(new File(depositDir, "deposit.properties"))
@@ -41,13 +42,13 @@ object DepositProperties {
     props.save()
   }
 
-  def getState(id: String)(implicit settings: Settings): Try[State] = {
+  def getState(id: String)(implicit settings: Settings): Try[Statement] = {
     log.debug(s"[$id] Trying to retrieve state")
     readState(id, new File(settings.tempDir, s"$id/deposit.properties")).recoverWith {
       case f: IOException => readState(id, new File(settings.depositRootDir, s"$id/deposit.properties"))
     }
   }
-  private def readState(id: String, f: File): Try[State] = Try {
+  private def readState(id: String, f: File): Try[Statement] = Try {
     val s = readProperties(f)
     log.debug(s"[$id] Trying to retrieve state from $f")
     if(!f.exists()) throw new IOException(s"$f does not exist")
@@ -56,10 +57,10 @@ object DepositProperties {
     if(state.isEmpty || userId.isEmpty) {
       if (state.isEmpty) log.error(s"[$id] State not present in $f")
       if (userId.isEmpty) log.error(s"[$id] User ID not present in $f")
-      State("FAILED", "There occured unexpected failure in deposit", new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+      Statement(FAILED.toString, "There occured unexpected failure in deposit", new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
     }
     else
-      State(state, s.getString("state.description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+      Statement(state, s.getString("state.description"), new DateTime(s.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
   }
 
   private def stackTraceToString(t: Throwable): String = {

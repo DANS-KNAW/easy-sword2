@@ -23,13 +23,13 @@ import java.util.Collections
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
-import gov.loc.repository.bagit.Manifest.Algorithm
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
+import nl.knaw.dans.api.sword2.State._
 import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
@@ -92,17 +92,17 @@ object DepositHandler {
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
-      _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
+      _        <- DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
     } yield ()
 
     result.recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
-        DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
+        DepositProperties.set(id, INVALID, msg, lookInTempFirst = true)
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
-        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
+        DepositProperties.set(id, FAILED, genericErrorMessage, lookInTempFirst = true)
     }
   }
 
@@ -181,7 +181,7 @@ object DepositHandler {
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
-      DepositProperties.set(id, "FINALIZING", "Deposit is being reassembled and validated", lookInTempFirst = true)
+      DepositProperties.set(id, FINALIZING, "Deposit is being reassembled and validated", lookInTempFirst = true)
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")
