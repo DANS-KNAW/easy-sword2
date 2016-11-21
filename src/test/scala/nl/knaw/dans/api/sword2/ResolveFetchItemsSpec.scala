@@ -109,9 +109,37 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Failure when the bag-store base-dir doesn't exist"  in {
+    implicit val bagStoreBase = BagStoreBase("non/existent/dir", baseUrl)
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    implicit val baseDir = new File("non/existent/dir")
     DepositHandler.checkBagStoreBaseDir() shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
+    implicit val bagStoreBase = BagStoreBase("", "")
+    copyToTargetBagDir(SIMPLE_SEQUENCE_A)
+    DepositHandler.setBagStoreAwareness shouldBe a[Success[_]]
+    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
+    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+  }
+
+  it should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
+    implicit val bagStoreBase = BagStoreBase("", "")
+    copyToTargetBagDir(SIMPLE_SEQUENCE_B)
+    DepositHandler.setBagStoreAwareness shouldBe a[Success[_]]
+    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
+    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure when only bag-store base-dir is given (base-uri missing)"  in {
+    implicit val bagStoreBase = BagStoreBase(baseDir, "")
+    DepositHandler.setBagStoreAwareness shouldBe a[Failure[_]]
+  }
+
+  it should "result in a Failure when only bag-store base-uri is given (base-dir missing)"  in {
+    implicit val bagStoreBase = BagStoreBase("", baseUrl)
+    DepositHandler.setBagStoreAwareness shouldBe a[Failure[_]]
   }
 }
 

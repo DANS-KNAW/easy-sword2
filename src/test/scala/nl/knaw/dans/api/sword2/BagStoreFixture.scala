@@ -22,8 +22,9 @@ import java.net.URI
  * Adds the implicits for calling the easy-bag-store functions.
  */
 trait BagStoreFixture  {
-  implicit val baseDir = new File("src/test/resources/input/bag-store")
-  implicit val baseUrl = new URI("http://deasy.dans.knaw.nl/aips")
+  val baseDir = "src/test/resources/input/bag-store"
+  val baseUrl = "http://deasy.dans.knaw.nl/aips"
+  implicit val bagStoreBase = BagStoreBase(baseDir, baseUrl)
 }
 
 

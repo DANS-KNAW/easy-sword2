@@ -38,9 +38,11 @@ package object sword2 {
                        collectionIri: String,
                        auth: AuthenticationSettings,
                        urlPattern: Pattern,
-                       bagStoreBaseUri: String, // TODO refactor to URI
+                       bagStoreBaseUrl: String, // TODO refactor to URI
                        bagStoreBaseDir: String, // TODO refactor to File
                        supportMailAddress: String)
+
+  case class BagStoreBase(baseDir: String, baseUrl: String, var isBagStoreAware: Boolean = true)
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
