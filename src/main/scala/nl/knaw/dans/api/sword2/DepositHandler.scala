@@ -16,7 +16,7 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
-import java.net.{MalformedURLException, URI, URL, UnknownHostException}
+import java.net.{MalformedURLException, URL, UnknownHostException}
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.util.Collections
@@ -161,7 +161,7 @@ object DepositHandler {
   }
 
   def checkBagStoreBaseDir()(implicit id: String, bs: BagStoreBase): Try[Unit] = {
-    if (bs.isBagStoreAware){
+    if (bs.isBagStoreAware) {
       val baseDir = new File(bs.baseDir)
       if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
       else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
@@ -243,9 +243,6 @@ object DepositHandler {
   def checkBagVirtualValidity(bagDir: File)(implicit id: String, bs: BagStoreBase): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
-    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
-    val fetchItemsInBagStore = fetchItems.filter(bs.isBagStoreAware && _.getUrl.startsWith(bs.baseUrl))
-
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
         case (Seq(), true) => Success(())
@@ -274,7 +271,8 @@ object DepositHandler {
       }
     }
 
-    val itemsToResolve = fetchItems diff fetchItemsInBagStore
+    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
+    val (fetchItemsInBagStore, itemsToResolve) = fetchItems.partition(bs.isBagStoreAware && _.getUrl.startsWith(bs.baseUrl))
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
       _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
