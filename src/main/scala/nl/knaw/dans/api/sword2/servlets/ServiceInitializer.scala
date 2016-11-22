@@ -87,7 +87,7 @@ class ServiceInitializer extends ServletContextListener {
     val urlPattern = Pattern.compile(config.getString("url-pattern"))
     val bagStoreBaseUri = config.getString("bag-store.base-url") // TODO: make File, check existence
     val bagStoreBaseDir = config.getString("bag-store.base-dir") // TODO: make File, check existence
-    var bagStoreSettings = None: Option[BagStoreSettings]
+    var bagStoreSettings = Option.empty[BagStoreSettings]
     if (bagStoreBaseUri.trim.nonEmpty || bagStoreBaseDir.trim.nonEmpty) {
       if (bagStoreBaseDir.trim.isEmpty) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
       if (bagStoreBaseUri.trim.isEmpty) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")

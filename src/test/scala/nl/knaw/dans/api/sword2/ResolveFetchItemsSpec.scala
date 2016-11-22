@@ -124,7 +124,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
-    implicit val bagStoreSettings = None: Option[BagStoreSettings]
+    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
     DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
@@ -132,7 +132,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
-    implicit val bagStoreSettings = None: Option[BagStoreSettings]
+    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
     copyToTargetBagDir(SIMPLE_SEQUENCE_B)
     DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
