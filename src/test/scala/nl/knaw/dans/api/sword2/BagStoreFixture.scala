@@ -21,7 +21,7 @@ package nl.knaw.dans.api.sword2
 trait BagStoreFixture  {
   val baseDir = "src/test/resources/input/bag-store"
   val baseUrl = "http://deasy.dans.knaw.nl/aips"
-  implicit val bagStoreBase = BagStoreBase(baseDir, baseUrl)
+  implicit val bagStoreSettings = Some(BagStoreSettings(baseDir, baseUrl))
 }
 
 

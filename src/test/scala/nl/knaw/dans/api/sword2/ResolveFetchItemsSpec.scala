@@ -117,41 +117,27 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Failure when the bag-store base-dir doesn't exist"  in {
-    implicit val bagStoreBase = BagStoreBase("non/existent/dir", baseUrl)
+    implicit val bagStoreSettings = Some(BagStoreSettings("non/existent/dir", baseUrl))
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
     val bagStoreCheck =  DepositHandler.checkBagStoreBaseDir()
     (the [IOException] thrownBy bagStoreCheck.get).getMessage should include("Bag store base directory")
   }
 
   it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
-    implicit val bagStoreBase = BagStoreBase("", "")
+    implicit val bagStoreSettings = None: Option[BagStoreSettings]
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    DepositHandler.setBagStoreAwareness shouldBe a[Success[_]]
     DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
     DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
-    implicit val bagStoreBase = BagStoreBase("", "")
+    implicit val bagStoreSettings = None: Option[BagStoreSettings]
     copyToTargetBagDir(SIMPLE_SEQUENCE_B)
-    DepositHandler.setBagStoreAwareness shouldBe a[Success[_]]
     DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
     val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
     a [InvalidDepositException] should be thrownBy validity.get
-  }
-
-  it should "result in a Failure when only bag-store base-dir is given (base-uri missing)"  in {
-    implicit val bagStoreBase = BagStoreBase(baseDir, "")
-    val setBagStoreAwarenessCheck = DepositHandler.setBagStoreAwareness
-    (the [IllegalArgumentException] thrownBy setBagStoreAwarenessCheck.get).getMessage should include("Only bag store base-directory given")
-  }
-
-  it should "result in a Failure when only bag-store base-uri is given (base-dir missing)"  in {
-    implicit val bagStoreBase = BagStoreBase("", baseUrl)
-    val setBagStoreAwarenessCheck = DepositHandler.setBagStoreAwareness
-    (the [IllegalArgumentException] thrownBy setBagStoreAwarenessCheck.get).getMessage should include("Only bag store base-url given")
   }
 }
 
