@@ -117,27 +117,27 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Failure when the bag-store base-dir doesn't exist"  in {
-    implicit val bagStoreSettings = Some(BagStoreSettings("non/existent/dir", baseUrl))
+    val bagStoreSettings = BagStoreSettings("non/existent/dir", baseUrl)
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    val bagStoreCheck =  DepositHandler.checkBagStoreBaseDir()
+    val bagStoreCheck =  DepositHandler.checkBagStoreBaseDir(bagStoreSettings)
     (the [IOException] thrownBy bagStoreCheck.get).getMessage should include("Bag store base directory")
   }
 
-  it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
-    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
-    copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+  ignore should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
+//    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
+//    copyToTargetBagDir(SIMPLE_SEQUENCE_A)
+//    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
+//    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+//    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
-  it should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
-    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
-    copyToTargetBagDir(SIMPLE_SEQUENCE_B)
-    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
-    a [InvalidDepositException] should be thrownBy validity.get
+  ignore should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
+//    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
+//    copyToTargetBagDir(SIMPLE_SEQUENCE_B)
+//    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
+//    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+//    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+//    a [InvalidDepositException] should be thrownBy validity.get
   }
 }
 
