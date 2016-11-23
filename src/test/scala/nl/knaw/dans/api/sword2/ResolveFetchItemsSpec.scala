@@ -123,21 +123,19 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
     (the [IOException] thrownBy bagStoreCheck.get).getMessage should include("Bag store base directory")
   }
 
-  ignore should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
-//    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
-//    copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-//    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
-//    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-//    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+  it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
+    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
+    copyToTargetBagDir(SIMPLE_SEQUENCE_A)
+    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
-  ignore should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
-//    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
-//    copyToTargetBagDir(SIMPLE_SEQUENCE_B)
-//    DepositHandler.checkBagStoreBaseDir() shouldBe a[Success[_]]
-//    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-//    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
-//    a [InvalidDepositException] should be thrownBy validity.get
+  it should "result in a Failure when both bag-store base-dir and base-uri are not given, and there are fetch.txt references to the bag-store"  in {
+    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
+    copyToTargetBagDir(SIMPLE_SEQUENCE_B)
+    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    a [InvalidDepositException] should be thrownBy validity.get
   }
 }
 

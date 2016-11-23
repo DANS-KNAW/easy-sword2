@@ -249,7 +249,7 @@ object DepositHandler {
             if (missingFilesNotInFetchText.isEmpty)
               noFetchItemsAlreadyInBag(bagDir, itemsFromBagStore)
                 .flatMap(_ => bagStoreSettings.map(implicit bs => validateChecksumsFetchItems(bag, itemsFromBagStore))
-                  .getOrElse(Failure(new NoSuchElementException("BagStore is not configured"))))
+                  .getOrElse(Failure(new NoSuchElementException("BagStore is not configured - SOMETHING WENT WRONG, YOU SHOULD NEVER REACH THIS PART OF CODE!"))))
             else
               Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
           }
@@ -259,7 +259,7 @@ object DepositHandler {
     }
 
     val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
-    val (fetchItemsInBagStore, itemsToResolve) = bagStoreSettings.map(bs => fetchItems.partition(_.getUrl.startsWith(bs.baseUrl))).getOrElse((Seq.empty, fetchItems))
+    val (fetchItemsInBagStore, itemsToResolve) = fetchItems.partition(bagStoreSettings.nonEmpty && _.getUrl.startsWith(bagStoreSettings.get.baseUrl))
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
       _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
