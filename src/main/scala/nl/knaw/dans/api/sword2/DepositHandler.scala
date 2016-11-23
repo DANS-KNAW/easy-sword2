@@ -260,7 +260,7 @@ object DepositHandler {
     }
 
     val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
-    val (fetchItemsInBagStore, itemsToResolve) = fetchItems.partition(bs.nonEmpty && _.getUrl.startsWith(bs.get.baseUrl))
+    val (fetchItemsInBagStore, itemsToResolve) = bs.map(bagstoreSettings => fetchItems.partition(_.getUrl.startsWith(bagstoreSettings.baseUrl))).getOrElse((Seq.empty, fetchItems))
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
       _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
