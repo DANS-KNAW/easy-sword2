@@ -19,7 +19,7 @@ import java.io.{File, IOException}
 import java.net.{MalformedURLException, URL, UnknownHostException}
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
-import java.util.Collections
+import java.util.{Collections, NoSuchElementException}
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
@@ -249,7 +249,8 @@ object DepositHandler {
 
             if (missingFilesNotInFetchText.isEmpty)
               noFetchItemsAlreadyInBag(bagDir, itemsFromBagStore)
-                .flatMap(_ => validateChecksumsFetchItems(bag, itemsFromBagStore))
+                .flatMap(_ => bs.map(implicit settings => validateChecksumsFetchItems(bag, itemsFromBagStore))
+                  .getOrElse(Failure(new NoSuchElementException("BagStore is not configured"))))
             else
               Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
           }
@@ -330,7 +331,7 @@ object DepositHandler {
       Success(())
   }
 
-  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String, bs: Option[BagStoreSettings]): Try[Unit] = {
+  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String, bs: BagStoreSettings): Try[Unit] = {
     log.debug(s"[$id] Validating checksums of those files in fetch.txt, that refer to the bag store.")
 
     val fetchItemFiles = fetchItems.map(_.getFilename)
@@ -343,7 +344,7 @@ object DepositHandler {
     validateChecksums(checksumMapping)
   }
 
-  private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, bs: Option[BagStoreSettings]): Try[Unit] = {
+  private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, bs: BagStoreSettings): Try[Unit] = {
     checksumMapping
       .map {
         case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
@@ -354,8 +355,8 @@ object DepositHandler {
       }
   }
 
-  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, bs: Option[BagStoreSettings]): Try[Unit] = {
-    val referredFile = getReferredFile(url, bs.get.baseUrl)
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, bs: BagStoreSettings): Try[Unit] = {
+    val referredFile = getReferredFile(url, bs.baseUrl)
     getReferredBagChecksums(url).flatMap(seq => {
       if (seq.contains(referredFile -> checksum))
         Success(())
@@ -445,20 +446,20 @@ object DepositHandler {
 
 
   // TODO: RETRIEVE VIA AN INTERFACE
-  private def getReferredBagChecksums(url: String)(implicit bs: Option[BagStoreSettings]): Try[Seq[(String, String)]] =
+  private def getReferredBagChecksums(url: String)(implicit bs: BagStoreSettings): Try[Seq[(String, String)]] =
     getBag(getReferredBagDir(url)).map(bag => {
       bag.getPayloadManifests
         .asScala
         .flatMap(_.asScala)
     })
 
-  private def getReferredBagDir(url: String)(implicit bs: Option[BagStoreSettings]): File = {
+  private def getReferredBagDir(url: String)(implicit bs: BagStoreSettings): File = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
-    val Array(uuid, version) = url.stripPrefix(bs.get.baseUrl)
+    val Array(uuid, version) = url.stripPrefix(bs.baseUrl)
       .split("/data").head.replaceAll("-", "")
       .split("\\.")
     val (topDir, uuidDir) = uuid.splitAt(3)
 
-    getFile(bs.get.baseDir, topDir, uuidDir, version)
+    getFile(bs.baseDir, topDir, uuidDir, version)
   }
 }
