@@ -81,11 +81,11 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    implicit val bagStoreSettings = settings.bagStoreSettings
+    implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val tempDir = new File(settings.tempDir, id)
 
     val result = for {
-      _        <- checkBagStoreBaseDir
+      _        <- bagStoreSettings.map(checkBagStoreBaseDir).getOrElse(Success(()))
       _        <- extractBag(mimeType)
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
@@ -150,13 +150,10 @@ object DepositHandler {
     }
   }
 
-  def checkBagStoreBaseDir()(implicit id: String, bs: Option[BagStoreSettings]): Try[Unit] = {
-    if (bs.nonEmpty) {
-      val baseDir = new File(bs.get.baseDir)
-      if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-      else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
-      else Success(())
-    }
+  def checkBagStoreBaseDir(bs: BagStoreSettings)(implicit id: String): Try[Unit] = {
+    val baseDir = new File(bs.baseDir)
+    if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
+    else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
     else Success(())
   }
 
