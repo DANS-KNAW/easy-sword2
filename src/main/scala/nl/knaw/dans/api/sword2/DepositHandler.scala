@@ -80,11 +80,11 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    implicit val optBagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
+    implicit val bagStoreSettings = settings.bagStoreSettings
     val tempDir = new File(settings.tempDir, id)
 
     val result = for {
-      _        <- optBagStoreSettings.map(checkBagStoreBaseDir).getOrElse(Success(()))
+      _        <- bagStoreSettings.map(checkBagStoreBaseDir).getOrElse(Success(()))
       _        <- extractBag(mimeType)
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)

@@ -15,7 +15,7 @@
  */
 package nl.knaw.dans.api.sword2.servlets
 
-import java.io.File
+import java.io.{File, IOException}
 import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.{ServletContextEvent, ServletContextListener, ServletException}
@@ -91,6 +91,9 @@ class ServiceInitializer extends ServletContextListener {
     if (bagStoreBaseUri.trim.nonEmpty || bagStoreBaseDir.trim.nonEmpty) {
       if (bagStoreBaseDir.trim.isEmpty) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
       if (bagStoreBaseUri.trim.isEmpty) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
+      val baseDir = new File(bagStoreBaseDir)
+      if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
+      if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable")
       bagStoreSettings = Some(BagStoreSettings(bagStoreBaseDir, bagStoreBaseUri))
     }
 
