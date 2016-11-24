@@ -162,7 +162,7 @@ object DepositHandler {
 
   def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] =
     DepositProperties.getState(id)
-      .filter(_.label == "DRAFT")
+      .filter(_ == DRAFT.toString)
       .map(_ => ())
       .recoverWith {
         case t => Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))

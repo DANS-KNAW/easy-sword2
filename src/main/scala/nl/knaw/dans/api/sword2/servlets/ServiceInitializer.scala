@@ -15,7 +15,7 @@
  */
 package nl.knaw.dans.api.sword2.servlets
 
-import java.io.{File}
+import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.{ServletContextEvent, ServletContextListener, ServletException}
