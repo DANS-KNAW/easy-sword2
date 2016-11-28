@@ -17,6 +17,7 @@ package nl.knaw.dans.api.sword2
 
 import java.util
 
+import scala.collection.JavaConverters._
 import org.swordapp.server._
 
 import scala.util.{Failure, Success}
@@ -38,8 +39,18 @@ class StatementManagerImpl extends StatementManager {
       case Success(properties) =>
         val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", properties.timeStamp)
         statement.setState(properties.label, properties.description)
+        if (properties.label == State.ARCHIVED.toString)
+          properties.resources.foreach(resources => setResources(statement, resources))
         statement
       case Failure(t) => throw new SwordError(404)
     }
+  }
+
+  private def setResources(statement: AtomStatement, resources: PropertiesResources): Unit =  {
+    val bagIdResource = new ResourcePart(resources.bagId.trim)
+    bagIdResource.setMediaType("multipart/related;type=bag")
+    val filePathsResources = resources.filePaths.map(resource => { val resourcePart = new ResourcePart(resource.trim); resourcePart.setMediaType("multipart/related;type=file"); resourcePart})
+    val bagResources = (List(bagIdResource) ++ filePathsResources).asJava
+    statement.setResources(bagResources)
   }
 }
