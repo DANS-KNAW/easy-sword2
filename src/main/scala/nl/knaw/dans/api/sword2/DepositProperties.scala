@@ -62,10 +62,10 @@ object DepositProperties {
     if(state.isEmpty || userId.isEmpty) {
       if (state.isEmpty) log.error(s"[$id] State not present in $f")
       if (userId.isEmpty) log.error(s"[$id] User ID not present in $f")
-      apply(FAILED.toString, "There occured unexpected failure in deposit", new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+      DepositProperties(FAILED.toString, "There occured unexpected failure in deposit", new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
     }
     else
-      apply(state, ps.getString("state.description"), new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+      DepositProperties(state, ps.getString("state.description"), new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
   }
 
   private def readPropertiesConfiguration(f: File) = {
