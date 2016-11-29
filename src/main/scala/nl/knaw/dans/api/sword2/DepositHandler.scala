@@ -84,7 +84,6 @@ object DepositHandler {
     val tempDir = new File(settings.tempDir, id)
 
     val result = for {
-      _        <- bagStoreSettings.map(checkBagStoreBaseDir).getOrElse(Success(()))
       _        <- extractBag(mimeType)
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
@@ -147,13 +146,6 @@ object DepositHandler {
       }
       depositDir
     }
-  }
-
-  def checkBagStoreBaseDir(bagStoreSettings: BagStoreSettings)(implicit id: String): Try[Unit] = {
-    val baseDir = new File(bagStoreSettings.baseDir)
-    if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-    else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
-    else Success(())
   }
 
   private def getBagDir(depositDir: File): Try[File] = Try {
