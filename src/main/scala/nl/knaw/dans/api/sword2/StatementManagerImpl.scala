@@ -31,13 +31,13 @@ class StatementManagerImpl extends StatementManager {
     // TODO: REFACTOR THIS MESS
     Authentication.checkAuthentication(auth).get
     val maybeState = SwordID.extract(iri) match {
-      case Success(id) => DepositProperties.getState(id)
+      case Success(id) => DepositProperties.getProperties(id)
       case Failure(t) => throw new SwordError(404)
     }
     maybeState match {
-      case Success(state) =>
-        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", state.timeStamp)
-        statement.setState(state.label, state.description)
+      case Success(properties) =>
+        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", properties.timeStamp)
+        statement.setState(properties.label, properties.description)
         statement
       case Failure(t) => throw new SwordError(404)
     }

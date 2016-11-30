@@ -19,6 +19,7 @@ import java.io.File
 import java.util.regex.Pattern
 
 import scala.util.{Failure, Success}
+import org.scalatest.Inside.inside
 
 class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
@@ -58,31 +59,56 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   it should "result in a Failure when a required file is missing"  in {
     copyToTargetBagDir(REQUIRED_FILE_MISSING)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("Bag does not have bagit.txt")
+    }
   }
 
   it should "result in a Failure when a file is missing in the fetch.txt"  in {
     copyToTargetBagDir(FETCH_ITEM_FILE_MISSING)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("Missing payload files not in the fetch.txt")
+    }
   }
 
   it should "result in a Failure when a file checksum is incorrect"  in {
     copyToTargetBagDir(INCORRECT_CHECKSUM)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("error found in validating checksums")
+    }
   }
 
   it should "result in a Failure when there is a nonexistent path in the fetch.txt"  in {
     copyToTargetBagDir(NONEXISTENT_FETCH_ITEM_PATH)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("was not found in the referred bag")
+    }
   }
 
   it should "result in a Failure when a file in the fetch.txt is already in the bag"  in {
     copyToTargetBagDir(FETCH_ITEM_ALREADY_IN_BAG)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("is already present in the bag")
+    }
   }
 
 // TODO: PROPERLY MOCK OUT THE HTTP CALL
@@ -94,24 +120,40 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure with a syntactically invalid url in the fetch.txt"  in {
     copyToTargetBagDir(INVALID_URL_BAG)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Failure[_]]
+    val fetchItemsCheck = DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern)
+    inside(fetchItemsCheck) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("error found in fetch.txt URLs")
+    }
   }
 
   it should "result in a Failure with a not allowed url in the fetch.txt"  in {
     copyToTargetBagDir(NOT_ALLOWED_URL_BAG)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Failure[_]]
+    val fetchItemsCheck = DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern)
+    inside(fetchItemsCheck) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("error found in fetch.txt URLs")
+    }
   }
 
   it should "result in a Failure with an empty bag"  in {
     copyToTargetBagDir(NO_DATA_BAG)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Failure[_]]
+    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    inside(validity) {
+      case Failure(e) =>
+        e shouldBe a[InvalidDepositException]
+        e.getMessage should include("Bag does not have any payload manifests")
+    }
   }
 
-  it should "result in a Failure when the bag-store base-dir doesn't exist"  in {
+  it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store"  in {
+    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    implicit val baseDir = new File("non/existent/dir")
-    DepositHandler.checkBagStoreBaseDir() shouldBe a[Failure[_]]
+    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 }
 

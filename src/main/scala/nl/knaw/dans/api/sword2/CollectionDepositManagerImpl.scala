@@ -16,6 +16,7 @@
 package nl.knaw.dans.api.sword2
 
 import nl.knaw.dans.api.sword2.DepositHandler._
+import nl.knaw.dans.api.sword2.State._
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server._
 
@@ -47,7 +48,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   private def setDepositStateToDraft(id: String, userId: String)(implicit settings: Settings): Try[Unit] =
     DepositProperties.set(
       id = id,
-      stateLabel = "DRAFT",
+      stateLabel = DRAFT,
       stateDescription = "Deposit is open for additional data",
       userId = Some(userId),
       lookInTempFirst = true)

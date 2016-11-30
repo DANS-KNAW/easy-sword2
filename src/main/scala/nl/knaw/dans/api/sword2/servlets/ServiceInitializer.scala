@@ -19,10 +19,11 @@ import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.{ServletContextEvent, ServletContextListener, ServletException}
+import org.apache.commons.lang.StringUtils.{isBlank,isNotBlank}
 
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
-import nl.knaw.dans.api.sword2.{DepositHandler, LdapAuthSettings, Settings, SingleUserAuthSettings}
+import nl.knaw.dans.api.sword2.{BagStoreSettings, DepositHandler, LdapAuthSettings, Settings, SingleUserAuthSettings}
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.slf4j.LoggerFactory
 
@@ -62,7 +63,6 @@ class ServiceInitializer extends ServletContextListener {
       case t: Throwable => println(s"Error during logging configuration $t"); throw t
     }
   }
-
   def readSettings(homeDir: File): Settings = {
     val config = {
       val ps = new PropertiesConfiguration()
@@ -86,13 +86,22 @@ class ServiceInitializer extends ServletContextListener {
       case _ => throw new RuntimeException(s"Invalid authentication settings: ${config.getString("auth.mode")}")
     }
     val urlPattern = Pattern.compile(config.getString("url-pattern"))
-    // TODO: make use of bag-store optional through configuration
     val bagStoreBaseUri = config.getString("bag-store.base-url") // TODO: make File, check existence
     val bagStoreBaseDir = config.getString("bag-store.base-dir") // TODO: make File, check existence
+    var bagStoreSettings = Option.empty[BagStoreSettings]
+    if (isNotBlank(bagStoreBaseUri) || isNotBlank(bagStoreBaseDir)) {
+      if (isBlank(bagStoreBaseDir)) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
+      if (isBlank(bagStoreBaseUri)) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
+      val baseDir = new File(bagStoreBaseDir)
+      if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
+      if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable")
+      bagStoreSettings = Some(BagStoreSettings(bagStoreBaseDir, bagStoreBaseUri))
+    }
+
     val supportMailAddress = config.getString("support.mailaddress")
     Settings(
       depositRootDir, depositPermissions, tempDir, baseUrl, collectionIri, auth, urlPattern,
-      bagStoreBaseUri, bagStoreBaseDir, supportMailAddress)
+      bagStoreSettings, supportMailAddress)
   }
 
   override def contextDestroyed(sce: ServletContextEvent): Unit = {}

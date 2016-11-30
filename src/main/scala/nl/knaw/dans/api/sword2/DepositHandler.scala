@@ -16,20 +16,20 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
-import java.net.{MalformedURLException, URI, URL, UnknownHostException}
+import java.net.{MalformedURLException, URL, UnknownHostException}
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
-import java.util.Collections
+import java.util.{Collections, NoSuchElementException}
 import java.util.regex.Pattern
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
-import gov.loc.repository.bagit.Manifest.Algorithm
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
 import net.lingala.zip4j.core.ZipFile
+import nl.knaw.dans.api.sword2.State._
 import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
@@ -69,7 +69,6 @@ object DepositHandler {
   }
 
   def genericErrorMessage(implicit settings: Settings, id: String): String = {
-
     val mailaddress = settings.supportMailAddress
     val timestamp = DateTime.now(DateTimeZone.UTC).toString
 
@@ -81,28 +80,25 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    // TODO pass on the combination object of baseDir and baseURL
-    implicit val baseDir: File = new File(settings.bagStoreBaseDir)
-    implicit val baseUrl: URI  = new URI(settings.bagStoreBaseUri)
+    implicit val bagStoreSettings = settings.bagStoreSettings
     val tempDir = new File(settings.tempDir, id)
 
     val result = for {
-      _        <- checkBagStoreBaseDir()
       _        <- extractBag(mimeType)
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
-      _        <- DepositProperties.set(id, "SUBMITTED", "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
+      _        <- DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
     } yield ()
 
     result.recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
-        DepositProperties.set(id, "INVALID", msg, lookInTempFirst = true)
+        DepositProperties.set(id, INVALID, msg, lookInTempFirst = true)
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
-        DepositProperties.set(id, "FAILED", genericErrorMessage, lookInTempFirst = true)
+        DepositProperties.set(id, FAILED, genericErrorMessage, lookInTempFirst = true)
     }
   }
 
@@ -152,19 +148,13 @@ object DepositHandler {
     }
   }
 
-  def checkBagStoreBaseDir()(implicit id: String, baseDir: File): Try[Unit] = {
-    if (!baseDir.exists) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist"))
-    else if (!baseDir.canRead) Failure(new IOException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable"))
-    else Success(())
-  }
-
   private def getBagDir(depositDir: File): Try[File] = Try {
     depositDir.listFiles.find(f => f.isDirectory && isPartOfDeposit(f)).get
   }
 
   def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] =
     DepositProperties.getState(id)
-      .filter(_.label == "DRAFT")
+      .filter(_ == DRAFT.toString)
       .map(_ => ())
       .recoverWith {
         case t => Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
@@ -181,7 +171,7 @@ object DepositHandler {
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
-      DepositProperties.set(id, "FINALIZING", "Deposit is being reassembled and validated", lookInTempFirst = true)
+      DepositProperties.set(id, FINALIZING, "Deposit is being reassembled and validated", lookInTempFirst = true)
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")
@@ -228,11 +218,8 @@ object DepositHandler {
     } yield ()
   }
 
-  def checkBagVirtualValidity(bagDir: File)(implicit id: String, bagStoreBaseDir: File, bagStoreBaseUri: URI): Try[Unit] = {
+  def checkBagVirtualValidity(bagDir: File)(implicit id: String, bagStoreSettings: Option[BagStoreSettings]): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
-
-    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
-    val fetchItemsInBagStore = fetchItems.filter(_.getUrl.startsWith(bagStoreBaseUri.toString))
 
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
@@ -253,7 +240,8 @@ object DepositHandler {
 
             if (missingFilesNotInFetchText.isEmpty)
               noFetchItemsAlreadyInBag(bagDir, itemsFromBagStore)
-                .flatMap(_ => validateChecksumsFetchItems(bag, itemsFromBagStore))
+                .flatMap(_ => bagStoreSettings.map(implicit bs => validateChecksumsFetchItems(bag, itemsFromBagStore))
+                  .getOrElse(Failure(new NoSuchElementException("BagStore is not configured - SOMETHING WENT WRONG, YOU SHOULD NEVER REACH THIS PART OF CODE!"))))
             else
               Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
           }
@@ -262,7 +250,8 @@ object DepositHandler {
       }
     }
 
-    val itemsToResolve = fetchItems diff fetchItemsInBagStore
+    val fetchItems = getFetchTxt(bagDir).map(_.asScala).getOrElse(Seq())
+    val (fetchItemsInBagStore, itemsToResolve) = fetchItems.partition(bagStoreSettings.nonEmpty && _.getUrl.startsWith(bagStoreSettings.get.baseUrl))
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
       _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
@@ -333,7 +322,7 @@ object DepositHandler {
       Success(())
   }
 
-  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  private def validateChecksumsFetchItems(bag: Bag, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: String, bagStoreSettings: BagStoreSettings): Try[Unit] = {
     log.debug(s"[$id] Validating checksums of those files in fetch.txt, that refer to the bag store.")
 
     val fetchItemFiles = fetchItems.map(_.getFilename)
@@ -346,7 +335,7 @@ object DepositHandler {
     validateChecksums(checksumMapping)
   }
 
-  private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
+  private def validateChecksums(checksumMapping: Seq[(String, String, String)])(implicit id: String, bagStoreSettings: BagStoreSettings): Try[Unit] = {
     checksumMapping
       .map {
         case (file, checksum, url) => compareChecksumAgainstReferredBag(file, checksum, url)
@@ -357,8 +346,8 @@ object DepositHandler {
       }
   }
 
-  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, baseDir: File, baseUrl: URI): Try[Unit] = {
-    val referredFile = getReferredFile(url, baseUrl)
+  private def compareChecksumAgainstReferredBag(file: String, checksum: String, url: String)(implicit id: String, bagStoreSettings: BagStoreSettings): Try[Unit] = {
+    val referredFile = getReferredFile(url, bagStoreSettings.baseUrl)
     getReferredBagChecksums(url).flatMap(seq => {
       if (seq.contains(referredFile -> checksum))
         Success(())
@@ -369,8 +358,8 @@ object DepositHandler {
     })
   }
 
-  private def getReferredFile(url: String, baseUrl: URI): String = {
-    val afterBaseUrl = url.stripPrefix(baseUrl.toString)
+  private def getReferredFile(url: String, baseUrl: String): String = {
+    val afterBaseUrl = url.stripPrefix(baseUrl)
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
 
@@ -448,20 +437,20 @@ object DepositHandler {
 
 
   // TODO: RETRIEVE VIA AN INTERFACE
-  private def getReferredBagChecksums(url: String)(implicit baseDir: File, baseUrl: URI): Try[Seq[(String, String)]] =
+  private def getReferredBagChecksums(url: String)(implicit bagStoreSettings: BagStoreSettings): Try[Seq[(String, String)]] =
     getBag(getReferredBagDir(url)).map(bag => {
       bag.getPayloadManifests
         .asScala
         .flatMap(_.asScala)
     })
 
-  private def getReferredBagDir(url: String)(implicit baseDir: File, baseUrl: URI): File = {
+  private def getReferredBagDir(url: String)(implicit bagStoreSettings: BagStoreSettings): File = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
-    val Array(uuid, version) = url.stripPrefix(baseUrl.toString)
+    val Array(uuid, version) = url.stripPrefix(bagStoreSettings.baseUrl)
       .split("/data").head.replaceAll("-", "")
       .split("\\.")
     val (topDir, uuidDir) = uuid.splitAt(3)
 
-    getFile(baseDir, topDir, uuidDir, version)
+    getFile(bagStoreSettings.baseDir, topDir, uuidDir, version)
   }
 }

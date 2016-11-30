@@ -15,13 +15,9 @@
  */
 package nl.knaw.dans.api.sword2
 
-/**
- * Adds the implicits for calling the easy-bag-store functions.
- */
-trait BagStoreFixture  {
-  val baseDir = "src/test/resources/input/bag-store"
-  val baseUrl = "http://deasy.dans.knaw.nl/aips"
-  implicit val bagStoreSettings = Some(BagStoreSettings(baseDir, baseUrl))
+object State  extends Enumeration {
+  type State = Value
+  val ARCHIVED, DRAFT, FAILED, FINALIZING, INVALID, REJECTED, SUBMITTED = Value
+
+  def stringValues = this.values.map(_.toString)
 }
-
-
