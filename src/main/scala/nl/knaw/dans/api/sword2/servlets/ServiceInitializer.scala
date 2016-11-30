@@ -19,6 +19,7 @@ import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.{ServletContextEvent, ServletContextListener, ServletException}
+import org.apache.commons.lang.StringUtils.{isBlank,isNotBlank}
 
 import ch.qos.logback.classic.LoggerContext
 import ch.qos.logback.classic.joran.JoranConfigurator
@@ -88,9 +89,9 @@ class ServiceInitializer extends ServletContextListener {
     val bagStoreBaseUri = config.getString("bag-store.base-url") // TODO: make File, check existence
     val bagStoreBaseDir = config.getString("bag-store.base-dir") // TODO: make File, check existence
     var bagStoreSettings = Option.empty[BagStoreSettings]
-    if (bagStoreBaseUri.trim.nonEmpty || bagStoreBaseDir.trim.nonEmpty) {
-      if (bagStoreBaseDir.trim.isEmpty) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
-      if (bagStoreBaseUri.trim.isEmpty) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
+    if (isNotBlank(bagStoreBaseUri) || isNotBlank(bagStoreBaseDir)) {
+      if (isBlank(bagStoreBaseDir)) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
+      if (isBlank(bagStoreBaseUri)) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
       val baseDir = new File(bagStoreBaseDir)
       if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
       if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable")
