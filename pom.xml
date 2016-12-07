@@ -26,14 +26,14 @@
     <groupId>nl.knaw.dans.easy</groupId>
     <artifactId>easy-sword2</artifactId>
     <packaging>war</packaging>
-    <version>1.x-SNAPSHOT</version>
+    <version>1.2-RC-2</version>
     <inceptionYear>2015-2016</inceptionYear>
     <name>EASY SWORD2 Deposit Service</name>
     <description>SWORD v2 based dataset deposit service</description>
     <url>https://github.com/DANS-KNAW/easy-sword2</url>
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/${project.artifactId}</developerConnection>
-        <tag>HEAD</tag>
+        <tag>v1.2-RC-2</tag>
     </scm>
     <dependencies>
         <dependency>
