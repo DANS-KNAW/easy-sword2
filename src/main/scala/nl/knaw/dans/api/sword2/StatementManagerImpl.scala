@@ -15,12 +15,14 @@
  */
 package nl.knaw.dans.api.sword2
 
+import java.net.{MalformedURLException, URL}
 import java.util
+import java.util.regex.Pattern
 
 import scala.collection.JavaConverters._
 import org.swordapp.server._
 
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -46,11 +48,22 @@ class StatementManagerImpl extends StatementManager {
     }
   }
 
-  private def setResources(statement: AtomStatement, resources: PropertiesResources): Unit =  {
-    val bagIdResource = new ResourcePart(resources.bagId.trim)
-    bagIdResource.setMediaType("multipart/related;type=bag")
-    val filePathsResources = resources.filePaths.map(resource => { val resourcePart = new ResourcePart(resource.trim); resourcePart.setMediaType("multipart/related;type=file"); resourcePart})
-    val bagResources = (List(bagIdResource) ++ filePathsResources).asJava
+  private def setResources(statement: AtomStatement, resources: PropertiesResources)(implicit settings: Settings): Unit =  {
+    val bagUriResource = new ResourcePart(resources.bagUri.trim)
+    bagUriResource.setMediaType("multipart/related;type=bag")
+    val fileUrisResources = resources.fileUris.map(resource => {
+      checkUrlValidity(resource.trim, settings.urlPattern)
+      val resourcePart = new ResourcePart(resource.trim)
+      resourcePart.setMediaType("multipart/related;type=file")
+      resourcePart
+    })
+    val bagResources = (List(bagUriResource) ++ fileUrisResources).asJava
     statement.setResources(bagResources)
+  }
+
+  private def checkUrlValidity(url: String, urlPattern: Pattern): Unit = {
+    // NOTICE: because this whole module will soon be refactored, I didn't pay much attention how the exceptions should be thrown and what they should be
+    new URL(url)
+    if (!urlPattern.matcher(url).matches()) throw InvalidDepositException("", s"Not allowed url in Fetch Items ($url)")
   }
 }

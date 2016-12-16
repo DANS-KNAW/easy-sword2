@@ -464,20 +464,20 @@ object DepositHandler {
 
   private def getResources(bag: Bag): Try[PropertiesResources] =  {
     for {
-      bagId <- getBagId(bag)
-      filePaths <- getFilePaths(bag)
-    } yield PropertiesResources(bagId, filePaths)
+      bagUri <- getBagUri(bag)
+      fileUris <- getFileUris(bag, bagUri)
+    } yield PropertiesResources(bagUri, fileUris)
   }
 
-  private def getBagId(bag: Bag): Try[String] = Try {
+  private def getBagUri(bag: Bag): Try[String] = Try {
     // TODO...
-    "11111111-1111-1111-1111-11111111111.1"
+    "http://deasy.dans.knaw.nl/aips/11111111-1111-1111-1111-11111111111.1"
   }
 
-  private def getFilePaths(bag: Bag): Try[List[String]] = Try {
+  private def getFileUris(bag: Bag, bagUri: String): Try[List[String]] = Try {
     bag.getPayloadManifests.asScala
       .flatMap(_.asScala)
-      .map { case (path, _) => path }
+      .map { case (path, _) => bagUri + "/" + path }
       .toList
   }
 }

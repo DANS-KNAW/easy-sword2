@@ -43,8 +43,8 @@ object DepositProperties {
   }
 
   private def writeResources(props: PropertiesConfiguration, resources: PropertiesResources): Try[Unit] = Try {
-    props.setProperty("resources.bagId", resources.bagId)
-    props.setProperty("resources.filePaths", resources.filePaths.map(path => path) mkString ",")
+    props.setProperty("resources.bagUri", resources.bagUri)
+    props.setProperty("resources.fileUris", resources.fileUris.map(path => path) mkString ",")
   }
 
   def getState(id: String)(implicit settings: Settings): Try[String] = {
@@ -81,9 +81,9 @@ object DepositProperties {
   }
 
   private def readPropertiesResources(ps: PropertiesConfiguration): PropertiesResources = {
-    val bagId = Option(ps.getString("resources.bagId")).getOrElse("")
-    val filePaths = Option(ps.getString("resources.filePaths")).getOrElse("").split(",").toList
-    PropertiesResources(bagId, filePaths)
+    val bagUri = Option(ps.getString("resources.bagUri")).getOrElse("")
+    val fileUris = Option(ps.getString("resources.fileUris")).getOrElse("").split(",").toList
+    PropertiesResources(bagUri, fileUris)
   }
 
   private def readPropertiesConfiguration(f: File) = {

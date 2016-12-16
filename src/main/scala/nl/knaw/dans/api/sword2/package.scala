@@ -43,7 +43,7 @@ package object sword2 {
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
-  case class PropertiesResources(bagId: String, filePaths: List[String])
+  case class PropertiesResources(bagUri: String, fileUris: List[String])
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
