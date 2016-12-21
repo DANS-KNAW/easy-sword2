@@ -18,7 +18,7 @@ package nl.knaw.dans.api.sword2
 import java.util
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import javax.naming.ldap.InitialLdapContext
+import javax.naming.ldap.{InitialLdapContext, LdapContext}
 import javax.naming.{AuthenticationException, Context}
 
 import org.apache.commons.lang.StringUtils._
@@ -38,8 +38,6 @@ object Authentication {
     new sun.misc.BASE64Encoder().encode(rawHmac)
   }
 
-  @throws(classOf[SwordError])
-  @throws(classOf[SwordAuthException])
   def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     log.debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf)) {
@@ -49,16 +47,22 @@ object Authentication {
       log.debug(s"Checking credentials for user ${auth.getUsername}")
       settings.auth match {
         case SingleUserAuthSettings(user, password) =>
-          if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) Failure(new SwordAuthException)
+          if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
+            log.warn("Single user log-in FAIL")
+            Failure(new SwordAuthException)
+          }
           else {
-            log.info("Single user log in SUCCESS")
+            log.info("Single user log-in SUCCESS")
             Success(())
           }
         case authSettings: LdapAuthSettings => authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings).map {
-          case false => Failure(new SwordAuthException)
+          case false => {
+            log.warn("LDAP user log-in FAIL")
+            throw new SwordAuthException
+          }
           case true => log.info(s"User ${auth.getUsername} authentication through LDAP successful")
             log.info("LDAP log in SUCCESS")
-            Success(())
+            ()
         }
         case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
       }
@@ -77,7 +81,7 @@ object Authentication {
     }
   }
 
-  private def getInitialContext(user: String, password: String, authSettings: LdapAuthSettings): Try[InitialLdapContext] = Try {
+  private def getInitialContext(user: String, password: String, authSettings: LdapAuthSettings): Try[LdapContext] = Try {
     val env = new util.Hashtable[String, String]()
     env.put(Context.PROVIDER_URL, authSettings.ldapUrl.toString)
     env.put(Context.SECURITY_AUTHENTICATION, "simple")
