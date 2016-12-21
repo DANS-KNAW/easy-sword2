@@ -15,10 +15,48 @@
  */
 package nl.knaw.dans.api.sword2
 
-import nl.knaw.dans.api.sword2.Authentication.hash
-import org.scalatest.{FlatSpec, Matchers}
+import java.io.File
+import java.net.URI
+import java.util.regex.Pattern
+import javax.naming.AuthenticationException
+import javax.naming.directory.{Attribute, Attributes}
+import javax.naming.ldap.LdapContext
 
-class AuthenticationSpec extends FlatSpec with Matchers {
+import nl.knaw.dans.api.sword2.Authentication._
+import org.scalamock.scalatest.MockFactory
+import org.scalatest.{FlatSpec, Matchers}
+import org.swordapp.server.{AuthCredentials, SwordAuthException}
+import org.scalatest._
+import org.scalatest.Inside._
+
+import scala.util.{Failure, Success, Try}
+
+class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with OneInstancePerTest {
+  implicit val settings = Settings(
+    depositRootDir = new File("dummy"),
+    depositPermissions = "dummy",
+    tempDir = new File("dummy"),
+    serviceBaseUrl = "dummy",
+    collectionIri = "dummy",
+    auth = LdapAuthSettings(new URI("ldap://localhost"), "ou=easy,dc=dans,dc=knaw,dc=nl", "enabled", "true"),
+    urlPattern = Pattern.compile("dummy"),
+    bagStoreSettings = None,
+    supportMailAddress = "dummy")
+
+  private val ldapContext = mock[LdapContext]
+  private val attributes = mock[Attributes]
+  private val swordEnabledAttribute = mock[Attribute]
+
+
+  (ldapContext.getAttributes(_: String)) expects * anyNumberOfTimes() returning attributes
+
+  private def expectSwordEnabledAttributePresent(present: Boolean) =
+    (attributes.get(_: String)) expects "enabled" anyNumberOfTimes() returning (if (present) swordEnabledAttribute else null)
+  private def expectNumberOfSwordEnabledAttributeValues(n: Int) = swordEnabledAttribute.size _ expects() anyNumberOfTimes() returning n
+  private def expectSwordEnabledAttributeValue(value: String) = (swordEnabledAttribute.get(_: Int)) expects 0 anyNumberOfTimes() returning value
+
+
+
 
   val command = "echo -n 'SomePassword' | openssl sha1 -hmac 'someUserNameAsSalt' -binary | base64"
   val output = "WjYViDQOdGR8V1kkTs900ZfoLXU="
@@ -34,4 +72,73 @@ class AuthenticationSpec extends FlatSpec with Matchers {
   it should s"not return same as: $command" in {
     hash("SomePassword", "SomeUserNameAsSalt") should not be output
   }
+
+  "checkAuthentication" should "return Success if correct credentials + swordEnabled attribute are provided " in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
+      ldapContext
+    }
+
+    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
+    result shouldBe a[Success[_]]
+  }
+
+  it should "return Failure if swordEnabled set to false" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("false")
+    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
+      ldapContext
+    }
+
+    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
+    result shouldBe a[Failure[_]]
+    inside(result) {
+      case Failure(e) => e shouldBe a[SwordAuthException]
+    }
+  }
+
+  it should "return Failure if swordEnabled is not set" in {
+    expectSwordEnabledAttributePresent(false)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
+      ldapContext
+    }
+
+    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
+    result shouldBe a[Failure[_]]
+    inside(result) {
+      case Failure(e) => e shouldBe a[SwordAuthException]
+    }
+  }
+
+  it should "return Failure if swordEnabled attribute is present but somehow has zero values" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(0)
+    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
+      ldapContext
+    }
+
+    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
+    result shouldBe a[Failure[_]]
+    inside(result) {
+      case Failure(e) => e shouldBe a[SwordAuthException]
+    }
+  }
+
+  it should "return Failure if authentication to LDAP fails" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Failure(new AuthenticationException())
+
+    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
+    result shouldBe a[Failure[_]]
+    inside(result) {
+      case Failure(e) => e shouldBe a[SwordAuthException]
+    }
+  }
+
+
 }

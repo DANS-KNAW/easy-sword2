@@ -30,6 +30,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager {
     log.info("Service document retrieved by {}",
       if (authCredentials.getUsername.isEmpty) "Anonymous user"
       else authCredentials.getUsername)
+    if (Authentication.checkAuthentication(authCredentials).isFailure) throw new SwordAuthException()
     val sdoc: ServiceDocument = new ServiceDocument
     val sw: SwordWorkspace = new SwordWorkspace
     sw.setTitle("EASY SWORD2 Deposit Service")
