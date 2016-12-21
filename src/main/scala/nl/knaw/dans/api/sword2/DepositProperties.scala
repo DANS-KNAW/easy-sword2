@@ -22,12 +22,12 @@ import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
 import scala.util.Try
 
-case class DepositProperties(label: String, description: String, timeStamp: String)
+case class DepositProperties(label: String, description: String, timeStamp: String, resources: Option[PropertiesResources] = None)
 
 object DepositProperties {
   val log = LoggerFactory.getLogger(getClass)
 
-  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
+  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, resources: Option[PropertiesResources] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
     val depositDir = new File(if (lookInTempFirst) settings.tempDir
                               else settings.depositRootDir, id)
     val props = readPropertiesConfiguration(new File(depositDir, "deposit.properties"))
@@ -38,12 +38,23 @@ object DepositProperties {
         |${if(throwable != null) throwable.getMessage else ""}
       """.stripMargin.trim)
     userId.foreach(uid => props.setProperty("depositor.userId", uid))
+    resources.foreach(writeResources(props, _))
     props.save()
+  }
+
+  private def writeResources(props: PropertiesConfiguration, resources: PropertiesResources): Try[Unit] = Try {
+    props.setProperty("resources.bagUri", resources.bagUri)
+    props.setProperty("resources.fileUris", resources.fileUris.map(path => path) mkString ",")
   }
 
   def getState(id: String)(implicit settings: Settings): Try[String] = {
     log.debug(s"[$id] Trying to retrieve deposit state")
     getProperties(id).map(_.label)
+  }
+
+  def getResources(id: String)(implicit settings: Settings): Try[Option[PropertiesResources]] = {
+    log.debug(s"[$id] Trying to retrieve deposit resources")
+    getProperties(id).map(_.resources)
   }
 
   def getProperties(id: String)(implicit settings: Settings): Try[DepositProperties] = {
@@ -59,13 +70,20 @@ object DepositProperties {
     if(!f.exists()) throw new IOException(s"$f does not exist")
     val state = Option(ps.getString("state.label")).getOrElse("")
     val userId = Option(ps.getString("depositor.userId")).getOrElse("")
+    val resources = Option(readPropertiesResources(ps))
     if(state.isEmpty || userId.isEmpty) {
       if (state.isEmpty) log.error(s"[$id] State not present in $f")
       if (userId.isEmpty) log.error(s"[$id] User ID not present in $f")
       DepositProperties(FAILED.toString, "There occured unexpected failure in deposit", new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
     }
     else
-      DepositProperties(state, ps.getString("state.description"), new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
+      DepositProperties(state, ps.getString("state.description"), new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString, resources = resources)
+  }
+
+  private def readPropertiesResources(ps: PropertiesConfiguration): PropertiesResources = {
+    val bagUri = Option(ps.getString("resources.bagUri")).getOrElse("")
+    val fileUris = Option(ps.getString("resources.fileUris")).getOrElse("").split(",").toList
+    PropertiesResources(bagUri, fileUris)
   }
 
   private def readPropertiesConfiguration(f: File) = {

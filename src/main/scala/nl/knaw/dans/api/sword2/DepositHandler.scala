@@ -88,7 +88,7 @@ object DepositHandler {
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
-      _        <- DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
+      _        <- writeToProperties(bagDir)
       dataDir  <- moveBagToStorage()
     } yield ()
 
@@ -452,5 +452,32 @@ object DepositHandler {
     val (topDir, uuidDir) = uuid.splitAt(3)
 
     getFile(bagStoreSettings.baseDir, topDir, uuidDir, version)
+  }
+
+  def writeToProperties(bagDir: File)(implicit settings: Settings, id: String): Try[Unit] = Try {
+    for {
+      bag <- getBag(bagDir)
+      resources <- getResources(bag)
+      _ <- DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", resources = Option(resources), lookInTempFirst = true)
+    } yield ()
+  }
+
+  private def getResources(bag: Bag): Try[PropertiesResources] =  {
+    for {
+      bagUri <- getBagUri(bag)
+      fileUris <- getFileUris(bag, bagUri)
+    } yield PropertiesResources(bagUri, fileUris)
+  }
+
+  private def getBagUri(bag: Bag): Try[String] = Try {
+    // TODO...
+    "http://deasy.dans.knaw.nl/aips/11111111-1111-1111-1111-11111111111.1"
+  }
+
+  private def getFileUris(bag: Bag, bagUri: String): Try[List[String]] = Try {
+    bag.getPayloadManifests.asScala
+      .flatMap(_.asScala)
+      .map { case (path, _) => bagUri + "/" + path }
+      .toList
   }
 }
