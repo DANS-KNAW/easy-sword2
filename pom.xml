@@ -105,6 +105,10 @@
             <artifactId>scalatest_2.11</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.scalamock</groupId>
+            <artifactId>scalamock-scalatest-support_2.11</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.jsuereth</groupId>
             <artifactId>scala-arm_2.11</artifactId>
         </dependency>
