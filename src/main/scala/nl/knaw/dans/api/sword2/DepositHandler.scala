@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ import java.io.{File, IOException}
 import java.net.{MalformedURLException, URL, UnknownHostException}
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
-import java.util.{Collections, NoSuchElementException}
 import java.util.regex.Pattern
+import java.util.{Collections, NoSuchElementException}
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
+
 import nl.knaw.dans.api.sword2.State._
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
+
 import scala.util.Try
 
 case class DepositProperties(label: String, description: String, timeStamp: String, resources: Option[PropertiesResources] = None)
