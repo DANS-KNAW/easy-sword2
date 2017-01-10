@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@ import java.io.{File, IOException}
 import java.net.{MalformedURLException, URL, UnknownHostException}
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
-import java.util.{Collections, NoSuchElementException}
 import java.util.regex.Pattern
+import java.util.{Collections, NoSuchElementException}
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
@@ -88,7 +88,7 @@ object DepositHandler {
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
-      _        <- writeToProperties(bagDir)
+      _        <-  DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
       dataDir  <- moveBagToStorage()
     } yield ()
 
@@ -421,9 +421,9 @@ object DepositHandler {
 
   def createDepositReceipt(deposit: Deposit, settings: Settings, id: String): DepositReceipt = {
     val dr = new DepositReceipt
-    val editIRI = new IRI(settings.serviceBaseUrl + "/container/" + id)
-    val editMediaIri = new IRI(settings.serviceBaseUrl + "/media/" + id)
-    val stateIri = settings.serviceBaseUrl + "/statement/" + id
+    val editIRI = new IRI(settings.serviceBaseUrl + "container/" + id)
+    val editMediaIri = new IRI(settings.serviceBaseUrl + "media/" + id)
+    val stateIri = settings.serviceBaseUrl + "statement/" + id
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editMediaIri)
@@ -452,32 +452,5 @@ object DepositHandler {
     val (topDir, uuidDir) = uuid.splitAt(3)
 
     getFile(bagStoreSettings.baseDir, topDir, uuidDir, version)
-  }
-
-  def writeToProperties(bagDir: File)(implicit settings: Settings, id: String): Try[Unit] = Try {
-    for {
-      bag <- getBag(bagDir)
-      resources <- getResources(bag)
-      _ <- DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", resources = Option(resources), lookInTempFirst = true)
-    } yield ()
-  }
-
-  private def getResources(bag: Bag): Try[PropertiesResources] =  {
-    for {
-      bagUri <- getBagUri(bag)
-      fileUris <- getFileUris(bag, bagUri)
-    } yield PropertiesResources(bagUri, fileUris)
-  }
-
-  private def getBagUri(bag: Bag): Try[String] = Try {
-    // TODO...
-    "http://deasy.dans.knaw.nl/aips/11111111-1111-1111-1111-11111111111.1"
-  }
-
-  private def getFileUris(bag: Bag, bagUri: String): Try[List[String]] = Try {
-    bag.getPayloadManifests.asScala
-      .flatMap(_.asScala)
-      .map { case (path, _) => bagUri + "/" + path }
-      .toList
   }
 }

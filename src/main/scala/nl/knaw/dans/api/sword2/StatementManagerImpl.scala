@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,14 @@
  */
 package nl.knaw.dans.api.sword2
 
-import java.net.{MalformedURLException, URL}
+import java.net.URL
 import java.util
 import java.util.regex.Pattern
 
-import scala.collection.JavaConverters._
 import org.swordapp.server._
 
-import scala.util.{Failure, Success, Try}
+import scala.collection.JavaConverters._
+import scala.util.{Failure, Success}
 
 class StatementManagerImpl extends StatementManager {
   @throws(classOf[SwordServerException])
@@ -41,29 +41,8 @@ class StatementManagerImpl extends StatementManager {
       case Success(properties) =>
         val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", properties.timeStamp)
         statement.setState(properties.label, properties.description)
-        if (properties.label == State.ARCHIVED.toString)
-          properties.resources.foreach(resources => setResources(statement, resources))
         statement
       case Failure(t) => throw new SwordError(404)
     }
-  }
-
-  private def setResources(statement: AtomStatement, resources: PropertiesResources)(implicit settings: Settings): Unit =  {
-    val bagUriResource = new ResourcePart(resources.bagUri.trim)
-    bagUriResource.setMediaType("multipart/related;type=bag")
-    val fileUrisResources = resources.fileUris.map(resource => {
-      checkUrlValidity(resource.trim, settings.urlPattern)
-      val resourcePart = new ResourcePart(resource.trim)
-      resourcePart.setMediaType("multipart/related;type=file")
-      resourcePart
-    })
-    val bagResources = (List(bagUriResource) ++ fileUrisResources).asJava
-    statement.setResources(bagResources)
-  }
-
-  private def checkUrlValidity(url: String, urlPattern: Pattern): Unit = {
-    // NOTICE: because this whole module will soon be refactored, I didn't pay much attention how the exceptions should be thrown and what they should be
-    new URL(url)
-    if (!urlPattern.matcher(url).matches()) throw InvalidDepositException("", s"Not allowed url in Fetch Items ($url)")
   }
 }

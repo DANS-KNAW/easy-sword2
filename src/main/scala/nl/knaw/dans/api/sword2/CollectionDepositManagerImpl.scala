@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,12 @@
  */
 package nl.knaw.dans.api.sword2
 
+import java.net.URI
+import java.nio.file.Paths
+
 import nl.knaw.dans.api.sword2.DepositHandler._
 import nl.knaw.dans.api.sword2.State._
+import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server._
 
@@ -42,7 +46,9 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   }
 
   def checkValidCollectionId(iri: String)(implicit settings: Settings): Try[Unit] = Try {
-    if(iri != settings.collectionIri) throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection IRI: $iri")
+    val collectionPath = new URI(iri).getPath
+    if(Paths.get("/").relativize(Paths.get(collectionPath)).toString != settings.collectionPath)
+      throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection: $collectionPath (valid collection is ${settings.collectionPath}")
   }
 
   private def setDepositStateToDraft(id: String, userId: String)(implicit settings: Settings): Try[Unit] =

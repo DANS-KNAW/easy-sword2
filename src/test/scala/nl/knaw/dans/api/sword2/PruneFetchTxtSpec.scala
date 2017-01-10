@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import java.io.File
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 
 import scala.io.{Codec, Source}
-import scala.util.{Failure, Success}
+import scala.util.Success
 
 class PruneFetchTxtSpec extends Sword2Fixture {
   implicit val codec =Codec.UTF8

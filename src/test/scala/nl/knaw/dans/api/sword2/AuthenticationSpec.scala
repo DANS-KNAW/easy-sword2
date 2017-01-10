@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,10 +24,9 @@ import javax.naming.ldap.LdapContext
 
 import nl.knaw.dans.api.sword2.Authentication._
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{FlatSpec, Matchers}
-import org.swordapp.server.{AuthCredentials, SwordAuthException}
-import org.scalatest._
 import org.scalatest.Inside._
+import org.scalatest.{FlatSpec, Matchers, _}
+import org.swordapp.server.{AuthCredentials, SwordAuthException}
 
 import scala.util.{Failure, Success, Try}
 
@@ -37,7 +36,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
     serviceBaseUrl = "dummy",
-    collectionIri = "dummy",
+    collectionPath = "dummy",
     auth = LdapAuthSettings(new URI("ldap://localhost"), "ou=easy,dc=dans,dc=knaw,dc=nl", "enabled", "true"),
     urlPattern = Pattern.compile("dummy"),
     bagStoreSettings = None,

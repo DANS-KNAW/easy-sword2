@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2015-2016 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,12 @@
 package nl.knaw.dans.api.sword2
 
 import java.io.{File, IOException}
+
 import nl.knaw.dans.api.sword2.State._
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.joda.time.{DateTime, DateTimeZone}
 import org.slf4j.LoggerFactory
+
 import scala.util.Try
 
 case class DepositProperties(label: String, description: String, timeStamp: String, resources: Option[PropertiesResources] = None)
@@ -27,7 +29,7 @@ case class DepositProperties(label: String, description: String, timeStamp: Stri
 object DepositProperties {
   val log = LoggerFactory.getLogger(getClass)
 
-  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, resources: Option[PropertiesResources] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
+  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
     val depositDir = new File(if (lookInTempFirst) settings.tempDir
                               else settings.depositRootDir, id)
     val props = readPropertiesConfiguration(new File(depositDir, "deposit.properties"))
@@ -38,14 +40,14 @@ object DepositProperties {
         |${if(throwable != null) throwable.getMessage else ""}
       """.stripMargin.trim)
     userId.foreach(uid => props.setProperty("depositor.userId", uid))
-    resources.foreach(writeResources(props, _))
+//    resources.foreach(writeResources(props, _))
     props.save()
   }
 
-  private def writeResources(props: PropertiesConfiguration, resources: PropertiesResources): Try[Unit] = Try {
-    props.setProperty("resources.bagUri", resources.bagUri)
-    props.setProperty("resources.fileUris", resources.fileUris.map(path => path) mkString ",")
-  }
+//  private def writeResources(props: PropertiesConfiguration, resources: PropertiesResources): Try[Unit] = Try {
+//    props.setProperty("resources.bagUri", resources.bagUri)
+//    props.setProperty("resources.fileUris", resources.fileUris.map(path => path) mkString ",")
+//  }
 
   def getState(id: String)(implicit settings: Settings): Try[String] = {
     log.debug(s"[$id] Trying to retrieve deposit state")
