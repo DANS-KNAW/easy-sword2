@@ -35,7 +35,7 @@ package object sword2 {
                        depositPermissions: String,
                        tempDir: File,
                        serviceBaseUrl: String, // TODO: refactor to URL?
-                       collectionIri: String,
+                       collectionPath: String,
                        auth: AuthenticationSettings,
                        urlPattern: Pattern,
                        bagStoreSettings: Option[BagStoreSettings],

@@ -29,7 +29,7 @@ class Sword2Service extends ApplicationSettings with DebugEnhancedLogging  {
   val server = new Server(port)
   val context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
   val settings = Settings(
-    depositRootDir, depositPermissions, tempDir, baseUrl, collectionIri, auth, urlPattern,
+    depositRootDir, depositPermissions, tempDir, baseUrl, collectionPath, auth, urlPattern,
     bagStoreSettings, supportMailAddress)
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
 

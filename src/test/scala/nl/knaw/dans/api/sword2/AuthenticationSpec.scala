@@ -36,7 +36,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
     serviceBaseUrl = "dummy",
-    collectionIri = "dummy",
+    collectionPath = "dummy",
     auth = LdapAuthSettings(new URI("ldap://localhost"), "ou=easy,dc=dans,dc=knaw,dc=nl", "enabled", "true"),
     urlPattern = Pattern.compile("dummy"),
     bagStoreSettings = None,

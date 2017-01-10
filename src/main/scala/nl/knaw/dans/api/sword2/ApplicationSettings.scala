@@ -33,7 +33,7 @@ trait ApplicationSettings {
   val tempDir = new File(properties.getString("tempdir"))
   if (!tempDir.canRead) throw new ServletException("Cannot read tempdir")
   val baseUrl = properties.getString("base-url")
-  val collectionIri = properties.getString("collection.iri")
+  val collectionPath = properties.getString("collection.path")
   val auth = properties.getString("auth.mode") match {
     case "ldap" => LdapAuthSettings(new URI(properties.getString("auth.ldap.url")),
       properties.getString("auth.ldap.users.parent-entry"),
