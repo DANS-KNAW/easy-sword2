@@ -31,7 +31,7 @@
     <description>SWORD v2 based dataset deposit service</description>
     <url>https://github.com/DANS-KNAW/easy-sword2</url>
     <properties>
-        <main-class>nl.knaw.dans.api.sword2.Sword2Service</main-class>
+        <main-class>nl.knaw.dans.easy.sword2.Sword2Service</main-class>
     </properties>
     <scm>
         <developerConnection>scm:git:https://github.com/DANS-KNAW/${project.artifactId}</developerConnection>
