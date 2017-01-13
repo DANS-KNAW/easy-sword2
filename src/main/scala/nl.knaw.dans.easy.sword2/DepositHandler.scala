@@ -149,7 +149,10 @@ object DepositHandler {
   }
 
   private def getBagDir(depositDir: File): Try[File] = Try {
-    depositDir.listFiles.find(f => f.isDirectory && isPartOfDeposit(f)).get
+    val depositFiles = depositDir.listFiles.filter(isPartOfDeposit)
+    if (depositFiles.size != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level file, which must be a directory, number found: ${depositFiles.size}")
+    if (depositFiles(0).isFile) throw InvalidDepositException(depositDir.getName, s"Deposit package contained one top-level file, but it was not a directory")
+    depositFiles(0)
   }
 
   def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] =
