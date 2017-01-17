@@ -1,3 +1,0 @@
-<Context docBase="/opt/easy-sword2/bin/easy-sword2.war" debug="0" crossContext="true" >
-    <Parameter name="EASY_SWORD2_HOME" value="/opt/easy-sword2" />
-</Context>
