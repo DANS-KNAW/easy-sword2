@@ -19,5 +19,5 @@ object State  extends Enumeration {
   type State = Value
   val ARCHIVED, DRAFT, FAILED, FINALIZING, INVALID, REJECTED, SUBMITTED = Value
 
-  def stringValues = this.values.map(_.toString)
+  def stringValues: Set[String] = this.values.map(_.toString)
 }

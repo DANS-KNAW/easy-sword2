@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package nl.knaw.dans.easy.sword2
 
 import java.net.URI
@@ -20,7 +21,6 @@ import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2.State._
-import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server._
 
@@ -51,12 +51,11 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection: $collectionPath (valid collection is ${settings.collectionPath}")
   }
 
-  private def setDepositStateToDraft(id: String, userId: String)(implicit settings: Settings): Try[Unit] =
-    DepositProperties.set(
-      id = id,
-      stateLabel = DRAFT,
-      stateDescription = "Deposit is open for additional data",
-      userId = Some(userId),
-      lookInTempFirst = true)
-
+  private def setDepositStateToDraft(id: String, userId: String)(implicit settings: Settings): Try[Unit] = {
+    for {
+      props <- DepositProperties(id, Some(userId))
+      props <- props.setState(DRAFT, "Deposit is open for additional data")
+      _ <- props.save()
+    } yield ()
+  }
 }

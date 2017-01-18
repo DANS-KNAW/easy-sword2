@@ -16,7 +16,6 @@
 package nl.knaw.dans.easy.sword2
 
 import nl.knaw.dans.easy.sword2.servlets._
-import nl.knaw.dans.easy.sword2.servlets._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.ajp.Ajp13SocketConnector
 import org.eclipse.jetty.server.Server

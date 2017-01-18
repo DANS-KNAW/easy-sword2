@@ -15,33 +15,43 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.net.URL
+import java.net.URI
 import java.util
-import java.util.regex.Pattern
 
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
-import scala.collection.JavaConverters._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
-class StatementManagerImpl extends StatementManager {
+class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
+    trace(iri, accept, auth, config)
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-
-    // TODO: REFACTOR THIS MESS
-    Authentication.checkAuthentication(auth).get
-    val maybeState = SwordID.extract(iri) match {
-      case Success(id) => DepositProperties.getProperties(id)
-      case Failure(t) => throw new SwordError(404)
-    }
-    maybeState match {
-      case Success(properties) =>
-        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit ${SwordID.extract(iri).get}", properties.timeStamp)
-        statement.setState(properties.label, properties.description)
+    val result = for {
+      _ <- Authentication.checkAuthentication(auth)
+      id <- SwordID.extract(iri)
+      _ = debug(s"id = $id")
+      props <- DepositProperties(id)
+      _ = debug(s"Read ${ DepositProperties.FILENAME }")
+      state <- props.getState
+      _ = debug(s"State = $state")
+      stateDesc <- props.getStateDescription
+      _ = debug(s"State desc = $stateDesc")
+      statement <- Try {
+        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString)
+        statement.addState(state.toString, stateDesc)
+        val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
+        archivalResource.setMediaType("multipart/related")
+        statement.addResource(archivalResource)
         statement
+      }
+    } yield statement
+
+    result match {
+      case Success(statement) => statement
       case Failure(t) => throw new SwordError(404)
     }
   }

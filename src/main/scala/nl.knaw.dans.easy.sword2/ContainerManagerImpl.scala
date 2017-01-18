@@ -23,7 +23,7 @@ import org.apache.abdera.i18n.iri.IRI
 import org.swordapp.server._
 
 import scala.collection.JavaConversions._
-import scala.util.Success
+import scala.util.{Failure, Success, Try}
 
 class ContainerManagerImpl extends ContainerManager {
   this: ApplicationSettings =>
@@ -87,9 +87,9 @@ class ContainerManagerImpl extends ContainerManager {
     val result = for {
       _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
-      _ = settings.auth match {
+      _  <- settings.auth match {
           case _ :LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
-          case _ => ()
+          case _ => Success(())
         }
       _ = log.debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
@@ -99,8 +99,14 @@ class ContainerManagerImpl extends ContainerManager {
     result.getOrThrow
   }
 
-  private def checkThatUserIsOwnerOfDeposit(id: String, user: String): Unit =
-    if(s"$user-" != id.take(s"$user-".length)) throw new SwordAuthException("Not allowed to continue deposit for other user")
+  private def checkThatUserIsOwnerOfDeposit(id: String, user: String)(implicit settings: Settings): Try[Unit] = {
+    for {
+      props <- DepositProperties(id)
+      depositor <- props.getDepositorId
+      _ <- if (depositor == user) Success(())
+           else Failure(new SwordAuthException("Not allowed to continue deposit for other user"))
+    } yield ()
+  }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])

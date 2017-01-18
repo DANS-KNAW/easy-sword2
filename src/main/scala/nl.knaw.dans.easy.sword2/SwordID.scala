@@ -15,30 +15,17 @@
  */
 package nl.knaw.dans.easy.sword2
 
+import java.util.UUID
+
 import org.swordapp.server.SwordError
 
 import scala.util.{Failure, Success, Try}
 
 object SwordID {
   def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[String] = Try {
-    val postfix = maybeSlug match {
+    maybeSlug match {
       case Some(slug) => slug
-      case None => generateTimeBasedPostfix.get
-    }
-    val prefix = settings.auth match {
-      case _ : SingleUserAuthSettings => ""
-      case _ => s"$user-"
-    }
-    s"$prefix$postfix"
-  }
-
-  def generateTimeBasedPostfix = synchronized {
-    try {
-      val id: Long = System.currentTimeMillis
-      Thread.sleep(2)
-      Success(id.toString)
-    } catch {
-      case e: InterruptedException => Failure(e)
+      case None => UUID.randomUUID().toString
     }
   }
 

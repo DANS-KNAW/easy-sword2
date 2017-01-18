@@ -16,7 +16,6 @@
 package nl.knaw.dans.easy.sword2.servlets
 
 import nl.knaw.dans.easy.sword2.{Settings, SwordConfig}
-import nl.knaw.dans.easy.sword2.SwordConfig
 import org.swordapp.server.servlets.MediaResourceServletDefault
 
 class MediaResourceServletImpl extends MediaResourceServletDefault {
