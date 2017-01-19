@@ -15,84 +15,108 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{File, IOException}
+import java.nio.file.Files
+import java.nio.file.attribute.FileTime
 
-import nl.knaw.dans.easy.sword2.State._
+import nl.knaw.dans.easy.sword2.State.State
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.joda.time.{DateTime, DateTimeZone}
-import org.slf4j.LoggerFactory
 
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
-case class DepositProperties(label: String, description: String, timeStamp: String, resources: Option[PropertiesResources] = None)
+/**
+ * Loads the current `deposit.properties` for the specified deposit. This class is not thread-safe, so it is assumed
+ * that it is used from one processing thread only (at least per deposit). It looks for the deposit first in the
+ * temporary download directory, and if not found there, in the ingest-flow inbox.
+ *
+ * @param depositId the deposit of which to load the properties
+ * @param settings  application settings
+ */
+class DepositProperties(depositId: String, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
+  import DepositProperties._
+  trace(depositId, depositorId)
+
+  private val (properties, modified) = {
+    val props = new PropertiesConfiguration()
+    props.setDelimiterParsingDisabled(true)
+    val depositInTemp = settings.tempDir.toPath.resolve(depositId)
+    val depositInInbox = settings.depositRootDir.toPath.resolve(depositId)
+    val file = if (Files.exists(depositInTemp)) depositInTemp.resolve(FILENAME)
+               else if (Files.exists(depositInInbox)) depositInInbox.resolve(FILENAME)
+               else depositInTemp.resolve(FILENAME)
+    props.setFile(file.toFile)
+    if (Files.exists(file)) props.load(file.toFile)
+    else props.setProperty("bag-store.bag-id", depositId)
+    debug(s"Using deposit.properties at $file")
+    depositorId.foreach(props.setProperty("depositor.userId", _))
+    (props, if (Files.exists(file)) Some(Files.getLastModifiedTime(file))
+            else None)
+  }
+
+  /**
+   * Saves the deposit file to disk.
+   *
+   * @return
+   */
+  def save(): Try[Unit] = Try {
+    debug("Saving deposit.properties")
+    properties.save()
+  }
+
+  def setState(state: State, descr: String): Try[DepositProperties] = Try {
+    properties.setProperty("state.label", state)
+    properties.setProperty("state.description", descr)
+    this
+  }
+
+  /**
+   * Returns the state when the properties were loaded.
+   *
+   * @return
+   */
+  def getState: Try[State] = {
+    Option(properties.getProperty("state.label"))
+      .map(_.toString)
+      .map(State.withName)
+      .map(Success(_))
+      .getOrElse(Failure(new IllegalStateException("Deposit without state")))
+  }
+
+
+  /**
+   * Returns the state description when the properties were loaded.
+   *
+   * @return
+   */
+  def getStateDescription: Try[String] = {
+    Option(properties.getProperty("state.description"))
+      .map(_.toString)
+      .map(Success(_))
+      .getOrElse(Failure(new IllegalStateException("Deposit without state")))
+  }
+
+  def getDepositorId: Try[String] = {
+    Option(properties.getProperty("depositor.userId"))
+      .map(_.toString)
+      .map(Success(_))
+      .getOrElse(Failure(new IllegalStateException("Deposit without depositor")))
+  }
+
+
+  /**
+   * Returns the last modified timestamp when the properties were loaded.
+   *
+   * @return
+   */
+  def getLastModifiedTimestamp: Option[FileTime] = {
+    modified
+  }
+}
 
 object DepositProperties {
-  val log = LoggerFactory.getLogger(getClass)
+  val FILENAME = "deposit.properties"
 
-  def set(id: String, stateLabel: State, stateDescription: String, userId: Option[String] = None, lookInTempFirst: Boolean = false, throwable: Throwable = null)(implicit settings: Settings): Try[Unit] = Try {
-    val depositDir = new File(if (lookInTempFirst) settings.tempDir
-                              else settings.depositRootDir, id)
-    val props = readPropertiesConfiguration(new File(depositDir, "deposit.properties"))
-    props.setProperty("state.label", stateLabel)
-    props.setProperty("state.description",
-      s"""
-        |$stateDescription
-        |${if(throwable != null) throwable.getMessage else ""}
-      """.stripMargin.trim)
-    userId.foreach(uid => props.setProperty("depositor.userId", uid))
-//    resources.foreach(writeResources(props, _))
-    props.save()
-  }
-
-//  private def writeResources(props: PropertiesConfiguration, resources: PropertiesResources): Try[Unit] = Try {
-//    props.setProperty("resources.bagUri", resources.bagUri)
-//    props.setProperty("resources.fileUris", resources.fileUris.map(path => path) mkString ",")
-//  }
-
-  def getState(id: String)(implicit settings: Settings): Try[String] = {
-    log.debug(s"[$id] Trying to retrieve deposit state")
-    getProperties(id).map(_.label)
-  }
-
-  def getResources(id: String)(implicit settings: Settings): Try[Option[PropertiesResources]] = {
-    log.debug(s"[$id] Trying to retrieve deposit resources")
-    getProperties(id).map(_.resources)
-  }
-
-  def getProperties(id: String)(implicit settings: Settings): Try[DepositProperties] = {
-    log.debug(s"[$id] Trying to retrieve deposit properties")
-    readProperties(id, new File(settings.tempDir, s"$id/deposit.properties")).recoverWith {
-      case f: IOException => readProperties(id, new File(settings.depositRootDir, s"$id/deposit.properties"))
-    }
-  }
-
-  private def readProperties(id: String, f: File): Try[DepositProperties] = Try {
-    val ps = readPropertiesConfiguration(f)
-    log.debug(s"[$id] Trying to retrieve state from $f")
-    if(!f.exists()) throw new IOException(s"$f does not exist")
-    val state = Option(ps.getString("state.label")).getOrElse("")
-    val userId = Option(ps.getString("depositor.userId")).getOrElse("")
-    val resources = Option(readPropertiesResources(ps))
-    if(state.isEmpty || userId.isEmpty) {
-      if (state.isEmpty) log.error(s"[$id] State not present in $f")
-      if (userId.isEmpty) log.error(s"[$id] User ID not present in $f")
-      DepositProperties(FAILED.toString, "There occured unexpected failure in deposit", new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString)
-    }
-    else
-      DepositProperties(state, ps.getString("state.description"), new DateTime(ps.getFile.lastModified()).withZone(DateTimeZone.UTC).toString, resources = resources)
-  }
-
-  private def readPropertiesResources(ps: PropertiesConfiguration): PropertiesResources = {
-    val bagUri = Option(ps.getString("resources.bagUri")).getOrElse("")
-    val fileUris = Option(ps.getString("resources.fileUris")).getOrElse("").split(",").toList
-    PropertiesResources(bagUri, fileUris)
-  }
-
-  private def readPropertiesConfiguration(f: File) = {
-    val ps = new PropertiesConfiguration()
-    ps.setDelimiterParsingDisabled(true)
-    if(f.exists) ps.load(f)
-    ps.setFile(f)
-    ps
+  def apply(depositId: String, depositorId: Option[String] = None)(implicit settings: Settings): Try[DepositProperties] = Try {
+    new DepositProperties(depositId, depositorId)
   }
 }

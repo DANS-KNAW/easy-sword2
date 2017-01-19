@@ -43,8 +43,6 @@ package object sword2 {
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
-  case class PropertiesResources(bagUri: String, fileUris: List[String])
-
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
@@ -56,7 +54,7 @@ package object sword2 {
       }
   }
 
-  def isPartOfDeposit(f: File): Boolean = f.getName != "deposit.properties"
+  def isPartOfDeposit(f: File): Boolean = f.getName != DepositProperties.FILENAME
 
   implicit class TryDepositResultOps(val thisResult: Try[(String, DepositReceipt)]) extends AnyVal {
 

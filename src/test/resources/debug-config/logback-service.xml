@@ -1,34 +1,28 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration scan="true" scanPeriod="3 minutes">
-    <property name="LOGDIR" value="data" />
-
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+<?xml version="1.0" encoding="utf-8"?>
+<configuration scan="true" scanPeriod="1 minute">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <Pattern>%-5level [%thread]: %msg %n</Pattern>
+            <pattern>[%-5level] %logger{15} - %msg %n</pattern>
         </encoder>
-    </appender>    
+    </appender>
 
-    <appender name="EASY_SWORD2_LOG"
-        class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGDIR}/easy-sword2.log</file>
+    <appender name="FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>data/easy-sword2.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- daily rollover -->
-            <fileNamePattern>${LOGDIR}/easy-sword2.%d{yyyy-MM-dd}.log</fileNamePattern>
-
-            <!-- keep 30 days' worth of history -->
+            <fileNamePattern>data/easy-bag-store.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%p %d [%t] - %m%n</pattern>
+            <pattern>[%date{ISO8601}] %-5level %msg%n</pattern>
         </encoder>
-    </appender> 
-    
+    </appender>
     <root level="warn">
-
+        <appender-ref ref="FILE" />
+        <appender-ref ref="STDOUT" />
     </root>
+    <logger name="nl.knaw.dans.easy" level="trace" />
 
-    <logger name="nl.knaw.dans" level="trace" >
-       <appender-ref ref="EASY_SWORD2_LOG" />
-        <appender-ref ref="CONSOLE" />
-    </logger>
+    <!-- Shut up the bagit lib 4 about there not being a "fetch status" code in fetch.txt, which is not in the standard -->
+    <logger name="gov.loc.repository.bagit.impl.FetchTxtReaderImpl" level="off" />
 </configuration>

@@ -88,17 +88,27 @@ object DepositHandler {
       bagDir   <- getBagDir(tempDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
-      _        <-  DepositProperties.set(id, SUBMITTED, "Deposit is valid and ready for post-submission processing", lookInTempFirst = true)
+      props    <- DepositProperties(id)
+      _        <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
+      _        <- props.save()
       dataDir  <- moveBagToStorage()
     } yield ()
 
     result.recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
-        DepositProperties.set(id, INVALID, msg, lookInTempFirst = true)
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(INVALID, msg)
+          _ <- props.save()
+        } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
-        DepositProperties.set(id, FAILED, genericErrorMessage, lookInTempFirst = true)
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(FAILED, genericErrorMessage)
+          _ <- props.save()
+        } yield ()
     }
   }
 
@@ -155,13 +165,13 @@ object DepositHandler {
     depositFiles(0)
   }
 
-  def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] =
-    DepositProperties.getState(id)
-      .filter(_ == DRAFT.toString)
-      .map(_ => ())
-      .recoverWith {
-        case t => Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
-      }
+  def checkDepositIsInDraft(id: String)(implicit settings: Settings): Try[Unit] = {
+    for {
+      props <- DepositProperties(id)
+      state <- props.getState
+      _ <- if (state == DRAFT) Success(()) else Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
+    } yield ()
+  }
 
   def copyPayloadToFile(deposit: Deposit, zipFile: File)(implicit id: String): Try[Unit] =
     try {
@@ -174,7 +184,12 @@ object DepositHandler {
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = Try {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
-      DepositProperties.set(id, FINALIZING, "Deposit is being reassembled and validated", lookInTempFirst = true)
+      val result = for {
+        props <- DepositProperties(id)
+        _ <- props.setState(FINALIZING, "Deposit is being reassembled and validated")
+        _ <- props.save()
+      } yield ()
+      result.get // Trigger exception if properties could not be updated
       depositProcessingStream.onNext((id, deposit))
     } else {
       log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")
@@ -405,8 +420,7 @@ object DepositHandler {
       val storageDir = new File(settings.depositRootDir, id)
       if (isOnPosixFileSystem(tempDir))
         Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
-      if (!tempDir.renameTo(storageDir)) throw new SwordError(s"Cannot move $tempDir to $storageDir")
-      storageDir
+      Files.move(tempDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
   def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
