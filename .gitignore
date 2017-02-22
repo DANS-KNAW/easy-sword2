@@ -1,22 +1,22 @@
 *.sc
-target/
-pom.xml.tag
-pom.xml.releaseBackup
-pom.xml.versionsBackup
-pom.xml.next
-release.properties
-dependency-reduced-pom.xml
-buildNumber.properties
+/target/
+/pom.xml.tag
+/pom.xml.releaseBackup
+/pom.xml.versionsBackup
+/pom.xml.next
+/release.properties
+/dependency-reduced-pom.xml
+/buildNumber.properties
 *.class
 *~
 *.swp
 *.iml
-.idea/
+/.idea/
 .DS_Store
-apphome.sh
-home/
-data/
-data-*
+/apphome.sh
+/home/
+/data/
+/data-*
 
 # Eclipse
 /.project
