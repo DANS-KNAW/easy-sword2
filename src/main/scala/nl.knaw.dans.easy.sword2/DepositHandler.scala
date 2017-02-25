@@ -287,6 +287,7 @@ object DepositHandler {
         Option(bag.getFetchTxt).map(fetchTxt => Try {
           fetchTxt.removeAll(items.asJava)
           if (fetchTxt.isEmpty) bag.removeBagFile(bag.getBagConstants.getFetchTxt)
+          // TODO: Remove the loop. Complete needs to be called only once for all tagmanifests. See easy-ingest-flow FlowStepEnrichMetadata.updateTagManifests
           bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
             val completer = new TagManifestCompleter(bagFactory)
             completer.setTagManifestAlgorithm(a)
@@ -444,7 +445,7 @@ object DepositHandler {
     dr.setEditIRI(editIRI)
     dr.setLocation(editIRI)
     dr.setEditMediaIRI(editMediaIri)
-    dr.setSwordEditIRI(editMediaIri)
+    dr.setSwordEditIRI(editIRI)
     dr.setAtomStatementURI(stateIri)
     dr.setPackaging(Collections.singletonList("http://purl.org/net/sword/package/BagIt"))
     dr.setTreatment("[1] unpacking [2] verifying integrity [3] storing persistently")
