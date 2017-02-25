@@ -36,19 +36,10 @@ class ContainerManagerImpl extends ContainerManager {
     SwordID.extract(editIRI) match {
       case Success(id) =>
         val dir: File = new File(settings.depositRootDir, id)
-        if (!dir.exists) {
-          throw new SwordError(404)
-        }
-      case _ => throw new SwordError(404)
+        if (dir.exists) DepositHandler.createDepositReceipt(settings, id)
+        else  throw new SwordError(404)
+      case _ => throw new SwordError(500)
     }
-
-    val dr: DepositReceipt = new DepositReceipt
-    dr.setEditIRI(new IRI(editIRI))
-    dr.setLocation(new IRI(editIRI))
-    dr.setEditMediaIRI(new IRI(editIRI))
-    dr.setPackaging(List("http://purl.org/net/sword/package/BagIt"))
-    dr.setTreatment("Dataset is stored at DANS (http://dans.knaw.nl/).")
-    dr
   }
 
   @throws(classOf[SwordError])
