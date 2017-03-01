@@ -28,8 +28,6 @@ import org.swordapp.server.{AuthCredentials, SwordAuthException, SwordError}
 
 import scala.util.{Failure, Success, Try}
 
-
-
 object Authentication {
   type UserName = String
   type Password = String

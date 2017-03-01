@@ -35,7 +35,7 @@ import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.{DateTime, DateTimeZone}
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import org.swordapp.server.{Deposit, DepositReceipt, SwordError}
 import resource.Using
 import rx.lang.scala.schedulers.NewThreadScheduler
@@ -46,10 +46,10 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object DepositHandler {
-  val log = LoggerFactory.getLogger(getClass)
+  val log: Logger = LoggerFactory.getLogger(getClass)
   implicit val bagFactory = new BagFactory
 
-  val depositProcessingStream = PublishSubject[(String, Deposit)]()
+  private val depositProcessingStream = PublishSubject[(String, Deposit)]()
 
   def startDepositProcessingStream(settings: Settings): Unit = {
     depositProcessingStream
@@ -65,7 +65,9 @@ object DepositHandler {
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
-    } yield createDepositReceipt(deposit, settings, id)
+      dr = createDepositReceipt(settings, id)
+      _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
+    } yield dr
   }
 
   def genericErrorMessage(implicit settings: Settings, id: String): String = {
@@ -160,7 +162,7 @@ object DepositHandler {
 
   private def getBagDir(depositDir: File): Try[File] = Try {
     val depositFiles = depositDir.listFiles.filter(isPartOfDeposit)
-    if (depositFiles.size != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level file, which must be a directory, number found: ${depositFiles.size}")
+    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level file, which must be a directory, number found: ${depositFiles.size}")
     if (depositFiles(0).isFile) throw InvalidDepositException(depositDir.getName, s"Deposit package contained one top-level file, but it was not a directory")
     depositFiles(0)
   }
@@ -437,7 +439,7 @@ object DepositHandler {
       .flatten
   }
 
-  def createDepositReceipt(deposit: Deposit, settings: Settings, id: String): DepositReceipt = {
+  def createDepositReceipt(settings: Settings, id: String): DepositReceipt = {
     val dr = new DepositReceipt
     val editIRI = new IRI(settings.serviceBaseUrl + "container/" + id)
     val editMediaIri = new IRI(settings.serviceBaseUrl + "media/" + id)
@@ -449,10 +451,8 @@ object DepositHandler {
     dr.setAtomStatementURI(stateIri)
     dr.setPackaging(Collections.singletonList("http://purl.org/net/sword/package/BagIt"))
     dr.setTreatment("[1] unpacking [2] verifying integrity [3] storing persistently")
-    dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     dr
   }
-
 
   // TODO: RETRIEVE VIA AN INTERFACE
   private def getReferredBagChecksums(url: String)(implicit bagStoreSettings: BagStoreSettings): Try[Seq[(String, String)]] =
