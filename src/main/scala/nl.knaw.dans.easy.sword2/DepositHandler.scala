@@ -392,7 +392,7 @@ object DepositHandler {
         FileVisitResult.CONTINUE
       } catch {
         case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
-        case cce: ClassCastException => log.error("Non file permission elements in set"); FileVisitResult.TERMINATE
+        case cce: ClassCastException => log.error("No file permission elements in set"); FileVisitResult.TERMINATE
         case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
         case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
       }
