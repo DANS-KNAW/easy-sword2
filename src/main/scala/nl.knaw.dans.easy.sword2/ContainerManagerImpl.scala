@@ -35,9 +35,14 @@ class ContainerManagerImpl extends ContainerManager {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        val dir: File = new File(settings.depositRootDir, id)
-        if (dir.exists) DepositHandler.createDepositReceipt(settings, id)
-        else  throw new SwordError(404)
+        val result = for {
+          props <- DepositProperties(id)
+          receipt <- Try { if (props.exists) Some(DepositHandler.createDepositReceipt(settings, id)) else None }
+        } yield receipt
+        result match {
+          case Success(maybeReceipt) => maybeReceipt.getOrElse { throw new SwordError(404) }
+          case Failure(e) => throw new SwordError(500)
+        }
       case _ => throw new SwordError(500)
     }
   }
