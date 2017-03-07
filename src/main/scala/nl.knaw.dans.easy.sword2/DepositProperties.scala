@@ -63,6 +63,8 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
     properties.save()
   }
 
+  def exists: Boolean = properties.getFile.exists
+
   def setState(state: State, descr: String): Try[DepositProperties] = Try {
     properties.setProperty("state.label", state)
     properties.setProperty("state.description", descr)
