@@ -83,16 +83,17 @@ object DepositHandler {
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
     implicit val bagStoreSettings = settings.bagStoreSettings
-    val tempDir = new File(settings.tempDir, id)
+    val depositDir = new File(settings.tempDir, id)
 
     val result = for {
       _        <- extractBag(mimeType)
-      bagDir   <- getBagDir(tempDir)
+      bagDir   <- getBagDir(depositDir)
       _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _        <- checkBagVirtualValidity(bagDir)
       props    <- DepositProperties(id)
       _        <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _        <- props.save()
+      _        <- removeZipFiles(depositDir)
       dataDir  <- moveBagToStorage()
     } yield ()
 
@@ -111,6 +112,15 @@ object DepositHandler {
           _ <- props.setState(FAILED, genericErrorMessage)
           _ <- props.save()
         } yield ()
+    }
+  }
+
+  private def removeZipFiles(bagDir: File): Try[Unit] = Try {
+    log.debug("Removing zip files")
+    bagDir.listFiles().toList.filter(f => isPartOfDeposit(f) && f.isFile).foreach {
+      f =>
+        log.debug(s"Removing $f")
+        deleteQuietly(f)
     }
   }
 
@@ -144,15 +154,12 @@ object DepositHandler {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
             extract(file, depositDir.getPath)
-            deleteQuietly(file)
           })
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
           files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
           MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
           extract(mergedZip, depositDir.getPath)
-          files.foreach(deleteQuietly)
-          deleteQuietly(mergedZip)
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
@@ -161,9 +168,8 @@ object DepositHandler {
   }
 
   private def getBagDir(depositDir: File): Try[File] = Try {
-    val depositFiles = depositDir.listFiles.filter(isPartOfDeposit)
-    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level file, which must be a directory, number found: ${depositFiles.size}")
-    if (depositFiles(0).isFile) throw InvalidDepositException(depositDir.getName, s"Deposit package contained one top-level file, but it was not a directory")
+    val depositFiles = depositDir.listFiles.filter(_.isDirectory)
+    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${depositFiles.size}")
     depositFiles(0)
   }
 
