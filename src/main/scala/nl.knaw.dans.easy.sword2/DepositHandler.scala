@@ -117,10 +117,11 @@ object DepositHandler {
 
   private def removeZipFiles(bagDir: File): Try[Unit] = Try {
     log.debug("Removing zip files")
-    bagDir.listFiles().toList.filter(f => isPartOfDeposit(f) && f.isFile).foreach {
-      f =>
-        log.debug(s"Removing $f")
-        deleteQuietly(f)
+    for (file <- bagDir.listFiles().toList
+         if isPartOfDeposit(file)
+         if file.isFile) {
+      log.debug(s"Removing $file")
+      deleteQuietly(file)
     }
   }
 
