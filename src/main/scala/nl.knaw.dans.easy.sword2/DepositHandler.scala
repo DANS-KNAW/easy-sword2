@@ -126,7 +126,11 @@ object DepositHandler {
   }
 
   private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
-    def extract(file: File, outputPath: String): Unit = new ZipFile(file.getPath).extractAll(outputPath)
+    def extract(file: File, outputPath: String): Unit = {
+      val zip = new ZipFile(file.getPath)
+      zip.setFileNameCharset("UTF-8")
+      zip.extractAll(outputPath)
+    }
 
     def getSequenceNumber(f: File): Int = {
       try {
