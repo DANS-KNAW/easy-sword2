@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import java.io.{File, IOException}
 import java.net.{MalformedURLException, URL, UnknownHostException}
+import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
 import java.util.regex.Pattern
@@ -127,9 +128,9 @@ object DepositHandler {
 
   private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
     def extract(file: File, outputPath: String): Unit = {
-      val zip = new ZipFile(file.getPath)
-      zip.setFileNameCharset("UTF-8")
-      zip.extractAll(outputPath)
+      new ZipFile(file.getPath) {
+        setFileNameCharset(StandardCharsets.UTF_8.name)
+      }.extractAll(outputPath)
     }
 
     def getSequenceNumber(f: File): Int = {
