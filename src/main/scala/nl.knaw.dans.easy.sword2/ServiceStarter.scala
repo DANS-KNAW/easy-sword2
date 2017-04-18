@@ -25,6 +25,7 @@ class ServiceStarter extends Daemon {
   def init(ctx: DaemonContext) = {
     log = LoggerFactory.getLogger(getClass)
     log.info("Initializing service...")
+    log.info(s"LC_ALL = ${System.getenv("LC_ALL")}")
     service = new Sword2Service
     log.info("Service initialized.")
   }
