@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import java.io._
 
-import org.apache.commons.io.IOUtils
+import org.apache.commons.io.{ FileUtils, IOUtils }
 
 import scala.util.Try
 
@@ -29,6 +29,7 @@ object MergeFiles {
       output = createAppendableStream(destination)
       files.foreach(appendFile(output))
     } finally {
+      files.foreach(FileUtils.deleteQuietly)
       IOUtils.closeQuietly(output)
     }
   }

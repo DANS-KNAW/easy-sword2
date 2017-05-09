@@ -15,36 +15,40 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{File, IOException}
-import java.net.{MalformedURLException, URL, UnknownHostException}
+import java.io.{ File, IOException }
+import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
-import java.nio.file.attribute.{BasicFileAttributes, PosixFilePermissions}
+import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
+import java.util
 import java.util.regex.Pattern
-import java.util.{Collections, NoSuchElementException}
+import java.util.{ Collections, NoSuchElementException }
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
-import gov.loc.repository.bagit.{Bag, BagFactory, FetchTxt}
+import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import net.lingala.zip4j.core.ZipFile
+import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.lib.error.{CompositeException, TraversableTryExtensions}
+import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions }
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
-import org.joda.time.{DateTime, DateTimeZone}
-import org.slf4j.{Logger, LoggerFactory}
-import org.swordapp.server.{Deposit, DepositReceipt, SwordError}
+import org.joda.time.{ DateTime, DateTimeZone }
+import org.slf4j.{ Logger, LoggerFactory }
+import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.JavaConverters._
+import scala.collection.convert.Wrappers.JListWrapper
+import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -106,6 +110,14 @@ object DepositHandler {
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
         } yield ()
+      case RejectedDepositException(_, msg, cause) =>
+        log.error(s"[$id] Rejected deposit", cause)
+        for {
+          _ <- removeZipFiles(depositDir) // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space, so we clean up, here.
+          props <- DepositProperties(id)
+          _ <- props.setState(REJECTED, msg)
+          _ <- props.save()
+        } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
         for {
@@ -127,6 +139,18 @@ object DepositHandler {
   }
 
   private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
+    def checkAvailableDiskspace(file: File): Try[Unit] = {
+      val zipFile = new ZipFile(file.getPath)
+      val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
+      val uncompressedSize = headers.map(_.getUncompressedSize).sum
+      val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
+      log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${settings.marginDiskSpace} bytes.")
+      if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
+        Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
+          new IllegalStateException(s"Required disk space: ${uncompressedSize + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
+      else Success(())
+    }
+
     def extract(file: File, outputPath: String): Unit = {
       new ZipFile(file.getPath) {
         setFileNameCharset(StandardCharsets.UTF_8.name)
@@ -159,13 +183,15 @@ object DepositHandler {
           files.foreach(file => {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
+            checkAvailableDiskspace(file).get
             extract(file, depositDir.getPath)
           })
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
           files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
           MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-          extract(mergedZip, depositDir.getPath)
+            .map(_ => checkAvailableDiskspace(mergedZip))
+            .map(_ => extract(mergedZip, depositDir.getPath)).get
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
