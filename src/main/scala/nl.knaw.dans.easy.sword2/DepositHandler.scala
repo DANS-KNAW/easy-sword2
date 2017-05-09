@@ -147,8 +147,21 @@ object DepositHandler {
       log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${settings.marginDiskSpace} bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
         Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
-          new IllegalStateException(s"Required disk space: ${uncompressedSize + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
+          new IllegalStateException(s"Required disk space for unzipping: ${uncompressedSize + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
       else Success(())
+    }
+
+    def checkDiskspaceForMerging(files: Seq[File]): Try[Unit] = {
+      val requiredSpace = files.map(_.length).sum
+      files.headOption.map {
+        f =>
+          val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
+          log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${settings.marginDiskSpace} bytes.")
+          if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
+            Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
+              new IllegalStateException(s"Required disk space for concatenating: ${requiredSpace + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
+          else Success(())
+      }.getOrElse(Success(()))
     }
 
     def extract(file: File, outputPath: String): Unit = {
@@ -189,9 +202,12 @@ object DepositHandler {
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
           files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
-          MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-            .map(_ => checkAvailableDiskspace(mergedZip))
-            .map(_ => extract(mergedZip, depositDir.getPath)).get
+          checkDiskspaceForMerging(files).map {
+            _ =>
+              MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
+                .map(_ => checkAvailableDiskspace(mergedZip))
+                .map(_ => extract(mergedZip, depositDir.getPath)).get
+          }
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
