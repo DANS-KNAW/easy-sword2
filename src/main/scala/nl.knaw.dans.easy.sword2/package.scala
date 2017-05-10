@@ -39,11 +39,13 @@ package object sword2 {
                        auth: AuthenticationSettings,
                        urlPattern: Pattern,
                        bagStoreSettings: Option[BagStoreSettings],
-                       supportMailAddress: String)
+                       supportMailAddress: String,
+                       marginDiskSpace: Long)
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
   case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+  case class RejectedDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 
