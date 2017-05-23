@@ -104,6 +104,10 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
       .getOrElse(Failure(new IllegalStateException("Deposit without depositor")))
   }
 
+  def getDoi: Option[String] = {
+    Option(properties.getProperty("identifier.doi"))
+      .map(_.toString)
+  }
 
   /**
    * Returns the last modified timestamp when the properties were loaded.
