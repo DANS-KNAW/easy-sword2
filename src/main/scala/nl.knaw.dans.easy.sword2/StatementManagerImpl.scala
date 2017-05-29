@@ -48,7 +48,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
         archivalResource.setMediaType("multipart/related")
 
         optDoi.foreach(doi => {
-          archivalResource.addSelfLink(new URI(s"http://doi.org/$doi").toASCIIString)
+          archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
         })
 
         statement.addResource(archivalResource)
