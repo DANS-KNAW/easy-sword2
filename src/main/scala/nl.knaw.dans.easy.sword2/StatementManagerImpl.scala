@@ -34,6 +34,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(iri)
       _ = debug(s"id = $id")
+      statementIri <- Try { settings.serviceBaseUrl + "statement/" + id } 
       props <- DepositProperties(id)
       _ = debug(s"Read ${ DepositProperties.FILENAME }")
       state <- props.getState
@@ -42,7 +43,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       _ = debug(s"State desc = $stateDesc")
       optDoi = props.getDoi
       statement <- Try {
-        val statement = new AtomStatement(iri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString)
+        val statement = new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString)
         statement.addState(state.toString, stateDesc)
         val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
         archivalResource.setMediaType("multipart/related")
