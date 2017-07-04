@@ -17,7 +17,6 @@ package nl.knaw.dans.easy.sword2
 
 import nl.knaw.dans.easy.sword2.servlets._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.eclipse.jetty.ajp.Ajp13SocketConnector
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.ServletContextHandler
 
@@ -56,13 +55,6 @@ class Sword2Service extends ApplicationSettings with DebugEnhancedLogging  {
   server.setHandler(context)
 
   info(s"HTTP port is $port")
-  if (properties.containsKey("daemon.ajp.port")) {
-    val ajp = new Ajp13SocketConnector()
-    val ajpPort = properties.getInt("daemon.ajp.port")
-    ajp.setPort(ajpPort)
-    server.addConnector(ajp)
-    info(s"AJP port is $ajpPort")
-  }
 
   def start(): Try[Unit] = Try {
     info("Starting processing thread ....")
