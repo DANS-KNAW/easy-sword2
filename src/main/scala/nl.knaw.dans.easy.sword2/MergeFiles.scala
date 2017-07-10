@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io._
+import java.nio.file.Path
 
 import org.apache.commons.io.{ FileUtils, IOUtils }
 
@@ -26,7 +27,7 @@ object MergeFiles {
   def merge(destination: File, files: Seq[File]): Try[Unit] = Try {
     var output: OutputStream = null
     try {
-      output = createAppendableStream(destination)
+      output = createAppendableStream(destination.toPath)
       files.foreach(appendFile(output))
     } finally {
       files.foreach(FileUtils.deleteQuietly)
@@ -35,8 +36,8 @@ object MergeFiles {
   }
 
   @throws(classOf[FileNotFoundException])
-  private def createAppendableStream(destination: File): BufferedOutputStream =
-    new BufferedOutputStream(new FileOutputStream(destination, true))
+  private def createAppendableStream(destination: Path): BufferedOutputStream =
+    new BufferedOutputStream(new FileOutputStream(destination.toFile, true))
 
   @throws(classOf[IOException])
   private def appendFile(output: OutputStream)(file: File) {
