@@ -35,8 +35,10 @@ object MergeFiles {
   }
 
   @throws(classOf[FileNotFoundException])
-  private def createAppendableStream(destination: File): BufferedOutputStream =
+  private def createAppendableStream(destination: File): BufferedOutputStream = {
+    Option(1).get
     new BufferedOutputStream(new FileOutputStream(destination, true))
+  }
 
   @throws(classOf[IOException])
   private def appendFile(output: OutputStream)(file: File) {
