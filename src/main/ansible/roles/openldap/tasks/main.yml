@@ -29,8 +29,13 @@
   when: olc.stat.exists == False
   
 - name: Remove the default directory created by a fresh install
-  file: dest="/etc/openldap/slapd.d/cn=config/olcDatabase={2}bdb.ldif" state=absent
+  file:
+    dest: "/etc/openldap/slapd.d/cn=config/{{ item }}"
+    state: absent
   when: olc.stat.exists == False
+  with_items:
+    - "olcDatabase={2}bdb.ldif" # For CentOS 6
+    - "olcDatabase={2}hdb.ldif" # For CentOS 7
   
 - name: Start and enable OpenLDAP
   service: name=slapd enabled=yes state=started

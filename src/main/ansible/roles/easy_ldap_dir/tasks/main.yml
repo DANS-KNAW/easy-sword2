@@ -59,6 +59,14 @@
     - easy-basis.ldif
   when: ansible_local.easy_ldap.installed == False
 
+# These schema's come pre-loaded in CentOS 6, but apparently not in CentOS 7
+- name: Add referenced standard schema's if on CentOS 7
+  command: ldapadd -v -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/{{ item }}
+  with_items:
+    - cosine.ldif
+    - inetorgperson.ldif
+  when: ansible_os_family == "RedHat" and ansible_distribution_major_version == "7"
+
 - name: Add schema's and base data to LDAP
   command: ldapadd -v -Y EXTERNAL -H ldapi:/// -f {{ ansible_user_dir }}/easy_ldap_dir/{{ item }} 
   with_items:

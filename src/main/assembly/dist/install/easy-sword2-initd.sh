@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #  /etc/init.d/easy-sword2
 
-# ***** FILL IN APPROPRIATE RUN-LEVELS, START-UP AND SHUTDOWN PRIORITIES !!! ******
 # chkconfig: 2345 92 58
 
 # Provides:          easy-sword2
