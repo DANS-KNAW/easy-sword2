@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,14 +19,14 @@ import java.net.URI
 import java.util
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import javax.naming.ldap.{InitialLdapContext, LdapContext}
-import javax.naming.{AuthenticationException, Context}
+import javax.naming.ldap.{ InitialLdapContext, LdapContext }
+import javax.naming.{ AuthenticationException, Context }
 
 import org.apache.commons.lang.StringUtils._
 import org.slf4j.LoggerFactory
-import org.swordapp.server.{AuthCredentials, SwordAuthException, SwordError}
+import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 object Authentication {
   type UserName = String
@@ -52,7 +52,7 @@ object Authentication {
       Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
     }
     else {
-      log.debug(s"Checking credentials for user ${auth.getUsername}")
+      log.debug(s"Checking credentials for user ${ auth.getUsername }")
       settings.auth match {
         case SingleUserAuthSettings(user, password) =>
           if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
@@ -68,7 +68,7 @@ object Authentication {
             log.warn("LDAP user FAILED log-in attempt")
             throw new SwordAuthException
           }
-          case true => log.info(s"User ${auth.getUsername} authentication through LDAP successful")
+          case true => log.info(s"User ${ auth.getUsername } authentication through LDAP successful")
             log.info("LDAP log in SUCCESS")
             Success(())
         }
@@ -80,14 +80,14 @@ object Authentication {
   private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[LdapContext]): Try[Boolean] = {
     getLdapContext(user, password, authSettings.ldapUrl, authSettings.usersParentEntry).map {
       context =>
-        val attrs = context.getAttributes(s"uid=$user, ${authSettings.usersParentEntry}")
+        val attrs = context.getAttributes(s"uid=$user, ${ authSettings.usersParentEntry }")
         val enabled = attrs.get(authSettings.swordEnabledAttributeName)
         enabled != null && enabled.size == 1 && enabled.get(0) == authSettings.swordEnabledAttributeValue
     }.recoverWith {
-        case t: AuthenticationException => Success(false)
-        case t =>
-          log.debug("Unexpected exception", t)
-          Failure(new RuntimeException("Error trying to authenticate", t))
+      case t: AuthenticationException => Success(false)
+      case t =>
+        log.debug("Unexpected exception", t)
+        Failure(new RuntimeException("Error trying to authenticate", t))
     }
   }
 

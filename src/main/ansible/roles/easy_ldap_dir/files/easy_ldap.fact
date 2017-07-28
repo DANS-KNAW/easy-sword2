@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+
+import json, glob
+
+print json.dumps({
+    'installed': len(glob.glob('/etc/openldap/slapd.d/cn=config/cn=schema/cn=*easy.ldif')) > 0
+})

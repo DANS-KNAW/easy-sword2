@@ -1,0 +1,4 @@
+dn: olcDatabase={2}bdb,cn=config
+changetype: modify
+replace: olcRootPW
+olcRootPW: {{ hash.stdout }}

@@ -1,0 +1,99 @@
+dn: cn=dans,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: dans
+olcAttributeTypes: {0}( 1.3.6.1.4.1.33188.0.1.1 
+ NAME 'dansState' 
+ DESC 'The state of an entity' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcAttributeTypes: {1}( 1.3.6.1.4.1.33188.0.1.2 
+ NAME 'dansPrefixes' 
+ DESC 'prefixes in a persons name' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcAttributeTypes: {2}( 1.3.6.1.4.1.33188.0.1.3
+ NAME 'dansAcceptConditionsOfUse' 
+ DESC 'accepts the Conditions of Use' 
+ EQUALITY booleanMatch SYNTAX 1.3.6.1.4.1.1466.115.121.1.7 
+ SINGLE-VALUE )
+olcAttributeTypes: {3}( 1.3.6.1.4.1.33188.0.1.4 
+ NAME 'dansLastLogin' 
+ DESC 'date time of last login' 
+ EQUALITY generalizedTimeMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 
+ SINGLE-VALUE )
+olcAttributeTypes: {4}( 1.3.6.1.4.1.33188.0.1.5 
+ NAME 'dansStoreId' 
+ DESC 'A system identifier' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ SINGLE-VALUE )
+olcAttributeTypes: {5}( 1.3.6.1.4.1.33188.0.1.6 
+ NAME 'dansPreviousId' 
+ DESC 'A previous system identifier' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcAttributeTypes: {6}( 1.3.6.1.4.1.33188.0.1.7 
+ NAME 'dansPid' 
+ DESC 'A persistent identifier' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15
+ SINGLE-VALUE )
+olcAttributeTypes: {7}( 1.3.6.1.4.1.33188.0.1.8 
+ NAME 'dansMigrationDate' 
+ DESC 'date time of migration' 
+ EQUALITY generalizedTimeMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 
+ SINGLE-VALUE )
+olcAttributeTypes: {8}( 1.3.6.1.4.1.33188.0.1.9 
+ NAME 'dansNewsletter' 
+ DESC 'opts for newsletter' 
+ EQUALITY booleanMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.7
+ SINGLE-VALUE )
+olcAttributeTypes: {9}( 1.3.6.1.4.1.33188.0.1.10 
+ NAME 'dansAltTel' 
+ DESC 'Alternative telephone number' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 )
+olcAttributeTypes: {10}( 1.3.6.1.4.1.33188.0.1.11 
+ NAME 'fedUserId' 
+ DESC 'A federative user identifier' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcAttributeTypes: {11}( 1.3.6.1.4.1.33188.0.1.12 
+ NAME 'dansUserId' 
+ DESC 'A dans user identifier for the mapping from a federative user id' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcAttributeTypes: {12}( 1.3.6.1.4.1.33188.0.1.13 
+ NAME 'dansTestAttr' 
+ DESC 'A dans test attribute' 
+ EQUALITY caseIgnoreMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.15 
+ SINGLE-VALUE )
+olcObjectClasses: {0}( 1.3.6.1.4.1.33188.0.2.1 
+ NAME 'dansUser' 
+ DESC 'An entry which represents a user of one of the dans applications' 
+ SUP inetOrgPerson 
+ STRUCTURAL 
+ MUST ( uid $ objectclass ) 
+ MAY ( dansState $ dansPrefixes $ dansAcceptConditionsOfUse $ dansNewsletter $ dansLastLogin $ dansAltTel ) )
+olcObjectClasses: {1}( 1.3.6.1.4.1.33188.0.2.2 
+ NAME 'dansIdMap' 
+ DESC 'An entry which represents a collection of identifiers' 
+ SUP top 
+ STRUCTURAL 
+ MUST ( dansStoreId $ objectclass ) MAY ( dansPreviousId $ dansPid $ dansMigrationDate ) )
+olcObjectClasses: {2}( 1.3.6.1.4.1.33188.0.2.3 
+ NAME 'dansFedIdMap' 
+ DESC 'An entry which represents a mapping from an Fedarative user Id to a Dans user Id'
+ SUP top 
+ STRUCTURAL 
+ MUST ( fedUserId $ objectclass ) 
+ MAY dansUserId )

@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,34 +15,36 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import org.apache.commons.daemon.{Daemon, DaemonContext}
-import org.slf4j.{Logger, LoggerFactory}
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import org.apache.commons.daemon.{ Daemon, DaemonContext }
 
-class ServiceStarter extends Daemon {
-  var log: Logger = _ // Not loading logger yet, to avoid possibility of errors before init is called
-  var service: Sword2Service = _ // Idem
+class ServiceStarter extends Daemon with DebugEnhancedLogging {
+  var app: EasySword2App = _
+  var service: EasySword2Service = _ // Idem
 
-  def init(ctx: DaemonContext) = {
-    log = LoggerFactory.getLogger(getClass)
-    log.info("Initializing service...")
-    log.info(s"LC_ALL = ${System.getenv("LC_ALL")}")
-    service = new Sword2Service
-    log.info("Service initialized.")
+  override def init(context: DaemonContext): Unit = {
+    logger.info("Initializing service...")
+    val configuration = Configuration()
+    app = new EasySword2App(new ApplicationWiring(configuration))
+    service = new EasySword2Service(configuration.properties.getInt("daemon.http.port"), app)
+    logger.info("Service initialized.")
   }
 
-  def start(): Unit = {
-    log.info("Starting service...")
-    service.start()
-    log.info("Service started.")
+  override def start(): Unit = {
+    logger.info("Starting service...")
+    app.init()
+      .flatMap(_ => service.start())
+      .unsafeGetOrThrow
+    logger.info("Service started.")
   }
 
-  def stop(): Unit = {
-    log.info("Stopping service...")
-    service.stop()
+  override def stop(): Unit = {
+    logger.info("Stopping service...")
+    service.stop().unsafeGetOrThrow
   }
 
-  def destroy(): Unit = {
-    service.destroy()
-    log.info("Service stopped.")
+  override def destroy(): Unit = {
+    service.destroy().unsafeGetOrThrow
+    logger.info("Service stopped.")
   }
 }

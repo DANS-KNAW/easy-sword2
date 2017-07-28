@@ -1,0 +1,27 @@
+dn: olcDatabase=bdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcBdbConfig
+olcDatabase: bdb
+olcSuffix: dc=dans,dc=knaw,dc=nl
+olcAddContentAcl: FALSE
+olcLastMod: TRUE
+olcMaxDerefDepth: 15
+olcReadOnly: FALSE
+olcRootDN: cn=ldapadmin,dc=dans,dc=knaw,dc=nl
+olcRootPW:: c2VjcmV0
+olcSyncUseSubentry: FALSE
+olcMonitoring: TRUE
+olcDbDirectory: /var/lib/ldap/easy
+olcDbCacheSize: 1000
+olcDbConfig: {16}set_cachesize 0 268435456 1
+olcDbConfig: {22}set_lg_regionmax 262144
+olcDbConfig: {23}set_lg_bsize 2097152
+olcDbNoSync: FALSE
+olcDbDirtyRead: FALSE
+olcDbIDLcacheSize: 0
+olcDbLinearIndex: FALSE
+olcDbMode: 0600
+olcDbSearchStack: 16
+olcDbShmKey: 0
+olcDbCacheFree: 1
+olcDbDNcacheSize: 0

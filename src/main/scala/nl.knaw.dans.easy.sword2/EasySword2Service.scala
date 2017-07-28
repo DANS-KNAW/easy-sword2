@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,14 +22,16 @@ import org.eclipse.jetty.servlet.ServletContextHandler
 
 import scala.util.Try
 
-class Sword2Service extends ApplicationSettings with DebugEnhancedLogging  {
+class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEnhancedLogging {
+
   import logger._
-  private val port = properties.getInt("daemon.http.port")
-  val server = new Server(port)
+
+  private val server = new Server(serverPort)
   val context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
+  // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
   val settings = Settings(
-    depositRootDir, depositPermissions, tempDir, baseUrl, collectionPath, auth, urlPattern,
-    bagStoreSettings, supportMailAddress, marginDiskSpace)
+    app.wiring.depositRootDir, app.wiring.depositPermissions, app.wiring.tempDir, app.wiring.baseUrl, app.wiring.collectionPath, app.wiring.auth, app.wiring.urlPattern,
+    app.wiring.bagStoreSettings, app.wiring.supportMailAddress, app.wiring.marginDiskSpace)
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
 
   /*
@@ -53,43 +55,23 @@ class Sword2Service extends ApplicationSettings with DebugEnhancedLogging  {
   context.setInitParameter("media-resource-impl", classOf[MediaResourceManagerImpl].getName)
   context.setInitParameter("statement-impl", classOf[StatementManagerImpl].getName)
   server.setHandler(context)
-
-  info(s"HTTP port is $port")
+  info(s"HTTP port is $serverPort")
 
   def start(): Try[Unit] = Try {
-    info("Starting processing thread ....")
+    debug("Starting deposit processing thread...")
     DepositHandler.startDepositProcessingStream(settings)
-    info("Starting HTTP service ...")
+    info("Starting HTTP service...")
     server.start()
   }
 
   def stop(): Try[Unit] = Try {
-    info("Stopping HTTP service ...")
+    info("Stopping HTTP service...")
     server.stop()
+    // TODO: stop the deposit processing thread before closing
   }
 
   def destroy(): Try[Unit] = Try {
     server.destroy()
+    app.close()
   }
 }
-
-object Sword2Service extends App with DebugEnhancedLogging {
-  import logger._
-  val service = new Sword2Service()
-  Runtime.getRuntime.addShutdownHook(new Thread("service-shutdown") {
-    override def run(): Unit = {
-      info("Stopping service ...")
-      service.stop().map(_ => info("Cleaning up ..."))
-        .recover { case t => error("Error during stop phase", t)}
-      service.destroy().map(_ => info("Service stopped."))
-        .recover { case t => error("Error during destroy phase", t)}
-    }
-  })
-
-  service.start().map(_ => {
-    info("Service started.")
-    Thread.currentThread().join()
-  })
-    .recover { case t => error("Service could not start", t)}
-}
-

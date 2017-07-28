@@ -1,0 +1,102 @@
+#
+# Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- name: Ensure /etc/ansible/facts.d exists
+  file:
+    path: /etc/ansible/facts.d
+    recurse: yes
+    state: directory
+
+- name: Copy facts-scripts to server
+  copy:
+    src: "easy_ldap.fact"
+    dest: "/etc/ansible/facts.d"
+    mode: "u+x"
+  register: facts
+
+- name: reload ansible_local
+  setup: filter=ansible_local
+  when: facts.changed
+
+- name: Remove any previous installation files
+  file: path={{ ansible_user_dir }}/easy_ldap_dir state=absent
+  when: ansible_local.easy_ldap.installed == False
+  
+- name: Create directory for installation files
+  file: path={{ ansible_user_dir }}/easy_ldap_dir state=directory
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Create a separate directory folder for EASY
+  file: path=/var/lib/ldap/easy 
+        state=directory
+        owner=ldap
+        group=ldap
+        recurse=yes
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Start OpenLDAP
+  service: name=slapd state=started
+  
+- name: Copy LDIF files to server
+  copy: src={{ item }} dest={{ ansible_user_dir }}/easy_ldap_dir/
+  with_items:
+    - dans-schema.ldif
+    - easy-schema.ldif
+    - easy-db.ldif
+    - easy-basis.ldif
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Add schema's and base data to LDAP
+  command: ldapadd -v -Y EXTERNAL -H ldapi:/// -f {{ ansible_user_dir }}/easy_ldap_dir/{{ item }} 
+  with_items:
+    - dans-schema.ldif
+    - easy-schema.ldif
+    - easy-db.ldif
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Add basic entries to EASY database
+  command: ldapadd -w secret -D cn=ldapadmin,dc=dans,dc=knaw,dc=nl 
+            -f {{ ansible_user_dir }}/easy_ldap_dir/easy-basis.ldif
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Generate password-hash for root user
+  command: slappasswd -h {SSHA} -s {{ easy_ldap_dir_ldapadmin_password }}
+  register: hash
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Generate ldif-script
+  template: src=change-root-pw.ldif dest={{ ansible_user_dir }}/easy_ldap_dir/
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Execute ldif-script
+  command: chdir={{ ansible_user_dir }}/easy_ldap_dir/ 
+           ldapadd -v -Y EXTERNAL -H ldapi:/// -f change-root-pw.ldif
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Generate password-hash for easyadmin
+  command: slappasswd -h {SSHA} -s {{ easy_ldap_dir_easyadmin_password }}
+  register: hash
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Generate ldif-script
+  template: src=change-easyadmin-pw.ldif dest={{ ansible_user_dir }}/easy_ldap_dir/
+  when: ansible_local.easy_ldap.installed == False
+
+- name: Execute ldif-script
+  command: chdir={{ ansible_user_dir }}/easy_ldap_dir/ 
+           ldapadd -w {{ easy_ldap_dir_ldapadmin_password }}
+           -D cn=ldapadmin,dc=dans,dc=knaw,dc=nl -f change-easyadmin-pw.ldif
+  when: ansible_local.easy_ldap.installed == False

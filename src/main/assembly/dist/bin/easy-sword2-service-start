@@ -2,9 +2,15 @@
 
 BINPATH=`command readlink -f $0 2> /dev/null || command grealpath $0 2> /dev/null`
 APPHOME=`dirname \`dirname $BINPATH \``
+MODULE=`basename $APPHOME`
+LOGBACK_CFG=/etc/opt/dans.knaw.nl/$MODULE/logback-service.xml
 
-# Set LC_ALL to a locale with UTF-8 to make sure non-ASCII file names are written correctly to the file system (see: EASY-1254).
+if [ ! -f $LOGBACK_CFG ]; then
+    LOGBACK_CFG=$APPHOME/cfg/logback-service.xml
+fi
+
 LC_ALL=en_US.UTF-8 \
-java -Dlogback.configurationFile=$APPHOME/cfg/logback-service.xml \
+java -Dlogback.configurationFile=$LOGBACK_CFG \
      -Dapp.home=$APPHOME \
-     -cp $APPHOME/bin/easy-sword2.jar nl.knaw.dans.easy.sword2.Sword2Service
+     -server \
+     -jar $APPHOME/bin/$MODULE.jar run-service

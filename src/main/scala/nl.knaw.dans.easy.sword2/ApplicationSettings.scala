@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +21,7 @@ import java.util.regex.Pattern
 import javax.servlet.ServletException
 
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.apache.commons.lang.StringUtils.{isBlank, isNotBlank}
+import org.apache.commons.lang.StringUtils.{ isBlank, isNotBlank }
 
 trait ApplicationSettings {
   protected val properties = new PropertiesConfiguration()
@@ -40,7 +40,7 @@ trait ApplicationSettings {
       properties.getString("auth.ldap.sword-enabled-attribute-name"),
       properties.getString("auth.ldap.sword-enabled-attribute-value"))
     case "single" => SingleUserAuthSettings(properties.getString("auth.single.user"), properties.getString("auth.single.password"))
-    case _ => throw new RuntimeException(s"Invalid authentication settings: ${properties.getString("auth.mode")}")
+    case _ => throw new RuntimeException(s"Invalid authentication settings: ${ properties.getString("auth.mode") }")
   }
   val urlPattern = Pattern.compile(properties.getString("url-pattern"))
   val bagStoreBaseUri = properties.getString("bag-store.base-url") // TODO: make File, check existence
@@ -50,8 +50,8 @@ trait ApplicationSettings {
     if (isBlank(bagStoreBaseDir)) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
     if (isBlank(bagStoreBaseUri)) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
     val baseDir = new File(bagStoreBaseDir)
-    if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} doesn't exist")
-    if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${baseDir.getAbsolutePath} is not readable")
+    if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } doesn't exist")
+    if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } is not readable")
     bagStoreSettings = Some(BagStoreSettings(bagStoreBaseDir, bagStoreBaseUri))
   }
   val supportMailAddress = properties.getString("support.mailaddress")

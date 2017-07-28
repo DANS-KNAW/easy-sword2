@@ -1,0 +1,100 @@
+#
+# Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+- hosts: "test"
+  become: yes
+  vars:
+    easy_ldap_dir_ldapadmin_password: "ldapadmin"
+    easy_test_users_ldapadmin_password: "{{ easy_ldap_dir_ldapadmin_password }}"
+    easy_ldap_dir_easyadmin_password: "easyadmin"
+  tasks:
+  - name: Install standard software
+    yum: name="{{ item }}"
+    with_items:
+      - httpd
+      - libselinux-python
+      - libsemanage-python
+      - tree
+      - tmux
+
+  - name: Enable Apache HTTP Server
+    service:
+      name: httpd
+      enabled: yes
+      state: started
+
+  - name: Enable SELinux
+    selinux:
+       policy: targeted
+       state: enforcing
+
+  - name: Allow Apache HTTP Server to call back-end service
+    seboolean:
+      name: httpd_can_network_connect
+      state: yes
+      persistent: yes
+
+  - name: Configure server name
+    lineinfile:
+      dest: "/etc/httpd/conf/httpd.conf"
+      line: 'ServerName test'
+      insertafter: '^#\s?ServerName.*80$'
+
+  - name: Add configuration for site
+    copy:
+      src: "test.conf"
+      dest: "/etc/httpd/conf.d/"
+
+  - name: Reload Apache HTTP Server
+    service:
+      name: httpd
+      state: reloaded
+
+  - include_role:
+      name: openldap
+
+  - include_role:
+      name: easy_ldap_dir
+
+  - include_role:
+      name: easy_test_users
+
+  - name: Add /opt/bin to PATH
+    copy:
+      src: opt.sh
+      dest: /etc/profile.d/
+      mode: "755"
+
+  - include_role:
+      name: yum-repo
+
+  - name: Installing package
+    yum:
+      name: dans.knaw.nl-easy-sword2
+      state: latest
+
+  - name: Configure application (application.properties)
+    replace:
+      dest: '/etc/opt/dans.knaw.nl/easy-sword2/application.properties'
+      regexp: '^{{ item.key }}.*$'
+      replace: '{{ item.key }}={{ item.value }}'
+    with_items:
+      - { key: 'base-url',          value: 'http://test.dans.knaw.nl/' }
+
+  - service:
+      name: easy-sword2
+      state: started
+      enabled: yes

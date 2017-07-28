@@ -1,0 +1,25 @@
+dn: uid={{ uid }},ou=users,ou=easy,dc=dans,dc=knaw,dc=nl
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+objectClass: dansUser
+objectClass: easyUser
+cn: {{ firstname }}}
+sn: {{ surname }}
+uid: {{ uid }}
+dansAcceptConditionsOfUse: TRUE
+dansNewsletter: FALSE
+dansState: ACTIVE
+displayName: {{ firstname }} {{ surname }}
+easyHasConfirmedGeneralConditions: FALSE
+easyLogMyActions: TRUE
+easyRoles: USER
+easyRoles: ARCHIVIST
+givenName: EASY
+initials: E A
+l: Den Haag
+o: DANS
+postalAddress: Anna van Saksenlaan 51
+postalCode: 2593 HW
+userPassword: {{ hash.stdout }}

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!--
 
-    Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+    Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
 
-            http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,11 +16,10 @@
     limitations under the License.
 
 -->
-<assembly
-        xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
-    <id>${project.version}</id>
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
+    <id>bin</id>
     <baseDirectory>${artifactId}-${version}</baseDirectory>
     <formats>
         <format>tar.gz</format>
@@ -28,21 +27,39 @@
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}</directory>
-            <outputDirectory>/bin</outputDirectory>
+            <outputDirectory>bin</outputDirectory>
             <includes>
                 <include>*.jar</include>
             </includes>
+            <excludes>
+                <exclude>*.sh</exclude>
+                <exclude>version</exclude>
+            </excludes>
         </fileSet>
         <fileSet>
             <directory>${project.basedir}/src/main/assembly/dist/bin</directory>
-            <outputDirectory>/bin</outputDirectory>
+            <outputDirectory>bin</outputDirectory>
+            <includes>
+                <include>easy-sword2</include>
+                <include>easy-sword2-service-start</include>
+                <include>easy-sword2-initd.sh</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
+            <directory>${project.basedir}/src/main/assembly/dist/bin</directory>
+            <outputDirectory>bin</outputDirectory>
+            <filtered>true</filtered>
+            <includes>
+                <include>version</include>
+            </includes>
+            <fileMode>0444</fileMode>
+        </fileSet>
+        <fileSet>
             <directory>${project.basedir}/src/main/assembly/dist</directory>
-            <outputDirectory>/</outputDirectory>
+            <outputDirectory/>
             <excludes>
-                <exclude>/bin/*</exclude>
+                <exclude>bin</exclude>
             </excludes>
         </fileSet>
     </fileSets>

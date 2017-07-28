@@ -1,33 +1,18 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration scan="true" scanPeriod="3 minutes">
-    <property name="LOGDIR" value="{{ easy_sword2_log_dir }}" />
-
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder>
-            <Pattern>%-5level [%thread]: %msg %n</Pattern>
-        </encoder>
-    </appender>    
-
-    <appender name="EASY_SWORD2_LOG"
-        class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOGDIR}/easy-sword2.log</file>
+<?xml version="1.0" encoding="utf-8"?>
+<configuration scan="true" scanPeriod="1 minute">
+    <appender name="FILE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/opt/dans.knaw.nl/log/easy-sword2/easy-sword2.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- daily rollover -->
-            <fileNamePattern>${LOGDIR}/easy-sword2.%d{yyyy-MM-dd}.log</fileNamePattern>
-
-            <!-- keep 30 days' worth of history -->
+            <fileNamePattern>/var/opt/dans.knaw.nl/log/easy-sword2/easy-sword2.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%p %d [%t] - %m%n</pattern>
+            <pattern>[%date{ISO8601}] %-5level %msg%n%ex</pattern>
         </encoder>
-    </appender> 
-    
+    </appender>
     <root level="warn">
-        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE"/>
     </root>
-
-    <logger name="nl.knaw.dans" level="{{ easy_sword2_log_level }}" >
-       <appender-ref ref="EASY_SWORD2_LOG" />
-    </logger>
+    <logger name="nl.knaw.dans.easy" level="info"/>
 </configuration>

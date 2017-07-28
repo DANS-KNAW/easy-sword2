@@ -1,8 +1,8 @@
 [Unit]
-Description=EASY SWORD 2.0 Deposit Service
+Description=EASY Sword2 Service
 
 [Service]
-ExecStart=/usr/local/easy-sword2/bin/easy-sword2-service-start
+ExecStart=/opt/dans.knaw.nl/easy-sword2/bin/easy-sword2-service-start
 
 User=easy-sword2
 Group=easy-sword2

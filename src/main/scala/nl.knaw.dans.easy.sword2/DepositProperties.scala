@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,7 @@ import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 /**
  * Loads the current `deposit.properties` for the specified deposit. This class is not thread-safe, so it is assumed
@@ -33,7 +33,9 @@ import scala.util.{Failure, Success, Try}
  * @param settings  application settings
  */
 class DepositProperties(depositId: String, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
+
   import DepositProperties._
+
   trace(depositId, depositorId)
 
   private val (properties, modified) = {
