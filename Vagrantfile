@@ -1,3 +1,4 @@
+system 'ansible-galaxy install -r src/main/ansible/requirements.yml'
 Vagrant.configure(2) do |config|
    config.vm.define "test" do |test|
       test.vm.box = "geerlingguy/centos6"

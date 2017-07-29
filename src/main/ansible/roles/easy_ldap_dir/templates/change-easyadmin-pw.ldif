@@ -1,4 +1,0 @@
-dn: uid=easyadmin,ou=users,ou=easy,dc=dans,dc=knaw,dc=nl
-changetype: modify
-replace: userPassword
-userPassword: {{ hash.stdout }}
