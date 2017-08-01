@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+BINPATH=`readlink -f $0`
+APPHOME=`dirname \`dirname $BINPATH \``
+MODULE=`basename $APPHOME`
+LOGBACK_HOME=$HOME/logback.xml
+LOGBACK_RPM=/etc/opt/dans.knaw.nl/$MODULE/logback.xml
+LOGBACK_APPHOME=$APPHOME/cfg/logback.xml
+
+if [ -f $LOGBACK_HOME ]; then
+    LOGBACK_CFG=$LOGBACK_HOME
+elif [ -f $LOGBACK_RPM ]; then
+    LOGBACK_CFG=$LOGBACK_RPM
+else
+    LOGBACK_CFG=$LOGBACK_APPHOME
+fi
+
+LC_ALL=en_US.UTF-8 \
+java -Dlogback.configurationFile=$LOGBACK_CFG \
+     -Dapp.home=$APPHOME \
+     -jar $APPHOME/bin/$MODULE.jar $@

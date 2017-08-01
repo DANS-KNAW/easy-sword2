@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
-# Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+# Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
-#         http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,10 +16,14 @@
 #
 
 
-ARGS=$@
-APPHOME=home
-. apphome.sh
+#include <service.sh>
 
-mvn exec:java -Dapp.home=$APPHOME \
-              -Dlogback.configurationFile=$APPHOME/cfg/logback-service.xml \
-              -Dexec.args="$ARGS"
+NUMBER_OF_INSTALLATIONS=$1
+MODULE_NAME=easy-sword2
+INSTALL_DIR=/opt/dans.knaw.nl/$MODULE_NAME
+PHASE="POST-REMOVE"
+
+echo "$PHASE: START (Number of current installations: $NUMBER_OF_INSTALLATIONS)"
+service_remove_initd_service_script $MODULE_NAME $NUMBER_OF_INSTALLATIONS
+service_remove_systemd_unit $MODULE_NAME $NUMBER_OF_INSTALLATIONS
+echo "$PHASE: DONE"

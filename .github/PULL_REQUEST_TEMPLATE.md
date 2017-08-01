@@ -1,4 +1,4 @@
-fixes EASY-
+Fixes EASY-
 
 #### When applied it will
 * 
@@ -9,7 +9,7 @@ fixes EASY-
 
 #### How should this be manually tested?
 
-#### related pull requests on github
+#### Related pull requests on github
 repo                       | PR                | note
 -------------------------- | ----------------- | ----
-easy-                      | [PR#](PRlink)     | 
+easy-                      | [PR#](PRlink)     | ..

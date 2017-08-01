@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,15 +15,12 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.File
 import java.util
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
-import org.apache.abdera.i18n.iri.IRI
 import org.swordapp.server._
 
-import scala.collection.JavaConversions._
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 
 class ContainerManagerImpl extends ContainerManager {
   this: ApplicationSettings =>
@@ -37,7 +34,10 @@ class ContainerManagerImpl extends ContainerManager {
       case Success(id) =>
         val result = for {
           props <- DepositProperties(id)
-          receipt <- Try { if (props.exists) Some(DepositHandler.createDepositReceipt(settings, id)) else None }
+          receipt <- Try {
+            if (props.exists) Some(DepositHandler.createDepositReceipt(settings, id))
+            else None
+          }
         } yield receipt
         result match {
           case Success(maybeReceipt) => maybeReceipt.getOrElse { throw new SwordError(404) }
@@ -83,10 +83,10 @@ class ContainerManagerImpl extends ContainerManager {
     val result = for {
       _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
-      _  <- settings.auth match {
-          case _ :LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
-          case _ => Success(())
-        }
+      _ <- settings.auth match {
+        case _: LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+        case _ => Success(())
+      }
       _ = log.debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
       depositReceipt <- handleDeposit(deposit)(settings, id)

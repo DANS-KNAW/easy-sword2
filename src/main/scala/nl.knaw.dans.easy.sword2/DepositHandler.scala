@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2015-2017 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
+ * Copyright (C) 2015 DANS - Data Archiving and Networked Services (info@dans.knaw.nl)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,6 @@ import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
-import java.util
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
 
@@ -46,7 +45,6 @@ import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
-import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
@@ -80,8 +78,8 @@ object DepositHandler {
     val timestamp = DateTime.now(DateTimeZone.UTC).toString
 
     s"""The server encountered an unexpected condition.
-      |Please contact the SWORD service administrator at $mailaddress.
-      |The error occurred at $timestamp. Your 'DepositID' is $id.
+       |Please contact the SWORD service administrator at $mailaddress.
+       |The error occurred at $timestamp. Your 'DepositID' is $id.
     """.stripMargin
   }
 
@@ -91,15 +89,15 @@ object DepositHandler {
     val depositDir = new File(settings.tempDir, id)
 
     val result = for {
-      _        <- extractBag(mimeType)
-      bagDir   <- getBagDir(depositDir)
-      _        <- checkFetchItemUrls(bagDir, settings.urlPattern)
-      _        <- checkBagVirtualValidity(bagDir)
-      props    <- DepositProperties(id)
-      _        <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
-      _        <- props.save()
-      _        <- removeZipFiles(depositDir)
-      dataDir  <- moveBagToStorage()
+      _ <- extractBag(mimeType)
+      bagDir <- getBagDir(depositDir)
+      _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
+      _ <- checkBagVirtualValidity(bagDir)
+      props <- DepositProperties(id)
+      _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
+      _ <- props.save()
+      _ <- removeZipFiles(depositDir)
+      dataDir <- moveBagToStorage()
     } yield ()
 
     result.recover {
@@ -144,10 +142,10 @@ object DepositHandler {
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
       val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
-      log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${settings.marginDiskSpace} bytes.")
+      log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
         Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
-          new IllegalStateException(s"Required disk space for unzipping: ${uncompressedSize + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
+          new IllegalStateException(s"Required disk space for unzipping: ${ uncompressedSize + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
       else Success(())
     }
 
@@ -156,10 +154,10 @@ object DepositHandler {
       files.headOption.map {
         f =>
           val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
-          log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${settings.marginDiskSpace} bytes.")
+          log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
           if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
             Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
-              new IllegalStateException(s"Required disk space for concatenating: ${requiredSpace + settings.marginDiskSpace} (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize")))
+              new IllegalStateException(s"Required disk space for concatenating: ${ requiredSpace + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
           else Success(())
       }.getOrElse(Success(()))
     }
@@ -175,15 +173,15 @@ object DepositHandler {
         val seqNumber = f.getName
           .split('.')
           .lastOption
-          .getOrElse(throw InvalidDepositException(id, s"Partial file ${f.getName} has no extension. It should be a positive sequence number."))
+          .getOrElse(throw InvalidDepositException(id, s"Partial file ${ f.getName } has no extension. It should be a positive sequence number."))
           .toInt
 
         if (seqNumber > 0) seqNumber
-        else throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
+        else throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
       }
       catch {
         case _: NumberFormatException =>
-          throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a positive sequence number.")
+          throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. Should be a positive sequence number.")
       }
     }
 
@@ -195,13 +193,13 @@ object DepositHandler {
         case "application/zip" =>
           files.foreach(file => {
             if (!file.isFile)
-              throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
+              throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
             checkAvailableDiskspace(file).get
             extract(file, depositDir.getPath)
           })
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
-          files.foreach(f => log.debug(s"[$id] Merging file: ${f.getName}"))
+          files.foreach(f => log.debug(s"[$id] Merging file: ${ f.getName }"))
           checkDiskspaceForMerging(files).map {
             _ =>
               MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
@@ -217,7 +215,7 @@ object DepositHandler {
 
   private def getBagDir(depositDir: File): Try[File] = Try {
     val depositFiles = depositDir.listFiles.filter(_.isDirectory)
-    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${depositFiles.size}")
+    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${ depositFiles.size }")
     depositFiles(0)
   }
 
@@ -225,7 +223,8 @@ object DepositHandler {
     for {
       props <- DepositProperties(id)
       state <- props.getState
-      _ <- if (state == DRAFT) Success(()) else Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
+      _ <- if (state == DRAFT) Success(())
+           else Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
     } yield ()
   }
 
@@ -247,8 +246,9 @@ object DepositHandler {
       } yield ()
       result.get // Trigger exception if properties could not be updated
       depositProcessingStream.onNext((id, deposit))
-    } else {
-      log.info(s"[$id] Received continuing deposit: ${deposit.getFilename}")
+    }
+    else {
+      log.info(s"[$id] Received continuing deposit: ${ deposit.getFilename }")
     }
   }
 
@@ -270,8 +270,8 @@ object DepositHandler {
       .collectResults
       .map(_ => ()) // Try map
       .recoverWith {
-        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "fetch.txt URLs"), e))
-      }
+      case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "fetch.txt URLs"), e))
+    }
   }
 
   private def checkUrlValidity(url: String, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
@@ -317,10 +317,10 @@ object DepositHandler {
                 .flatMap(_ => bagStoreSettings.map(implicit bs => validateChecksumsFetchItems(bag, itemsFromBagStore))
                   .getOrElse(Failure(new NoSuchElementException("BagStore is not configured - SOMETHING WENT WRONG, YOU SHOULD NEVER REACH THIS PART OF CODE!"))))
             else
-              Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${missingFilesNotInFetchText.mkString}."))
+              Failure(InvalidDepositException(id, s"Missing payload files not in the fetch.txt: ${ missingFilesNotInFetchText.mkString }."))
           }
           else
-            Failure(InvalidDepositException(id, s"Validation of bag did not succeed: ${otherThanMissingPayloadFilesMessages.mkString("\n")}"))
+            Failure(InvalidDepositException(id, s"Validation of bag did not succeed: ${ otherThanMissingPayloadFilesMessages.mkString("\n") }"))
       }
     }
 
@@ -328,7 +328,8 @@ object DepositHandler {
     val (fetchItemsInBagStore, itemsToResolve) = fetchItems.partition(bagStoreSettings.nonEmpty && _.getUrl.startsWith(bagStoreSettings.get.baseUrl))
     for {
       _ <- resolveFetchItems(bagDir, itemsToResolve)
-      _ <- if(itemsToResolve.isEmpty) Success(()) else pruneFetchTxt(bagDir, itemsToResolve)
+      _ <- if (itemsToResolve.isEmpty) Success(())
+           else pruneFetchTxt(bagDir, itemsToResolve)
       bag <- getBag(bagDir)
       validationResult = bag.verifyValid
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
@@ -355,7 +356,7 @@ object DepositHandler {
         }).getOrElse(Success(()))
       })
 
-  private def getBag(bagDir: File): Try[Bag] =  Try {
+  private def getBag(bagDir: File): Try[Bag] = Try {
     bagFactory.createBag(bagDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
@@ -367,7 +368,7 @@ object DepositHandler {
         .map(src => {
           val file = new File(bagDir.getAbsoluteFile, item.getFilename)
           if (file.exists)
-            Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt is already present in the bag."))
+            Failure(InvalidDepositException(id, s"File ${ item.getFilename } in the fetch.txt is already present in the bag."))
           else
             Try {
               file.getParentFile.mkdirs()
@@ -377,13 +378,13 @@ object DepositHandler {
         .tried
         .flatten
         .recoverWith {
-          case e: UnknownHostException => Failure(InvalidDepositException(id, s"The URL for ${item.getFilename} contains an unknown host.", e))
-          case e: IOException => Failure(InvalidDepositException(id, s"File ${item.getFilename} in the fetch.txt could not be downloaded.", e))
+          case e: UnknownHostException => Failure(InvalidDepositException(id, s"The URL for ${ item.getFilename } contains an unknown host.", e))
+          case e: IOException => Failure(InvalidDepositException(id, s"File ${ item.getFilename } in the fetch.txt could not be downloaded.", e))
         })
       .collectResults
       .map(_ => ())
       .recoverWith {
-        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "resolving files from fetch.txt"), e))
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "resolving files from fetch.txt"), e))
       }
   }
 
@@ -392,7 +393,7 @@ object DepositHandler {
 
     val presentFiles = fetchItems.filter(item => new File(bagDir.getAbsoluteFile, item.getFilename).exists)
     if (presentFiles.nonEmpty)
-      Failure(InvalidDepositException(id, s"Fetch.txt file ${presentFiles.head.getFilename} is already present in the bag."))
+      Failure(InvalidDepositException(id, s"Fetch.txt file ${ presentFiles.head.getFilename } is already present in the bag."))
     else
       Success(())
   }
@@ -417,7 +418,7 @@ object DepositHandler {
       }.collectResults
       .map(_ => ())
       .recoverWith {
-        case e@CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
       }
   }
 
@@ -427,7 +428,7 @@ object DepositHandler {
       if (seq.contains(referredFile -> checksum))
         Success(())
       else if (seq.map { case (rFile, _) => rFile }.contains(referredFile))
-        Failure(InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag."))
+             Failure(InvalidDepositException(id, s"Checksum $checksum of the file $file differs from checksum of the file $referredFile in the referred bag."))
       else
         Failure(InvalidDepositException(id, s"While validating checksums, the file $referredFile was not found in the referred bag."))
     })

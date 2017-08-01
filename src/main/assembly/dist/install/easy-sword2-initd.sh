@@ -1,37 +1,38 @@
 #!/usr/bin/env bash
 #  /etc/init.d/easy-sword2
+
 # chkconfig: 2345 92 58
 
-### BEGIN INIT INFO
 # Provides:          easy-sword2
-# Required-Start:    $remote_fs $syslog
-# Required-Stop:     $remote_fs $syslog
 # Short-Description: Starts the easy-sword2 service
 # Description:       This file is used to start the daemon
 #                    and should be placed in /etc/init.d
-### END INIT INFO
 
 NAME="easy-sword2"
 EXEC="/usr/bin/jsvc"
-APPHOME="/usr/local/easy-sword2"
+APPHOME="/opt/dans.knaw.nl/$NAME"
 JAVA_HOME="/usr/lib/jvm/jre"
-CLASSPATH="$APPHOME/bin/$NAME.jar:`echo $APPHOME/lib/*.jar | sed 's/ /:/g'`"
+CLASSPATH="$APPHOME/bin/$NAME.jar"
 CLASS="nl.knaw.dans.easy.sword2.ServiceStarter"
 ARGS=""
-USER="easy-sword2"
+USER="$NAME"
 PID="/var/run/$NAME.pid"
-OUTFILE="/var/log/$NAME/$NAME.out"
-ERRFILE="/var/log/$NAME/$NAME.err"
+OUTFILE="/var/opt/dans.knaw.nl/log/$NAME/$NAME.out"
+ERRFILE="/var/opt/dans.knaw.nl/log/$NAME/$NAME.err"
 WAIT_TIME=60
 
 jsvc_exec()
 {
     cd ${APPHOME}
-    # Set LC_ALL to a locale with UTF-8 to make sure non-ASCII file names are written correctly to the file system (see: EASY-1254).
+    LOGBACK_CFG=/etc/opt/dans.knaw.nl/$NAME/logback-service.xml
+    if [ ! -f $LOGBACK_CFG ]; then
+        LOGBACK_CFG=$APPHOME/cfg/logback-service.xml
+    fi
+
     LC_ALL=en_US.UTF-8 \
     ${EXEC} -home ${JAVA_HOME} -cp ${CLASSPATH} -user ${USER} -outfile ${OUTFILE} -errfile ${ERRFILE} -pidfile ${PID} -wait ${WAIT_TIME} \
-          -Dapp.home=${APPHOME} -Dconfig.file=${APPHOME}/cfg/application.conf \
-          -Dlogback.configurationFile=${APPHOME}/cfg/logback-service.xml $1 ${CLASS} ${ARGS}
+          -Dapp.home=${APPHOME} \
+          -Dlogback.configurationFile=$LOGBACK_CFG $1 ${CLASS} ${ARGS}
 }
 
 start_jsvc_exec()

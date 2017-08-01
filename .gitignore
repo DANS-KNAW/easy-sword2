@@ -7,16 +7,20 @@
 /release.properties
 /dependency-reduced-pom.xml
 /buildNumber.properties
+/init-project.sh
 *.class
 *~
 *.swp
-*.iml
+/*.iml
 /.idea/
 .DS_Store
 /apphome.sh
 /home/
 /data/
-/data-*
+/data-*/
+/.vagrant/
+/.yum-repo
+/.dans.knaw.nl-yum-repo
 
 # Eclipse
 /.project
