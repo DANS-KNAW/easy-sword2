@@ -16,15 +16,16 @@
 
 - hosts: "test"
   become: yes
+  vars:
+    local_test_vm_base_backend_port: 20100
+    easy_ldap_dir_ldapadmin_password: "ldapadmin"
+    easy_ldap_dir_easyadmin_password: "easyadmin"
+    easy_test_users_email: "{{ deployer_email }}"
+    easy_test_users_ldapadmin_password: "{{ easy_ldap_dir_ldapadmin_password }}"
   roles:
-    - role: dans.local-test-vm-base
-      vars:
-        backend_port: 20100
-    - role: dans.easy-ldap-dir
-      vars:
-        easy_ldap_dir_ldapadmin_password: "ldapadmin"
-        easy_test_users_ldapadmin_password: "{{ easy_ldap_dir_ldapadmin_password }}"
-        easy_ldap_dir_easyadmin_password: "easyadmin"
+    - dans.local-test-vm-base
+    - dans.easy-ldap-dir
+    - dans.capture-deployer-email
     - dans.easy-test-users
     - dans.local-yum-repo
 
