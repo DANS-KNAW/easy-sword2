@@ -51,11 +51,12 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   (ldapContext.getAttributes(_: String)) expects * anyNumberOfTimes() returning attributes
 
   private def expectSwordEnabledAttributePresent(present: Boolean) =
-    (attributes.get(_: String)) expects "enabled" anyNumberOfTimes() returning (if (present) swordEnabledAttribute else null)
+    (attributes.get(_: String)) expects "enabled" anyNumberOfTimes() returning (if (present) swordEnabledAttribute
+                                                                                else null)
+
   private def expectNumberOfSwordEnabledAttributeValues(n: Int) = swordEnabledAttribute.size _ expects() anyNumberOfTimes() returning n
+
   private def expectSwordEnabledAttributeValue(value: String) = (swordEnabledAttribute.get(_: Int)) expects 0 anyNumberOfTimes() returning value
-
-
 
 
   val command = "echo -n 'SomePassword' | openssl sha1 -hmac 'someUserNameAsSalt' -binary | base64"
@@ -77,6 +78,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
+
     implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
       ldapContext
     }
@@ -89,6 +91,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("false")
+
     implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
       ldapContext
     }
@@ -103,6 +106,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   it should "return Failure if swordEnabled is not set" in {
     expectSwordEnabledAttributePresent(false)
     expectNumberOfSwordEnabledAttributeValues(1)
+
     implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
       ldapContext
     }
@@ -117,6 +121,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   it should "return Failure if swordEnabled attribute is present but somehow has zero values" in {
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(0)
+
     implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
       ldapContext
     }
@@ -131,6 +136,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   it should "return Failure if authentication to LDAP fails" in {
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
+
     implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Failure(new AuthenticationException())
 
     val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))

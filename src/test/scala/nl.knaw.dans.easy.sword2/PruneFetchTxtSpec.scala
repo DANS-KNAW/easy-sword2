@@ -23,7 +23,7 @@ import scala.io.{ Codec, Source }
 import scala.util.Success
 
 class PruneFetchTxtSpec extends Sword2Fixture {
-  implicit val codec =Codec.UTF8
+  implicit val codec = Codec.UTF8
   val FETCH_TXT = new File(targetBagDir, "fetch.txt")
   val TEST_BAG = new File("src/test/resources/prune-fetchtxt/hello-bag")
   val FETCH_ITEM_1 = new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url")
@@ -33,6 +33,7 @@ class PruneFetchTxtSpec extends Sword2Fixture {
 
 
   def getFetchTxtSrc = Source.fromFile(new File(targetBagDir, "fetch.txt")).mkString
+
   def getTagManifestSrc = Source.fromFile(new File(targetBagDir, "tagmanifest-md5.txt")).mkString
 
   "pruneFetchTxt" should "remove fetch items listed in second argument" in {

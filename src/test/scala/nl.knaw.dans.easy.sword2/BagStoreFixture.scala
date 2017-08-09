@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.sword2
 /**
  * Adds the implicits for calling the easy-bag-store functions.
  */
-trait BagStoreFixture  {
+trait BagStoreFixture {
   val baseDir = "src/test/resources/input/bag-store"
   val baseUrl = "http://deasy.dans.knaw.nl/aips"
   implicit val bagStoreSettings = Some(BagStoreSettings(baseDir, baseUrl))
