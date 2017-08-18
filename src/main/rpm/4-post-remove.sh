@@ -15,12 +15,10 @@
 # limitations under the License.
 #
 
-
 #include <service.sh>
 
 NUMBER_OF_INSTALLATIONS=$1
 MODULE_NAME=easy-sword2
-INSTALL_DIR=/opt/dans.knaw.nl/$MODULE_NAME
 PHASE="POST-REMOVE"
 
 echo "$PHASE: START (Number of current installations: $NUMBER_OF_INSTALLATIONS)"
