@@ -23,16 +23,16 @@ WAIT_TIME=60
 
 jsvc_exec()
 {
-    cd ${APPHOME}
+    cd $APPHOME
     LOGBACK_CFG=/etc/opt/dans.knaw.nl/$NAME/logback-service.xml
     if [ ! -f $LOGBACK_CFG ]; then
         LOGBACK_CFG=$APPHOME/cfg/logback-service.xml
     fi
 
     LC_ALL=en_US.UTF-8 \
-    ${EXEC} -home ${JAVA_HOME} -cp ${CLASSPATH} -user ${USER} -outfile ${OUTFILE} -errfile ${ERRFILE} -pidfile ${PID} -wait ${WAIT_TIME} \
-          -Dapp.home=${APPHOME} \
-          -Dlogback.configurationFile=$LOGBACK_CFG $1 ${CLASS} ${ARGS}
+    $EXEC -home $JAVA_HOME -cp $CLASSPATH -user $USER -outfile $OUTFILE -errfile $ERRFILE -pidfile $PID -wait $WAIT_TIME \
+          -Dapp.home=$APPHOME \
+          -Dlogback.configurationFile=$LOGBACK_CFG $1 $CLASS $ARGS
 }
 
 start_jsvc_exec()

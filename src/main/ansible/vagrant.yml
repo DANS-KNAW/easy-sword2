@@ -23,29 +23,21 @@
     easy_test_users_email: "{{ deployer_email }}"
     easy_test_users_ldapadmin_password: "{{ easy_ldap_dir_ldapadmin_password }}"
   roles:
-    - dans.local-test-vm-base
-    - dans.easy-ldap-dir
     - dans.capture-deployer-email
-    - dans.easy-test-users
+    - dans.local-test-vm-base
     - dans.local-yum-repo
+    - dans.easy-ldap-dir
+    - dans.easy-test-users
 
 - hosts: "test"
   become: yes
   tasks:
-    - name: Installing package
-      yum:
-        name: dans.knaw.nl-easy-sword2
-        state: latest
+  - name: Install package
+    yum:
+      name: dans.knaw.nl-easy-sword2
+      state: latest
 
-    - name: Configure application (application.properties)
-      replace:
-        dest: '/etc/opt/dans.knaw.nl/easy-sword2/application.properties'
-        regexp: '^{{ item.key }}=.*$'
-        replace: '{{ item.key }}={{ item.value }}'
-      with_items:
-        - { key: 'base-url',          value: 'http://test.dans.knaw.nl/' }
-
-    - service:
-        name: easy-sword2
-        state: started
-        enabled: yes
+  - service:
+      name: easy-sword2
+      state: started
+      enabled: yes

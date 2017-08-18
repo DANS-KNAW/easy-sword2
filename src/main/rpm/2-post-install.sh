@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 
-
 #include <service.sh>
 
 NUMBER_OF_INSTALLATIONS=$1
@@ -23,13 +22,13 @@ MODULE_NAME=easy-sword2
 INSTALL_DIR=/opt/dans.knaw.nl/$MODULE_NAME
 SWORD2_TEMP_DIR="/var/opt/dans.knaw.nl/tmp/easy-sword2"
 SWORD2_DEPOSITS_DIR="/var/opt/dans.knaw.nl/spool/sword2-deposits"
-
 PHASE="POST-INSTALL"
 
 echo "$PHASE: START (Number of current installations: $NUMBER_OF_INSTALLATIONS)"
 service_install_initd_service_script "$INSTALL_DIR/install/$MODULE_NAME-initd.sh" $MODULE_NAME
 service_install_systemd_unit "$INSTALL_DIR/install/$MODULE_NAME.service" $MODULE_NAME "$INSTALL_DIR/install/override.conf"
 service_create_log_directory $MODULE_NAME
+echo "$PHASE: DONE"
 
 if [ ! -d "$SWORD2_TEMP_DIR" ]; then
     echo -n "Creating temp directory at $SWORD2_TEMP_DIR..."
@@ -46,5 +45,3 @@ if [ ! -d "$SWORD2_DEPOSITS_DIR" ]; then
     chown $MODULE_NAME:$MODULE_NAME $SWORD2_DEPOSITS_DIR
     echo -n "OK"
 fi
-
-echo "$PHASE: DONE"
