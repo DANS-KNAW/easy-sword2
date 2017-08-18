@@ -32,16 +32,6 @@
 - hosts: "test"
   become: yes
   tasks:
-  - name: Create directories
-    file:
-      path: "{{ item }}"
-      recurse: yes
-      state: directory
-      mode: "0777"
-    with_items:
-        - /var/opt/dans.knaw.nl/tmp/easy-sword2
-        - /var/opt/dans.knaw.nl/spool/sword2-deposits
-
   - name: Install package
     yum:
       name: dans.knaw.nl-easy-sword2
