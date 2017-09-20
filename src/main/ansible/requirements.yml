@@ -23,4 +23,4 @@
 - src: https://github.com/DANS-KNAW/dans.easy-ldap-dir
   version: v2.0.2
 - src: https://github.com/DANS-KNAW/dans.easy-test-users
-  version: v1.1.0
+  version: v1.2.0
