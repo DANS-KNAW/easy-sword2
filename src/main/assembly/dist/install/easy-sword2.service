@@ -5,7 +5,7 @@ Description=EASY SWORD v2 Deposit Service
 ExecStart=/bin/java \
  -Dlogback.configurationFile=/etc/opt/dans.knaw.nl/easy-sword2/logback-service.xml \
  -Dapp.home=/opt/dans.knaw.nl/easy-sword2 \
- -jar /opt/dans.knaw.nl/easy-sword2/bin/easy-sword2.jar run-service
+ -jar /opt/dans.knaw.nl/easy-sword2/bin/easy-sword2*.jar run-service
 
 User=easy-sword2
 Group=easy-sword2
