@@ -56,7 +56,7 @@ object Authentication {
       settings.auth match {
         case SingleUserAuthSettings(user, password) =>
           if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
-            log.warn("Single user FAILED log-in attempt")
+            log.warn(s"Single user FAILED log-in attempt: ${ auth.getUsername }")
             throw new SwordAuthException
           }
           else {
@@ -65,7 +65,7 @@ object Authentication {
           }
         case authSettings: LdapAuthSettings => authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext).map {
           case false => {
-            log.warn("LDAP user FAILED log-in attempt")
+            log.warn(s"LDAP user FAILED log-in attempt: ${ auth.getUsername }")
             throw new SwordAuthException
           }
           case true => log.info(s"User ${ auth.getUsername } authentication through LDAP successful")
