@@ -21,6 +21,7 @@ import java.nio.file.attribute.FileTime
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
+import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -48,7 +49,10 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
                else depositInTemp.resolve(FILENAME)
     props.setFile(file.toFile)
     if (Files.exists(file)) props.load(file.toFile)
-    else props.setProperty("bag-store.bag-id", depositId)
+    else {
+      props.setProperty("bag-store.bag-id", depositId)
+      props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString)
+    }
     debug(s"Using deposit.properties at $file")
     depositorId.foreach(props.setProperty("depositor.userId", _))
     (props, if (Files.exists(file)) Some(Files.getLastModifiedTime(file))
@@ -86,8 +90,7 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
 
-
-  /**
+   /**
    * Returns the state description when the properties were loaded.
    *
    * @return
@@ -98,7 +101,6 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
       .map(Success(_))
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
-
   def getDepositorId: Try[String] = {
     Option(properties.getProperty("depositor.userId"))
       .map(_.toString)
@@ -119,6 +121,8 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
   def getLastModifiedTimestamp: Option[FileTime] = {
     modified
   }
+
+
 }
 
 object DepositProperties {
