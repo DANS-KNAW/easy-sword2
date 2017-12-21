@@ -90,7 +90,7 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
 
-   /**
+  /**
    * Returns the state description when the properties were loaded.
    *
    * @return
@@ -101,6 +101,7 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
       .map(Success(_))
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
+
   def getDepositorId: Try[String] = {
     Option(properties.getProperty("depositor.userId"))
       .map(_.toString)
@@ -121,8 +122,6 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
   def getLastModifiedTimestamp: Option[FileTime] = {
     modified
   }
-
-
 }
 
 object DepositProperties {
