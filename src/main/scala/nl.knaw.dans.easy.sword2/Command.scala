@@ -15,6 +15,8 @@
  */
 package nl.knaw.dans.easy.sword2
 
+import java.nio.file.Paths
+
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import resource.managed
@@ -26,7 +28,7 @@ import scala.util.{ Failure, Try }
 object Command extends App with DebugEnhancedLogging {
   type FeedBackMessage = String
 
-  private val configuration = Configuration()
+  private val configuration = Configuration(Paths.get(System.getProperty("app.home")))
   private val commandLine = new CommandLineOptions(args, configuration) {
     verify()
   }
