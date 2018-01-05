@@ -21,7 +21,7 @@ import java.util.regex.Pattern
 import javax.servlet.ServletException
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.apache.commons.lang.StringUtils.{ isBlank, isNotBlank }
+import nl.knaw.dans.lib.string.StringExtensions
 
 class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLogging {
   val depositRootDir = new File(configuration.properties.getString("deposits.rootdir"))
@@ -43,9 +43,9 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
   val bagStoreBaseUri = configuration.properties.getString("bag-store.base-url") // TODO: make File, check existence
   val bagStoreBaseDir = configuration.properties.getString("bag-store.base-dir") // TODO: make File, check existence
   var bagStoreSettings = Option.empty[BagStoreSettings]
-  if (isNotBlank(bagStoreBaseUri) || isNotBlank(bagStoreBaseDir)) {
-    if (isBlank(bagStoreBaseDir)) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
-    if (isBlank(bagStoreBaseUri)) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
+  if (!bagStoreBaseUri.isBlank || !bagStoreBaseDir.isBlank) {
+    if (bagStoreBaseDir.isBlank) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
+    if (bagStoreBaseUri.isBlank) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
     val baseDir = new File(bagStoreBaseDir)
     if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } doesn't exist")
     if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } is not readable")

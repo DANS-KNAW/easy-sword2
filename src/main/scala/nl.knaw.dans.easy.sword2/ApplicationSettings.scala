@@ -19,9 +19,9 @@ import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 import javax.servlet.ServletException
+import nl.knaw.dans.lib.string.StringExtensions
 
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.apache.commons.lang.StringUtils.{ isBlank, isNotBlank }
 
 trait ApplicationSettings {
   protected val properties = new PropertiesConfiguration()
@@ -46,9 +46,9 @@ trait ApplicationSettings {
   val bagStoreBaseUri = properties.getString("bag-store.base-url") // TODO: make File, check existence
   val bagStoreBaseDir = properties.getString("bag-store.base-dir") // TODO: make File, check existence
   var bagStoreSettings = Option.empty[BagStoreSettings]
-  if (isNotBlank(bagStoreBaseUri) || isNotBlank(bagStoreBaseDir)) {
-    if (isBlank(bagStoreBaseDir)) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
-    if (isBlank(bagStoreBaseUri)) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
+  if (!bagStoreBaseUri.isBlank || !bagStoreBaseDir.isBlank) {
+    if (bagStoreBaseDir.isBlank) throw new RuntimeException("Only bag store base-url given, bag store base-directory missing")
+    if (bagStoreBaseUri.isBlank) throw new RuntimeException("Only bag store base-directory given, bag store base-url missing")
     val baseDir = new File(bagStoreBaseDir)
     if (!baseDir.exists) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } doesn't exist")
     if (!baseDir.canRead) throw new RuntimeException(s"Bag store base directory ${ baseDir.getAbsolutePath } is not readable")
