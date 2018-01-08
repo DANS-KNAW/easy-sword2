@@ -1,4 +1,4 @@
-system "ansible-galaxy install --force --role-file #{File.dirname(File.expand_path(__FILE__))}/src/main/ansible/requirements.yml"
+system "ansible-galaxy install --force --role-file #{File.dirname(File.expand_path(__FILE__))}/src/main/ansible/requirements.yml" if (ARGV[0] == "up" || ARGV[0] == "provision")
 Vagrant.configure(2) do |config|
    config.vm.define "test" do |test|
       test.vm.box = "geerlingguy/centos6"
@@ -8,6 +8,8 @@ Vagrant.configure(2) do |config|
       test.vm.provision "ansible" do |ansible|
         ansible.playbook = "src/main/ansible/vagrant.yml"
         ansible.config_file = "src/main/ansible/ansible.cfg"
+        ansible.compatibility_mode = "2.0"
+#        ansible.verbose = "vvvv"
       end
       test.vm.provider "virtualbox" do |vb|
         vb.gui = false

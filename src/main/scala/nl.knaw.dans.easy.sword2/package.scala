@@ -70,16 +70,5 @@ package object sword2 {
       }
     }
   }
-
-  // TODO copied from easy-bag-store
-  implicit class TryExtensions2[T](val t: Try[T]) extends AnyVal {
-    // TODO candidate for dans-scala-lib
-    def unsafeGetOrThrow: T = {
-      t match {
-        case Success(value) => value
-        case Failure(throwable) => throw throwable
-      }
-    }
-  }
 }
 
