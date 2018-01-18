@@ -51,7 +51,7 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
     if (Files.exists(file)) props.load(file.toFile)
     else {
       props.setProperty("bag-store.bag-id", depositId)
-      props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString)
+      props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
     }
     debug(s"Using deposit.properties at $file")
     depositorId.foreach(props.setProperty("depositor.userId", _))

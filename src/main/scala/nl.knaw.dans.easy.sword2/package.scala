@@ -20,11 +20,14 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.easy.sword2.DepositHandler.log
+import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 import org.swordapp.server.DepositReceipt
 
 import scala.util.{ Failure, Success, Try }
 
 package object sword2 {
+  val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.dateTime()
+
   sealed abstract class AuthenticationSettings()
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
