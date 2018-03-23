@@ -64,7 +64,12 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
       .map(key => {
         val username = key.stripSuffix(".sample-rate")
         val rate = configuration.sampleRates.getDouble(key)
-        username -> rate
+        val actualRate = math.max(0.0, math.min(rate, 1.0))
+
+        if (actualRate != rate)
+          logger.warn(s"Invalid sampling rate for user $username. Was $rate, set to $actualRate.")
+
+        username -> actualRate
       })
       .toMap
 
