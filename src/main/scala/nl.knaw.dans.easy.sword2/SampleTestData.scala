@@ -16,31 +16,45 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.File
+import java.nio.file.{ Files, Path }
 
+import nl.knaw.dans.easy.sword2.DepositHandler.log
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.util.{ Success, Try }
 
 object SampleTestData extends DebugEnhancedLogging {
 
-  def sampleData(depositDir: File, depositProperties: DepositProperties)(implicit settings: SampleTestDataSettings): Try[Unit] = {
+  def sampleData(id: String, depositDir: File, depositProperties: DepositProperties)(implicit settings: SampleTestDataSettings): Try[Unit] = {
     trace(depositDir, depositProperties.getDepositorId, settings)
+    depositDir.list().foreach(debug)
     settings match {
-      case SampleTestDataDisabled => Success(()) // move on
+      case SampleTestDataDisabled => Success(()) // move on, sampling is disabled
       case SampleTestDataEnabled(sampleDir, rates) =>
         depositProperties.getDepositorId
-          .map(user => rates.get(user))
+          .map(rates.get)
           .flatMap {
-            case Some(rate) if math.random() < rate => doSampling(depositDir, sampleDir)
+            case Some(rate) if math.random() < rate => doSampling(id, depositDir, sampleDir.toPath)
             case Some(_) => Success(()) // not sampling this deposit
             case None => Success(()) // no rate specified for this user
           }
     }
   }
 
-  private def doSampling(depositDir: File, sampleDir: File): Try[Unit] = {
+  private def doSampling(id: String, depositDir: File, sampleDir: Path): Try[Unit] = {
+    logger.info(s"sample triggered for $depositDir with id $id")
 
+    copyZipFiles(depositDir, Files.createDirectory(sampleDir.resolve(id)))
+  }
 
-    ???
+  private def copyZipFiles(depositDir: File, sampleDir: Path): Try[Unit] = Try {
+    log.debug(s"Copying zip files to $sampleDir")
+    for (file <- depositDir.listFiles().toList
+         if isPartOfDeposit(file)
+         if file.isFile) {
+      val sampleFile = sampleDir.resolve(file.getName)
+      log.debug(s"copy $file to $sampleFile")
+      Files.copy(file.toPath, sampleFile)
+    }
   }
 }

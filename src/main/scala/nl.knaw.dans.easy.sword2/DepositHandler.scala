@@ -94,7 +94,7 @@ object DepositHandler {
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
-      _ <- SampleTestData.sampleData(depositDir, props)(settings.sample)
+      _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
         .recoverWith {
           case e =>
             log.error(s"[$id] Failed to sample test data; error is discarded", e)
