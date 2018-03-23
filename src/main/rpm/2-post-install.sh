@@ -22,6 +22,7 @@ MODULE_NAME=easy-sword2
 INSTALL_DIR=/opt/dans.knaw.nl/$MODULE_NAME
 SWORD2_TEMP_DIR="/var/opt/dans.knaw.nl/tmp/easy-sword2"
 SWORD2_DEPOSITS_DIR="/var/opt/dans.knaw.nl/spool/sword2-deposits"
+SWORD2_SAMPLE_DIR="/var/opt/dans.knaw.nl/tmp/sword2-test-input"
 PHASE="POST-INSTALL"
 
 echo "$PHASE: START (Number of current installations: $NUMBER_OF_INSTALLATIONS)"
@@ -43,5 +44,13 @@ if [ ! -d "$SWORD2_DEPOSITS_DIR" ]; then
     mkdir -p $SWORD2_DEPOSITS_DIR
     warn_if_failed "Could not create temp directory."
     chown $MODULE_NAME:$MODULE_NAME $SWORD2_DEPOSITS_DIR
+    echo -n "OK"
+fi
+
+if [ ! -d "$SWORD2_SAMPLE_DIR" ]; then
+    echo -n "Creating sample directory at $SWORD2_SAMPLE_DIR..."
+    mkdir -p $SWORD2_SAMPLE_DIR
+    warn_if_failed "Could not create sample directory."
+    chown $MODULE_NAME:$MODULE_NAME $SWORD2_SAMPLE_DIR
     echo -n "OK"
 fi
