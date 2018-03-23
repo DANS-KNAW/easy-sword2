@@ -22,6 +22,7 @@ import javax.servlet.ServletException
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import nl.knaw.dans.lib.string.StringExtensions
+import scala.collection.JavaConverters._
 
 class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLogging {
   val depositRootDir = new File(configuration.properties.getString("deposits.rootdir"))
@@ -53,4 +54,20 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
   }
   val supportMailAddress = configuration.properties.getString("support.mailaddress")
   val marginDiskSpace: Long = configuration.properties.getLong("tempdir.margin-available-diskspace-mb") * 1024 * 1024
+
+  val sampleSettings = if (configuration.properties.getBoolean("sample-data.enabled")) {
+    val sampleDir = new File(configuration.properties.getString("sample-data.dir"))
+    if (!sampleDir.exists) throw new RuntimeException(s"Sample base directory ${ sampleDir.getAbsolutePath } doesn't exist")
+    if (!sampleDir.canWrite) throw new RuntimeException(s"Sample base directory ${ sampleDir.getAbsolutePath } is not writeable")
+
+    val sampleRates = configuration.sampleRates.getKeys.asScala
+      .map(key => {
+        val username = key.stripSuffix(".sample-rate")
+        val rate = configuration.sampleRates.getDouble(key)
+        username -> rate
+      })
+      .toMap
+
+    SampleTestDataEnabled(sampleDir, sampleRates)
+  } else SampleTestDataDisabled
 }

@@ -30,8 +30,17 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
   val context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
   // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
   val settings = Settings(
-    app.wiring.depositRootDir, app.wiring.depositPermissions, app.wiring.tempDir, app.wiring.baseUrl, app.wiring.collectionPath, app.wiring.auth, app.wiring.urlPattern,
-    app.wiring.bagStoreSettings, app.wiring.supportMailAddress, app.wiring.marginDiskSpace)
+    depositRootDir = app.wiring.depositRootDir,
+    depositPermissions = app.wiring.depositPermissions,
+    tempDir = app.wiring.tempDir,
+    serviceBaseUrl = app.wiring.baseUrl,
+    collectionPath = app.wiring.collectionPath,
+    auth = app.wiring.auth,
+    urlPattern = app.wiring.urlPattern,
+    bagStoreSettings = app.wiring.bagStoreSettings,
+    supportMailAddress = app.wiring.supportMailAddress,
+    marginDiskSpace = app.wiring.marginDiskSpace,
+    sample = app.wiring.sampleSettings)
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
 
   /*

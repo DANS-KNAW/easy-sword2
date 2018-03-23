@@ -94,6 +94,12 @@ object DepositHandler {
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
+      _ <- SampleTestData.sampleData(depositDir, props)(settings.sample)
+        .recoverWith {
+          case e =>
+            log.error(s"[$id] Failed to sample test data; error is discarded", e)
+            Success(())
+        }
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.save()
       _ <- removeZipFiles(depositDir)

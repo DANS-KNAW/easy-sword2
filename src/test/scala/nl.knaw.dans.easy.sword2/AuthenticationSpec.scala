@@ -31,7 +31,7 @@ import org.swordapp.server.{ AuthCredentials, SwordAuthException }
 import scala.util.{ Failure, Success, Try }
 
 class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with OneInstancePerTest {
-  implicit val settings = Settings(
+  implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
@@ -41,7 +41,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     urlPattern = Pattern.compile("dummy"),
     bagStoreSettings = None,
     supportMailAddress = "dummy",
-    marginDiskSpace = 0)
+    marginDiskSpace = 0,
+    sample = SampleTestDataEnabled(new File("sample-dummy"), Map.empty))
 
   private val ldapContext = mock[LdapContext]
   private val attributes = mock[Attributes]
