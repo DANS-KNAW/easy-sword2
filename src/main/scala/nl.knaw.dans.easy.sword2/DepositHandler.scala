@@ -59,7 +59,7 @@ object DepositHandler {
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
       .doOnEach(_ match { case (id, deposit) => finalizeDeposit(deposit.getMimeType)(settings, id) })
-      .subscribe(_ match { case (id, deposit) => log.info(s"Done finalizing deposit $id") })
+      .subscribe(_ match { case (id, deposit) => log.info(s"[$id] Done finalizing deposit") })
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: String): Try[DepositReceipt] = {
