@@ -94,14 +94,9 @@ object DepositHandler {
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
-      _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
-        .recoverWith {
-          case e =>
-            log.error(s"[$id] Failed to sample test data; error is discarded", e)
-            Success(())
-        }
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.save()
+      _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
       dataDir <- moveBagToStorage()
     } yield ()
@@ -113,6 +108,7 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
+          _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
@@ -121,6 +117,7 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(REJECTED, msg)
           _ <- props.save()
+          // we don't sample in this case, given that this state can only occur when there is insufficient disk space
         } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
