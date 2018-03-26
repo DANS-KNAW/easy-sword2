@@ -116,6 +116,7 @@ object SampleTestData extends DebugEnhancedLogging {
        |* _what is the expected outcome of submitting this deposit?_
        |* _why is this deposit interesting?_
        |* _what is special about its (meta)data?_
+       |* _did this deposit contain sensitive data (NO_ACCESS file access) that is stubbed by the reviewer?_
        |""".stripMargin
   }
 }
