@@ -22,7 +22,7 @@ MODULE_NAME=easy-sword2
 INSTALL_DIR=/opt/dans.knaw.nl/$MODULE_NAME
 SWORD2_TEMP_DIR="/var/opt/dans.knaw.nl/tmp/easy-sword2"
 SWORD2_DEPOSITS_DIR="/var/opt/dans.knaw.nl/spool/sword2-deposits"
-SWORD2_SAMPLE_DIR="/var/opt/dans.knaw.nl/tmp/sword2-test-input"
+SWORD2_SAMPLE_DIR="/var/opt/dans.knaw.nl/tmp/sword2-sample-input"
 PHASE="POST-INSTALL"
 
 echo "$PHASE: START (Number of current installations: $NUMBER_OF_INSTALLATIONS)"
