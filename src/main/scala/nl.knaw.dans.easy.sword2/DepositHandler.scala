@@ -85,7 +85,7 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    implicit val bagStoreSettings = settings.bagStoreSettings
+    implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val depositDir = new File(settings.tempDir, id)
 
     val result = for {
@@ -108,15 +108,20 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
+          // we don't sample in this case, given that the deposit is invalid and we cannot automate
+          // replacing sensitive data
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
         for {
-          _ <- removeZipFiles(depositDir) // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space, so we clean up, here.
+          // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
+          // so we clean up, here.
+          _ <- removeZipFiles(depositDir)
           props <- DepositProperties(id)
           _ <- props.setState(REJECTED, msg)
           _ <- props.save()
-          // we don't sample in this case, given that this state can only occur when there is insufficient disk space
+          // we don't sample in this case, given that this state can only occur when there is
+          // insufficient disk space
         } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
