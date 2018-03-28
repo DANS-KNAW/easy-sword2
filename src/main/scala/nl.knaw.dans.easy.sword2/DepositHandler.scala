@@ -108,7 +108,6 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
-          _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
