@@ -176,23 +176,20 @@ object SampleTestData extends DebugEnhancedLogging {
         case (manifest, algorithm) =>
           readManifest(manifest)
             .map(content => {
-              var changed = false
-
-              val newContent = paths.foldLeft(content) {
-                case (ct, path) if ct contains path =>
+              val result @ (_, changed) = paths.foldLeft((content, false)) {
+                case ((ct, _), path) if ct contains path =>
                   val checksum = calculateChecksum(bag.resolve(path), algorithm).unsafeGetOrThrow
                   if (!ct.get(path).contains(checksum)) {
-                    changed = true
-                    ct.updated(path, checksum)
+                    (ct.updated(path, checksum), true)
                   }
-                  else ct
-                case (ct, _) => ct
+                  else (ct, false)
+                case ((ct, _), _) => (ct, false)
               }
 
               if (changed) logger.debug(s"manifest $manifest changed")
               else logger.debug(s"manifest $manifest not changed")
 
-              (newContent, changed)
+              result
             })
             .flatMap {
               case (nc, true) => writeManifest(manifest, nc).map(_ => Some(bag.relativize(manifest)))
