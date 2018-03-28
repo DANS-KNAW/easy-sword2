@@ -19,6 +19,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.attribute.FileTime
 import java.nio.file.{ Files, Path }
+import java.util.UUID
 
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -62,18 +63,18 @@ object SampleTestData extends DebugEnhancedLogging {
     Success(())
   }
 
-  private def doSampling(id: String, depositDir: File, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = {
-    logger.info(s"[$id] Sampling triggered")
-    val sampleDirWithId = Files.createDirectory(sampleDir.resolve(id))
+  private def doSampling(originalId: String, depositDir: File, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = {
+    logger.info(s"[$originalId] Sampling triggered")
+    // new UUID: we don't want to confuse it with the original deposit
+    val sampleDirWithId = Files.createDirectory(sampleDir.resolve(UUID.randomUUID().toString))
     for {
-      _ <- copyZipFiles(id, depositDir, sampleDirWithId)
-      _ <- writeReadme(id, sampleDirWithId)
+      _ <- copyZipFiles(originalId, depositDir, sampleDirWithId)
+      _ <- writeReadme(originalId, sampleDirWithId)
     } yield ()
-
   }
 
-  private def copyZipFiles(id: String, depositDir: File, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = Try {
-    logger.info(s"[$id] Copying zip file(s) from $depositDir to $sampleDir")
+  private def copyZipFiles(originalId: String, depositDir: File, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = Try {
+    logger.info(s"[$originalId] Copying zip file(s) from $depositDir to $sampleDir")
     for (file <- depositDir.listFiles().toList
          if isPartOfDeposit(file)
          if file.isFile) {
@@ -83,14 +84,14 @@ object SampleTestData extends DebugEnhancedLogging {
     }
   }
 
-  private def writeReadme(id: String, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = {
+  private def writeReadme(originalId: String, sampleDir: Path)(implicit depositProperties: DepositProperties): Try[Unit] = {
     for {
       depositorId <- depositProperties.getDepositorId
       state <- depositProperties.getState
       description <- depositProperties.getStateDescription
     } yield {
       val lastModified = depositProperties.getLastModifiedTimestamp
-      val content = readmeContent(id, depositorId, state, description, lastModified)
+      val content = readmeContent(originalId, depositorId, state, description, lastModified)
       val readme = sampleDir.resolve("README.md")
       debug(
         s"""writing README content to $readme:
@@ -99,17 +100,17 @@ object SampleTestData extends DebugEnhancedLogging {
     }
   }
 
-  private def readmeContent(id: String, depositorId: String, state: State, description: String, lastModified: Option[FileTime]) = {
+  private def readmeContent(originalId: String, depositorId: String, state: State, description: String, lastModified: Option[FileTime]) = {
     s"""# Deposit info
        |
        |This deposit was sampled by easy-sword2 and can be used as test data.
        |
        |## Deposit information
-       |**id**: $id
-       |**depositor**: $depositorId
-       |**state**: $state
-       |**description**: $description
-       |**last modified**: ${lastModified.getOrElse("<unknown>")}
+       |**original id:** $originalId
+       |**depositor:** $depositorId
+       |**state:** $state
+       |**description:** $description
+       |**last modified:** ${lastModified.getOrElse("<unknown>")}
        |
        |## Notes from the reviewer
        |* _remarks on this deposit_
