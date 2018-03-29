@@ -59,7 +59,7 @@ object DepositHandler {
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
       .doOnEach(_ match { case (id, deposit) => finalizeDeposit(deposit.getMimeType)(settings, id) })
-      .subscribe(_ match { case (id, deposit) => log.info(s"Done finalizing deposit $id") })
+      .subscribe(_ match { case (id, deposit) => log.info(s"[$id] Done finalizing deposit") })
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: String): Try[DepositReceipt] = {
@@ -85,7 +85,7 @@ object DepositHandler {
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
-    implicit val bagStoreSettings = settings.bagStoreSettings
+    implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val depositDir = new File(settings.tempDir, id)
 
     val result = for {
@@ -96,6 +96,7 @@ object DepositHandler {
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.save()
+      _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
       dataDir <- moveBagToStorage()
     } yield ()
@@ -107,14 +108,20 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
+          // we don't sample in this case, given that the deposit is invalid and we cannot automate
+          // replacing sensitive data
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
         for {
-          _ <- removeZipFiles(depositDir) // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space, so we clean up, here.
+          // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
+          // so we clean up, here.
+          _ <- removeZipFiles(depositDir)
           props <- DepositProperties(id)
           _ <- props.setState(REJECTED, msg)
           _ <- props.save()
+          // we don't sample in this case, given that this state can only occur when there is
+          // insufficient disk space
         } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)

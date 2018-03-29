@@ -32,17 +32,22 @@ package object sword2 {
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
 
-  case class Settings(
-                       depositRootDir: File,
-                       depositPermissions: String,
-                       tempDir: File,
-                       serviceBaseUrl: String, // TODO: refactor to URL?
-                       collectionPath: String,
-                       auth: AuthenticationSettings,
-                       urlPattern: Pattern,
-                       bagStoreSettings: Option[BagStoreSettings],
-                       supportMailAddress: String,
-                       marginDiskSpace: Long)
+  sealed abstract class SampleTestDataSettings
+  case class SampleTestDataEnabled(sampleRootDir: File,
+                                   sampleRates: Map[String, Double]) extends SampleTestDataSettings
+  case object SampleTestDataDisabled extends SampleTestDataSettings
+
+  case class Settings(depositRootDir: File,
+                      depositPermissions: String,
+                      tempDir: File,
+                      serviceBaseUrl: String, // TODO: refactor to URL?
+                      collectionPath: String,
+                      auth: AuthenticationSettings,
+                      urlPattern: Pattern,
+                      bagStoreSettings: Option[BagStoreSettings],
+                      supportMailAddress: String,
+                      marginDiskSpace: Long,
+                      sample: SampleTestDataSettings)
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
