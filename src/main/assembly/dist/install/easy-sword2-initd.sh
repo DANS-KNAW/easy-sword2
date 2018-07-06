@@ -9,7 +9,8 @@
 #                    and should be placed in /etc/init.d
 
 NAME="easy-sword2"
-EXEC="/usr/bin/jsvc"
+NICENESS=0
+EXEC="nice -n $NICENESS /usr/bin/jsvc"
 APPHOME="/opt/dans.knaw.nl/$NAME"
 JAVA_HOME="/usr/lib/jvm/jre"
 CLASSPATH="$APPHOME/bin/$NAME.jar"
