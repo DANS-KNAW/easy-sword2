@@ -35,7 +35,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       id <- SwordID.extract(iri)
       _ = debug(s"id = $id")
       _ <- settings.auth match {
-        case _: LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+        case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to retrieve statement for other user.")
         case _ => Success(())
       }
       statementIri <- Try { settings.serviceBaseUrl + "statement/" + id }

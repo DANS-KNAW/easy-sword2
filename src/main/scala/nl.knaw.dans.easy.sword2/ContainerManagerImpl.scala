@@ -84,7 +84,7 @@ class ContainerManagerImpl extends ContainerManager {
       _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
       _ <- settings.auth match {
-        case _: LdapAuthSettings => checkThatUserIsOwnerOfDeposit(id, auth.getUsername)
+        case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to continue deposit for other user")
         case _ => Success(())
       }
       _ = log.debug(s"[$id] Continued deposit")
@@ -93,15 +93,6 @@ class ContainerManagerImpl extends ContainerManager {
     } yield (id, depositReceipt)
 
     result.getOrThrow
-  }
-
-  private def checkThatUserIsOwnerOfDeposit(id: String, user: String)(implicit settings: Settings): Try[Unit] = {
-    for {
-      props <- DepositProperties(id)
-      depositor <- props.getDepositorId
-      _ <- if (depositor == user) Success(())
-           else Failure(new SwordAuthException("Not allowed to continue deposit for other user"))
-    } yield ()
   }
 
   @throws(classOf[SwordError])
