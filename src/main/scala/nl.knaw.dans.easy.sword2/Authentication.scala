@@ -77,6 +77,16 @@ object Authentication {
     }
   }
 
+  @throws(classOf[SwordAuthException])
+  def checkThatUserIsOwnerOfDeposit(id: String, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
+    for {
+      props <- DepositProperties(id)
+      depositor <- props.getDepositorId
+      _ <- if (depositor == user) Success(())
+           else Failure(new SwordAuthException(msg))
+    } yield ()
+  }
+
   private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[LdapContext]): Try[Boolean] = {
     getLdapContext(user, password, authSettings.ldapUrl, authSettings.usersParentEntry).map {
       context =>
