@@ -468,12 +468,7 @@ object DepositHandler {
     }
   }
 
-  def isOnPosixFileSystem(file: File): Boolean = {
-    Try {
-      Files.getPosixFilePermissions(file.toPath)
-      true
-    }.getOrElse(false)
-  }
+  def isOnPosixFileSystem(file: File): Boolean =  Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
   def moveBagToStorage()(implicit settings: Settings, id: String): Try[File] =
     Try {
