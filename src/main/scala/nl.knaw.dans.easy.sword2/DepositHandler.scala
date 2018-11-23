@@ -36,9 +36,7 @@ import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions }
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
-import org.apache.http.protocol.HTTP
 import org.joda.time.{ DateTime, DateTimeZone }
-import org.scalatra.Http
 import org.slf4j.{ Logger, LoggerFactory }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
