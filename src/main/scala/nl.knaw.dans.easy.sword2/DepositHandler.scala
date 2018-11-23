@@ -154,9 +154,9 @@ object DepositHandler {
       Success(())
   }
 
-  private def removeZipFiles(bagDir: File): Try[Unit] = Try {
+  private def removeZipFiles(depositDir: File): Try[Unit] = Try {
     log.debug("Removing zip files")
-    for (file <- bagDir.listFiles().toList
+    for (file <- depositDir.listFiles().toList
          if isPartOfDeposit(file)
          if file.isFile) {
       log.debug(s"Removing $file")
