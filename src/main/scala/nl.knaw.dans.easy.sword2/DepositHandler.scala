@@ -98,7 +98,7 @@ object DepositHandler {
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
-      dataDir <- moveBagToStorage()
+      _ <- moveBagToStorage()
     } yield ()
 
     result.recover {
@@ -110,18 +110,19 @@ object DepositHandler {
           _ <- props.save()
           // we don't sample in this case, given that the deposit is invalid and we cannot automate
           // replacing sensitive data
+          _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
         for {
           // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
           // so we clean up, here.
-          _ <- removeZipFiles(depositDir)
           props <- DepositProperties(id)
           _ <- props.setState(REJECTED, msg)
           _ <- props.save()
           // we don't sample in this case, given that this state can only occur when there is
           // insufficient disk space
+          _ <- cleanupFiles(depositDir, REJECTED)
         } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
@@ -129,8 +130,27 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(FAILED, genericErrorMessage)
           _ <- props.save()
+          _ <- cleanupFiles(depositDir, FAILED)
         } yield ()
     }
+  }
+
+  private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings): Try[Unit] = {
+    if (settings.cleanup.getOrElse(state, false)) {
+      log.debug(s"cleaning up zip files and bag directory for deposit due to state $state")
+      for {
+        _ <- removeZipFiles(depositDir)
+        bagDir <- getBagDir(depositDir)
+        _ <- Try {
+          if (bagDir.exists()) {
+            log.debug(s"removing bag $bagDir")
+            deleteQuietly(bagDir)
+          }
+        }
+      } yield ()
+    }
+    else
+      Success(())
   }
 
   private def removeZipFiles(bagDir: File): Try[Unit] = Try {
