@@ -87,9 +87,10 @@ object DepositHandler {
     log.info(s"[$id] Finalizing deposit")
     implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val depositDir = new File(settings.tempDir, id)
+    lazy val storageDir = new File(settings.depositRootDir, id)
 
     val result = for {
-      _ <- extractBag(mimeType)
+      _ <- extractBag(depositDir, mimeType)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
@@ -98,7 +99,7 @@ object DepositHandler {
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
-      _ <- moveBagToStorage()
+      _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
     result.recover {
@@ -163,7 +164,7 @@ object DepositHandler {
     }
   }
 
-  private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
+  private def extractBag(depositDir: File, mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
     def checkAvailableDiskspace(file: File): Try[Unit] = {
       val zipFile = new ZipFile(file.getPath)
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
@@ -214,7 +215,6 @@ object DepositHandler {
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val depositDir: File = new File(settings.tempDir, id)
       val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -498,14 +498,12 @@ object DepositHandler {
     }
   }
 
-  def moveBagToStorage()(implicit settings: Settings, id: String): Try[File] =
+  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings): Try[File] =
     Try {
       log.debug("Moving bag to permanent storage")
-      val tempDir = new File(settings.tempDir, id)
-      val storageDir = new File(settings.depositRootDir, id)
-      if (isOnPosixFileSystem(tempDir))
-        Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
-      Files.move(tempDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
+      if (isOnPosixFileSystem(depositDir))
+        Files.walkFileTree(depositDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
+      Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
   def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
