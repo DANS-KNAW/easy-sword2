@@ -18,11 +18,14 @@ package nl.knaw.dans.easy.sword2
 import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
-import javax.servlet.ServletException
 
+import javax.servlet.ServletException
+import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import nl.knaw.dans.lib.string.StringExtensions
+
 import scala.collection.JavaConverters._
+import scala.util.{ Success, Try }
 
 class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLogging {
   val depositRootDir = new File(configuration.properties.getString("deposits.rootdir"))
@@ -75,4 +78,9 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
 
     SampleTestDataEnabled(sampleDir, sampleRates)
   } else SampleTestDataDisabled
+
+  val cleanup: Map[State, Boolean] = State.values.toSeq
+    .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
+    .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }
+    .toMap
 }
