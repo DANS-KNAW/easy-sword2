@@ -84,7 +84,6 @@ object DepositHandler {
     """.stripMargin
   }
 
-
   private def assertTempDirHasEnoughDiskspaceMarginForFile(file: File)(implicit settings: Settings): Try[Unit] = Try {
     if (settings.tempDir.getFreeSpace - file.length() < settings.marginDiskSpace)
       throw new SwordError(503)
