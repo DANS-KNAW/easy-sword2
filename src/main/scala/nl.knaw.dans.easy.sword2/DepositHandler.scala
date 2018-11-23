@@ -36,7 +36,9 @@ import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions }
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
+import org.apache.http.protocol.HTTP
 import org.joda.time.{ DateTime, DateTimeZone }
+import org.scalatra.Http
 import org.slf4j.{ Logger, LoggerFactory }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
@@ -65,6 +67,7 @@ object DepositHandler {
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: String): Try[DepositReceipt] = {
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     for {
+      _ <- assertTempDirHasEnoughDiskspaceMarginForFile(payload)
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
@@ -81,6 +84,12 @@ object DepositHandler {
        |Please contact the SWORD service administrator at $mailaddress.
        |The error occurred at $timestamp. Your 'DepositID' is $id.
     """.stripMargin
+  }
+
+
+  private def assertTempDirHasEnoughDiskspaceMarginForFile(file: File)(implicit settings: Settings): Try[Unit] = Try {
+    if (settings.tempDir.getFreeSpace - file.length() < settings.marginDiskSpace)
+      throw new SwordError(503)
   }
 
   def finalizeDeposit(mimeType: String)(implicit settings: Settings, id: String): Try[Unit] = {
