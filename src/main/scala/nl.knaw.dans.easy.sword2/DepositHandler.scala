@@ -248,7 +248,7 @@ object DepositHandler {
       log.info(s"[$id] Scheduling deposit to be finalized")
       val result = for {
         props <- DepositProperties(id)
-        _ <- props.setState(FINALIZING, "Deposit is being reassembled and validated")
+        _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
         _ <- props.save()
       } yield ()
       result.get // Trigger exception if properties could not be updated

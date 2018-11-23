@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 object State extends Enumeration {
   type State = Value
-  val ARCHIVED, DRAFT, FAILED, FINALIZING, INVALID, REJECTED, SUBMITTED = Value
+  val ARCHIVED, DRAFT, FAILED, FINALIZING, INVALID, REJECTED, SUBMITTED, UPLOADED = Value
 
   def stringValues: Set[String] = this.values.map(_.toString)
 }
