@@ -20,7 +20,7 @@ import java.util.regex.Pattern
 
 import org.scalatest.Inside.inside
 
-import scala.util.{ Failure, Success }
+import scala.util.{ Failure, Success, Try }
 
 class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
