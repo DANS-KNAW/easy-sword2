@@ -93,9 +93,10 @@ object DepositHandler {
     log.info(s"[$id] Finalizing deposit")
     implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val depositDir = new File(settings.tempDir, id)
+    lazy val storageDir = new File(settings.depositRootDir, id)
 
     val result = for {
-      _ <- extractBag(mimeType)
+      _ <- extractBag(depositDir, mimeType)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
@@ -104,7 +105,7 @@ object DepositHandler {
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
-      dataDir <- moveBagToStorage()
+      _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
     result.recover {
@@ -116,18 +117,19 @@ object DepositHandler {
           _ <- props.save()
           // we don't sample in this case, given that the deposit is invalid and we cannot automate
           // replacing sensitive data
+          _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
       case RejectedDepositException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
         for {
           // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
           // so we clean up, here.
-          _ <- removeZipFiles(depositDir)
           props <- DepositProperties(id)
           _ <- props.setState(REJECTED, msg)
           _ <- props.save()
           // we don't sample in this case, given that this state can only occur when there is
           // insufficient disk space
+          _ <- cleanupFiles(depositDir, REJECTED)
         } yield ()
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
@@ -135,27 +137,49 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(FAILED, genericErrorMessage)
           _ <- props.save()
+          _ <- cleanupFiles(depositDir, FAILED)
         } yield ()
     }
   }
 
-  private def removeZipFiles(bagDir: File): Try[Unit] = Try {
-    log.debug("Removing zip files")
-    for (file <- bagDir.listFiles().toList
+  private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings, id: String): Try[Unit] = {
+    if (settings.cleanup.getOrElse(state, false)) {
+      log.info(s"[$id] cleaning up zip files and bag directory for deposit due to state $state")
+      for {
+        _ <- removeZipFiles(depositDir)
+        bagDir <- getBagDir(depositDir)
+        _ <- Try {
+          if (bagDir.exists()) {
+            log.debug(s"[$id] removing bag $bagDir")
+            deleteQuietly(bagDir)
+          }
+          else {
+            log.debug(s"[$id] bag did not exist; no removal necessary")
+          }
+        }
+      } yield ()
+    }
+    else
+      Success(())
+  }
+
+  private def removeZipFiles(depositDir: File)(implicit id: String): Try[Unit] = Try {
+    log.debug(s"[$id] removing zip files")
+    for (file <- depositDir.listFiles().toList
          if isPartOfDeposit(file)
          if file.isFile) {
-      log.debug(s"Removing $file")
+      log.debug(s"[$id] removing $file")
       deleteQuietly(file)
     }
   }
 
-  private def extractBag(mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
+  private def extractBag(depositDir: File, mimeType: String)(implicit settings: Settings, id: String): Try[File] = {
     def checkAvailableDiskspace(file: File): Try[Unit] = {
       val zipFile = new ZipFile(file.getPath)
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
       val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
-      log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+      log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
         Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
           new IllegalStateException(s"Required disk space for unzipping: ${ uncompressedSize + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
@@ -167,7 +191,7 @@ object DepositHandler {
       files.headOption.map {
         f =>
           val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
-          log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+          log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
           if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
             Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
               new IllegalStateException(s"Required disk space for concatenating: ${ requiredSpace + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
@@ -200,7 +224,6 @@ object DepositHandler {
 
     Try {
       log.debug(s"[$id] Extracting bag")
-      val depositDir: File = new File(settings.tempDir, id)
       val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -254,7 +277,7 @@ object DepositHandler {
       log.info(s"[$id] Scheduling deposit to be finalized")
       val result = for {
         props <- DepositProperties(id)
-        _ <- props.setState(FINALIZING, "Deposit is being reassembled and validated")
+        _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
         _ <- props.save()
       } yield ()
       result.get // Trigger exception if properties could not be updated
@@ -452,27 +475,19 @@ object DepositHandler {
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
 
-  def isOnPosixFileSystem(file: File): Boolean = {
-    try {
-      Files.getPosixFilePermissions(file.toPath)
-      true
-    }
-    catch {
-      case e: UnsupportedOperationException => false
-    }
-  }
+  def isOnPosixFileSystem(file: File): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
-  def moveBagToStorage()(implicit settings: Settings, id: String): Try[File] =
+  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] =
     Try {
-      log.debug("Moving bag to permanent storage")
+      log.debug(s"[$id] Moving bag to permanent storage")
       val tempDir = new File(settings.tempDir, id)
       val storageDir = new File(settings.depositRootDir, id)
-      FilesPermissionService.changePermissionsForDirectoryAndContent(tempDir, settings.depositPermissions).get
+      FilesPermissionService.changePermissionsForDirectoryAndContent(tempDir, settings.depositPermissions, id).get
       Files.move(tempDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
-  def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
-    log.debug(s"Checking Content-MD5 (Received: $MD5)")
+  def doesHashMatch(zipFile: File, MD5: String)(implicit id: String): Try[Unit] = {
+    log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
 
     Using.fileInputStream(zipFile)

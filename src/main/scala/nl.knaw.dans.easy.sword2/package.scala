@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.easy.sword2.DepositHandler.log
+import nl.knaw.dans.easy.sword2.State.State
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 import org.swordapp.server.DepositReceipt
 
@@ -47,7 +48,9 @@ package object sword2 {
                       bagStoreSettings: Option[BagStoreSettings],
                       supportMailAddress: String,
                       marginDiskSpace: Long,
-                      sample: SampleTestDataSettings)
+                      sample: SampleTestDataSettings,
+                      cleanup: Map[State, Boolean],
+                     )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
