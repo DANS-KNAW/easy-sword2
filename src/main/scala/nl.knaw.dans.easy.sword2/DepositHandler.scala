@@ -136,16 +136,19 @@ object DepositHandler {
     }
   }
 
-  private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings): Try[Unit] = {
+  private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings, id: String): Try[Unit] = {
     if (settings.cleanup.getOrElse(state, false)) {
-      log.debug(s"cleaning up zip files and bag directory for deposit due to state $state")
+      log.info(s"[$id] cleaning up zip files and bag directory for deposit due to state $state")
       for {
         _ <- removeZipFiles(depositDir)
         bagDir <- getBagDir(depositDir)
         _ <- Try {
           if (bagDir.exists()) {
-            log.debug(s"removing bag $bagDir")
+            log.debug(s"[$id] removing bag $bagDir")
             deleteQuietly(bagDir)
+          }
+          else {
+            log.debug(s"[$id] bag did not exist; no removal necessary")
           }
         }
       } yield ()
@@ -154,12 +157,12 @@ object DepositHandler {
       Success(())
   }
 
-  private def removeZipFiles(depositDir: File): Try[Unit] = Try {
-    log.debug("Removing zip files")
+  private def removeZipFiles(depositDir: File)(implicit id: String): Try[Unit] = Try {
+    log.debug(s"[$id] removing zip files")
     for (file <- depositDir.listFiles().toList
          if isPartOfDeposit(file)
          if file.isFile) {
-      log.debug(s"Removing $file")
+      log.debug(s"[$id] removing $file")
       deleteQuietly(file)
     }
   }
@@ -170,7 +173,7 @@ object DepositHandler {
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
       val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
-      log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+      log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
         Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
           new IllegalStateException(s"Required disk space for unzipping: ${ uncompressedSize + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
@@ -182,7 +185,7 @@ object DepositHandler {
       files.headOption.map {
         f =>
           val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
-          log.debug(s"Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+          log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
           if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
             Failure(RejectedDepositException(id, "Not enough disk space to process deposit.",
               new IllegalStateException(s"Required disk space for concatenating: ${ requiredSpace + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
@@ -466,9 +469,9 @@ object DepositHandler {
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
 
-  case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
+  case class MakeAllGroupWritable(permissions: String, id: String) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on file $path")
+      log.debug(s"[$id] Setting the following permissions $permissions on file $path")
       try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         FileVisitResult.CONTINUE
@@ -481,7 +484,7 @@ object DepositHandler {
     }
 
     override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on directory $dir")
+      log.debug(s"[$id] Setting the following permissions $permissions on directory $dir")
       Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
       if (ex == null) FileVisitResult.CONTINUE
       else FileVisitResult.TERMINATE
@@ -498,16 +501,16 @@ object DepositHandler {
     }
   }
 
-  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings): Try[File] =
+  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] =
     Try {
-      log.debug("Moving bag to permanent storage")
+      log.debug(s"[$id] Moving bag to permanent storage")
       if (isOnPosixFileSystem(depositDir))
-        Files.walkFileTree(depositDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
+        Files.walkFileTree(depositDir.toPath, MakeAllGroupWritable(settings.depositPermissions, id))
       Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 
-  def doesHashMatch(zipFile: File, MD5: String): Try[Unit] = {
-    log.debug(s"Checking Content-MD5 (Received: $MD5)")
+  def doesHashMatch(zipFile: File, MD5: String)(implicit id: String): Try[Unit] = {
+    log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
     lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
 
     Using.fileInputStream(zipFile)
