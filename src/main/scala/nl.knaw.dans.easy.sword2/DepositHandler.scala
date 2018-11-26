@@ -254,7 +254,7 @@ object DepositHandler {
       log.info(s"[$id] Scheduling deposit to be finalized")
       val result = for {
         props <- DepositProperties(id)
-        _ <- props.setState(FINALIZING, "Deposit is being reassembled and validated")
+        _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
         _ <- props.save()
       } yield ()
       result.get // Trigger exception if properties could not be updated
@@ -474,15 +474,7 @@ object DepositHandler {
     }
   }
 
-  def isOnPosixFileSystem(file: File): Boolean = {
-    try {
-      Files.getPosixFilePermissions(file.toPath)
-      true
-    }
-    catch {
-      case e: UnsupportedOperationException => false
-    }
-  }
+  def isOnPosixFileSystem(file: File): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
   def moveBagToStorage()(implicit settings: Settings, id: String): Try[File] =
     Try {
