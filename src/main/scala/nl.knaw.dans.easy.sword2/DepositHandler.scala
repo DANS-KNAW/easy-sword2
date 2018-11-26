@@ -479,17 +479,10 @@ object DepositHandler {
 
   def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] = {
     log.debug(s"[$id] Moving bag to permanent storage")
-    for {
-      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(depositDir, settings.depositPermissions, id)
-      file <- moveBagToStorage(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath)
-          .recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
-    } yield file
+    FilesPermissionService.changePermissionsForDirectoryAndContent(depositDir, settings.depositPermissions, id)
+      .map(_ =>  Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
+      .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }
-
-  def moveBagToStorage(depositDirPath: Path, storageDirPath: Path): Try[File] = Try {
-    Files.move(depositDirPath, storageDirPath).toFile
-  }
-
 
   def doesHashMatch(zipFile: File, MD5: String)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
