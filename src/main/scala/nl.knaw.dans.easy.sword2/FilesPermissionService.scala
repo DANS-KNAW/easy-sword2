@@ -25,15 +25,15 @@ import scala.util.Try
 
 object FilesPermissionService {
 
-  def changePermissionsForDirectoryAndContent(depositDir: File, permissions: String): Try[Unit] = Try {
+  def changePermissionsForDirectoryAndContent(depositDir: File, permissions: String, id: String): Try[Unit] = Try {
     if (isOnPosixFileSystem(depositDir))
-      Files.walkFileTree(depositDir.toPath, ChangePermissionsForDirectoryAndContent(permissions))
+      Files.walkFileTree(depositDir.toPath, ChangePermissionsForDirectoryAndContent(permissions, id))
   }
 
   // previous classname MakeAllGroupWritable was deceptive as the argument (posix permission string) can be something else than rwxrwx---
-  case class ChangePermissionsForDirectoryAndContent(permissions: String) extends SimpleFileVisitor[Path] {
+  case class ChangePermissionsForDirectoryAndContent(permissions: String, id: String) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on file $path")
+      log.debug(s"[$id] Setting the following permissions $permissions on file $path")
       try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         FileVisitResult.CONTINUE
@@ -46,7 +46,7 @@ object FilesPermissionService {
     }
 
     override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on directory $dir")
+      log.debug(s"[$id] Setting the following permissions $permissions on directory $dir")
       Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
       if (ex == null) FileVisitResult.CONTINUE
       else FileVisitResult.TERMINATE

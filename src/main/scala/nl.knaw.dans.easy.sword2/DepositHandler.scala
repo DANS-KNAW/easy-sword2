@@ -68,7 +68,7 @@ object DepositHandler {
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
-      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(deposit.getFile, settings.depositPermissions) // set file permissions after continued deposit is finished
+      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr

@@ -23,5 +23,3 @@ trait BagStoreFixture {
   val baseUrl = "http://deasy.dans.knaw.nl/aips"
   implicit val bagStoreSettings = Some(BagStoreSettings(baseDir, baseUrl))
 }
-
-
