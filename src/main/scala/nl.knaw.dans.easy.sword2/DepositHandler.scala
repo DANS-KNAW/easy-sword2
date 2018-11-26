@@ -65,7 +65,7 @@ object DepositHandler {
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     for {
       _ <- assertTempDirHasEnoughDiskspaceMarginForFile(payload)
-      _ <- copyPayloadToFile(deposit, payload)
+      _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
       _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
