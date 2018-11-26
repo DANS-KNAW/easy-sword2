@@ -477,14 +477,20 @@ object DepositHandler {
 
   def isOnPosixFileSystem(file: File): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
-  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] =
-    Try {
-      log.debug(s"[$id] Moving bag to permanent storage")
-      val tempDir = new File(settings.tempDir, id)
-      val storageDir = new File(settings.depositRootDir, id)
-      FilesPermissionService.changePermissionsForDirectoryAndContent(tempDir, settings.depositPermissions, id).get
-      Files.move(tempDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
-    }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
+  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] = {
+    log.debug(s"[$id] Moving bag to permanent storage")
+    val triedFile: Try[File] = for {
+      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(depositDir, settings.depositPermissions, id)
+      file <- moveBagToStorage(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath)
+    } yield file
+    triedFile
+      .recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
+  }
+
+  def moveBagToStorage(depositDirPath: Path, storageDirPath: Path): Try[File] = Try {
+    Files.move(depositDirPath, storageDirPath).toFile
+  }
+
 
   def doesHashMatch(zipFile: File, MD5: String)(implicit id: String): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")

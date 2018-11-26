@@ -15,10 +15,11 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.nio.file._
 import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.{ Files, Path }
 import java.util
 
+import better.files.File
 import org.scalatest.BeforeAndAfterEach
 
 class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEach {
@@ -38,7 +39,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   override def beforeEach: Unit = {
     super.beforeEach()
     inputDir.clear()
-    better.files.File(getClass.getResource("/input/").toURI).copyTo(inputDir)
+    File(getClass.getResource("/input/").toURI).copyTo(inputDir)
   }
 
   "changePermissionsForAllDepositContent" should "give write access to the group when given string rwxrwx---" in {
