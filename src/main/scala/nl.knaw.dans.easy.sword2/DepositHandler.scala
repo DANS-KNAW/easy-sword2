@@ -19,7 +19,6 @@ import java.io.{ File, IOException }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
-import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
 
@@ -69,6 +68,7 @@ object DepositHandler {
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
+      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(deposit.getFile, settings.depositPermissions) // set file permissions after continued deposit is finished
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
@@ -452,28 +452,6 @@ object DepositHandler {
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
 
-  case class MakeAllGroupWritable(permissions: String) extends SimpleFileVisitor[Path] {
-    override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on file $path")
-      try {
-        Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
-        FileVisitResult.CONTINUE
-      } catch {
-        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
-        case cce: ClassCastException => log.error("No file permission elements in set"); FileVisitResult.TERMINATE
-        case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
-        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
-      }
-    }
-
-    override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-      log.debug(s"Setting the following permissions $permissions on directory $dir")
-      Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
-      if (ex == null) FileVisitResult.CONTINUE
-      else FileVisitResult.TERMINATE
-    }
-  }
-
   def isOnPosixFileSystem(file: File): Boolean = {
     try {
       Files.getPosixFilePermissions(file.toPath)
@@ -489,8 +467,7 @@ object DepositHandler {
       log.debug("Moving bag to permanent storage")
       val tempDir = new File(settings.tempDir, id)
       val storageDir = new File(settings.depositRootDir, id)
-      if (isOnPosixFileSystem(tempDir))
-        Files.walkFileTree(tempDir.toPath, MakeAllGroupWritable(settings.depositPermissions))
+      FilesPermissionService.changePermissionsForDirectoryAndContent(tempDir, settings.depositPermissions).get
       Files.move(tempDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile
     }.recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
 

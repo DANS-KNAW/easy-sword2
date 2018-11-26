@@ -136,6 +136,11 @@
             <groupId>org.joda</groupId>
             <artifactId>joda-convert</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.github.pathikrit</groupId>
+            <artifactId>better-files_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <repositories>
         <repository>
