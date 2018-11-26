@@ -66,7 +66,6 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
     )
   }
 
-
   private def giveDirectoryAndAllContentOnlyOwnerRights(depositDir: Path) = {
     val onlyOwnerPerm: util.Set[PosixFilePermission] = new util.HashSet()
     onlyOwnerPerm.add(PosixFilePermission.OWNER_EXECUTE)
