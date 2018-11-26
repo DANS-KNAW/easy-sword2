@@ -31,7 +31,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   }
   private val bagSequenceDir = inputDir / "bag-sequence"
   private val bagSequenceId = "bag-sequence"
-  private val bagSequenceDirPath = bagSequenceDir.toJava.toPath
+  private val bagSequenceDirPath = bagSequenceDir.path
   private val ownerAndGroupRightsString = "rwxrwx---"
   private val ownerRights = "rxw------"
 
@@ -72,9 +72,9 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
     onlyOwnerPerm.add(PosixFilePermission.OWNER_EXECUTE)
     onlyOwnerPerm.add(PosixFilePermission.OWNER_READ)
     onlyOwnerPerm.add(PosixFilePermission.OWNER_WRITE)
-    Files.setPosixFilePermissions(bagSequenceDir.toJava.toPath, onlyOwnerPerm) // all files in the test dir start with group access
+    Files.setPosixFilePermissions(bagSequenceDir.path, onlyOwnerPerm) // all files in the test dir start with group access
 
-    Files.getPosixFilePermissions(bagSequenceDir.toJava.toPath) should contain only(
+    Files.getPosixFilePermissions(bagSequenceDir.path) should contain only(
       PosixFilePermission.OWNER_EXECUTE,
       PosixFilePermission.OWNER_READ,
       PosixFilePermission.OWNER_WRITE,
