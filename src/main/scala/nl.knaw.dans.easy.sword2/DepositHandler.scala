@@ -479,12 +479,11 @@ object DepositHandler {
 
   def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] = {
     log.debug(s"[$id] Moving bag to permanent storage")
-    val triedFile: Try[File] = for {
+    for {
       _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(depositDir, settings.depositPermissions, id)
       file <- moveBagToStorage(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath)
+          .recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
     } yield file
-    triedFile
-      .recover { case e => throw new SwordError("Failed to move dataset to storage", e) }
   }
 
   def moveBagToStorage(depositDirPath: Path, storageDirPath: Path): Try[File] = Try {
