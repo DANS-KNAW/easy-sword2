@@ -29,6 +29,9 @@ import scala.util.{ Failure, Success, Try }
 package object sword2 {
   val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.dateTime()
 
+  type DepositId = String
+  type MimeType = String
+
   sealed abstract class AuthenticationSettings()
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
@@ -54,8 +57,8 @@ package object sword2 {
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
-  case class InvalidDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
-  case class RejectedDepositException(id: String, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+  case class InvalidDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+  case class RejectedDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 

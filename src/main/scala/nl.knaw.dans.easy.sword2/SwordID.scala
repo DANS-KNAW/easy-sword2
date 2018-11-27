@@ -22,14 +22,14 @@ import org.swordapp.server.SwordError
 import scala.util.{ Failure, Success, Try }
 
 object SwordID {
-  def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[String] = Try {
+  def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[DepositId] = Try {
     maybeSlug match {
       case Some(slug) => slug
       case None => UUID.randomUUID().toString
     }
   }
 
-  def extract(IRI: String): Try[String] = {
+  def extract(IRI: String): Try[DepositId] = {
     val parts = IRI.split("/")
     if (parts.length < 1) Failure(new SwordError(404))
     else Success(parts.last)

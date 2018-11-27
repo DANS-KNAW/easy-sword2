@@ -37,7 +37,7 @@ class CollectionListManagerImpl extends CollectionListManager {
     }
   }
 
-  private def createEntry(id: String, abdera: Abdera): Entry = abdera.newEntry // TODO: implement me
+  private def createEntry(id: DepositId, abdera: Abdera): Entry = abdera.newEntry // TODO: implement me
 
   private def createEmptyEntry(abdera: Abdera): Entry = abdera.newEntry
 }

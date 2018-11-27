@@ -78,7 +78,7 @@ object Authentication {
   }
 
   @throws(classOf[SwordAuthException])
-  def checkThatUserIsOwnerOfDeposit(id: String, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
+  def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
     for {
       props <- DepositProperties(id)
       depositor <- props.getDepositorId
