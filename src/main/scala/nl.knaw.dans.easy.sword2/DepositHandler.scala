@@ -122,7 +122,7 @@ object DepositHandler {
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
       case e @ NotEnoughDiskSpaceException(_, msg, cause) =>
-        log.error(s"[$id] Rejected deposit", cause)
+        log.error(s"[$id] $msg", cause)
         for {
           // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
           // so we clean up, here.
