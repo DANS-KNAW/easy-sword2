@@ -52,14 +52,19 @@ object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
   private implicit val bagFactory: BagFactory = new BagFactory
 
-  private val depositProcessingStream = PublishSubject[(String, Deposit)]()
+  type DepositId = String
+  type MimeType = String
+
+  private val depositProcessingStream = PublishSubject[(DepositId, MimeType)]()
 
   def startDepositProcessingStream(settings: Settings): Unit = {
     depositProcessingStream
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
-      .doOnEach(_ match { case (id, deposit) => finalizeDeposit(deposit.getMimeType)(settings, id) })
-      .subscribe(_ match { case (id, deposit) => log.info(s"[$id] Done finalizing deposit") })
+      .foreach { case (id, mimetype) =>
+        finalizeDeposit(mimetype)(settings, id)
+        log.info(s"[$id] Done finalizing deposit")
+      }
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: String): Try[DepositReceipt] = {
@@ -272,18 +277,16 @@ object DepositHandler {
       case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
     }
 
-  def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = Try {
+  def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: String): Try[Unit] = {
     if (!deposit.isInProgress) {
       log.info(s"[$id] Scheduling deposit to be finalized")
-      val result = for {
+      for {
         props <- DepositProperties(id)
         _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
         _ <- props.save()
-      } yield ()
-      result.get // Trigger exception if properties could not be updated
-      depositProcessingStream.onNext((id, deposit))
+      } yield depositProcessingStream.onNext((id, deposit.getMimeType))
     }
-    else {
+    else Try {
       log.info(s"[$id] Received continuing deposit: ${ deposit.getFilename }")
     }
   }
