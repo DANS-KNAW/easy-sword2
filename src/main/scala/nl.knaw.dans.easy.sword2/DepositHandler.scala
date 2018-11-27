@@ -68,7 +68,7 @@ object DepositHandler {
       _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
-      _ <- FilesPermissionService.changePermissionsForDirectoryAndContent(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
+      _ <- FilesPermission.changePermissionsRecursively(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
@@ -479,7 +479,7 @@ object DepositHandler {
 
   def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: String): Try[File] = {
     log.debug(s"[$id] Moving bag to permanent storage")
-    FilesPermissionService.changePermissionsForDirectoryAndContent(depositDir, settings.depositPermissions, id)
+    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
       .map(_ =>  Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
       .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }

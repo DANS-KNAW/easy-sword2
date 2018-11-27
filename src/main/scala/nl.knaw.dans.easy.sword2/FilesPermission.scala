@@ -23,25 +23,24 @@ import nl.knaw.dans.easy.sword2.DepositHandler.{ isOnPosixFileSystem, log }
 
 import scala.util.Try
 
-object FilesPermissionService {
+object FilesPermission {
 
-  def changePermissionsForDirectoryAndContent(depositDir: File, permissions: String, id: String): Try[Unit] = Try {
+  def changePermissionsRecursively(depositDir: File, permissions: String, id: String): Try[Unit] = Try {
     if (isOnPosixFileSystem(depositDir))
-      Files.walkFileTree(depositDir.toPath, ChangePermissionsForDirectoryAndContent(permissions, id))
+      Files.walkFileTree(depositDir.toPath, ChangePermissionsRecursively(permissions, id))
   }
 
-  // previous classname MakeAllGroupWritable was deceptive as the argument (posix permission string) can be something else than rwxrwx---
-  case class ChangePermissionsForDirectoryAndContent(permissions: String, id: String) extends SimpleFileVisitor[Path] {
+  case class ChangePermissionsRecursively(permissions: String, id: String) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
       log.debug(s"[$id] Setting the following permissions $permissions on file $path")
       try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         FileVisitResult.CONTINUE
       } catch {
-        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
-        case cce: ClassCastException => log.error("No file permission elements in set"); FileVisitResult.TERMINATE
-        case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
-        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path",se); FileVisitResult.TERMINATE
+        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system", usoe); FileVisitResult.TERMINATE
+        case cce: ClassCastException => log.error("No file permission elements in set", cce); FileVisitResult.TERMINATE
+        case ioe: IOException => log.error(s"Could not set file permissions on $path", ioe); FileVisitResult.TERMINATE
+        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path", se); FileVisitResult.TERMINATE
       }
     }
 

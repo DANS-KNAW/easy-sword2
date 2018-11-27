@@ -45,7 +45,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   "changePermissionsForAllDepositContent" should "give write access to the group when given string rwxrwx---" in {
     giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
 
-    FilesPermissionService.changePermissionsForDirectoryAndContent(bagSequenceDir.toJava, ownerAndGroupRightsString, bagSequenceId)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerAndGroupRightsString, bagSequenceId)
     Files.getPosixFilePermissions(bagSequenceDirPath) should contain only(
       PosixFilePermission.OWNER_EXECUTE,
       PosixFilePermission.OWNER_READ,
@@ -59,7 +59,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   "changePermissionsForAllDepositContent" should "not give write access to the group when given string rwx------" in {
     giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
 
-    FilesPermissionService.changePermissionsForDirectoryAndContent(bagSequenceDir.toJava, ownerRights, bagSequenceId)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerRights, bagSequenceId)
     Files.getPosixFilePermissions(bagSequenceDirPath) should contain only(
       PosixFilePermission.OWNER_EXECUTE,
       PosixFilePermission.OWNER_READ,
