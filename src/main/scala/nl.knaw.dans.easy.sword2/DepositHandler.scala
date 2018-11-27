@@ -50,7 +50,7 @@ import scala.util.{ Failure, Success, Try }
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
-  implicit val bagFactory = new BagFactory
+  private implicit val bagFactory: BagFactory = new BagFactory
 
   private val depositProcessingStream = PublishSubject[(String, Deposit)]()
 
@@ -251,7 +251,7 @@ object DepositHandler {
 
   private def getBagDir(depositDir: File): Try[File] = Try {
     val depositFiles = depositDir.listFiles.filter(_.isDirectory)
-    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${ depositFiles.size }")
+    if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${ depositFiles.length }")
     depositFiles(0)
   }
 
@@ -306,14 +306,14 @@ object DepositHandler {
       .collectResults
       .map(_ => ()) // Try map
       .recoverWith {
-      case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "fetch.txt URLs"), e))
+      case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "fetch.txt URLs"), e))
     }
   }
 
   private def checkUrlValidity(url: String, urlPattern: Pattern)(implicit id: String): Try[Unit] = {
     def checkUrlSyntax: Try[URL] = {
       Try(new URL(url)).recoverWith {
-        case e: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
+        case _: MalformedURLException => throw InvalidDepositException(id, s"Invalid url in Fetch Items ($url)")
       }
     }
 
@@ -335,7 +335,7 @@ object DepositHandler {
       (fetchItemsInBagStore, validationResult.isSuccess) match {
         case (Seq(), true) => Success(())
         case (Seq(), false) => Failure(InvalidDepositException(id, validationResult.messagesToString))
-        case (items, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, but all the files are present in the bag."))
+        case (_, true) => Failure(InvalidDepositException(id, s"There is a fetch.txt file, but all the files are present in the bag."))
         case (itemsFromBagStore, false) =>
           val otherThanMissingPayloadFilesMessages = validationResult.getSimpleMessages
             .asScala
@@ -420,7 +420,7 @@ object DepositHandler {
       .collectResults
       .map(_ => ())
       .recoverWith {
-        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "resolving files from fetch.txt"), e))
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "resolving files from fetch.txt"), e))
       }
   }
 
@@ -454,7 +454,7 @@ object DepositHandler {
       }.collectResults
       .map(_ => ())
       .recoverWith {
-        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage).toSeq, "validating checksums of files in fetch.txt"), e))
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "validating checksums of files in fetch.txt"), e))
       }
   }
 
@@ -482,10 +482,10 @@ object DepositHandler {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         FileVisitResult.CONTINUE
       } catch {
-        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
-        case cce: ClassCastException => log.error("No file permission elements in set"); FileVisitResult.TERMINATE
-        case ioe: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
-        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
+        case _: UnsupportedOperationException => log.error("Not on a POSIX supported file system"); FileVisitResult.TERMINATE
+        case _: ClassCastException => log.error("No file permission elements in set"); FileVisitResult.TERMINATE
+        case _: IOException => log.error(s"Could not set file permissions on $path"); FileVisitResult.TERMINATE
+        case _: SecurityException => log.error(s"Not enough privileges to set file permissions on $path"); FileVisitResult.TERMINATE
       }
     }
 
