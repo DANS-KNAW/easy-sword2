@@ -121,18 +121,10 @@ object DepositHandler {
           // replacing sensitive data
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
-      case e @ NotEnoughDiskSpaceException(_, msg, cause) =>
+      case NotEnoughDiskSpaceException(_, msg, cause) =>
         log.error(s"[$id] $msg", cause)
-        for {
-          // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
-          // so we clean up, here.
-          props <- DepositProperties(id)
-          _ <- props.setState(REJECTED, msg)
-          _ <- props.save()
-          // we don't sample in this case, given that this state can only occur when there is
-          // insufficient disk space
-          _ <- cleanupFiles(depositDir, REJECTED)
-        } yield ()
+        log.info(s"[$id] rescheduling while waiting for more diskspace")
+        depositProcessingStream.onNext((id, mimetype))
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
         for {
