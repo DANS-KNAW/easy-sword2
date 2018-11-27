@@ -91,14 +91,14 @@ object DepositHandler {
       throw new SwordError(503)
   }
 
-  def finalizeDeposit(mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  def finalizeDeposit(mimetype: MimeType)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
     implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
     val depositDir = new File(settings.tempDir, id)
     lazy val storageDir = new File(settings.depositRootDir, id)
 
     val result = for {
-      _ <- extractBag(depositDir, mimeType)
+      _ <- extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
