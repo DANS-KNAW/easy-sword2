@@ -58,7 +58,7 @@ package object sword2 {
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
   case class InvalidDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
-  case class RejectedDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
+  case class NotEnoughDiskSpaceException(id: DepositId, msg: String, cause: Throwable) extends Exception(msg, cause)
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 
