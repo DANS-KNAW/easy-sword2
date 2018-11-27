@@ -59,11 +59,6 @@ package object sword2 {
 
   case class InvalidDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
   case class NotEnoughDiskSpaceException(id: DepositId, cause: Throwable) extends Exception("Not enough disk space to process deposit.", cause)
-  object NotEnoughDiskSpaceException {
-    def unapply(arg: NotEnoughDiskSpaceException): Option[(DepositId, String, Throwable)] = {
-      Some(arg.id, arg.getMessage, arg.cause)
-    }
-  }
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 

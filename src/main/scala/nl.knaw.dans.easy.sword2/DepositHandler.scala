@@ -121,8 +121,8 @@ object DepositHandler {
           // replacing sensitive data
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
-      case NotEnoughDiskSpaceException(_, msg, cause) =>
-        log.error(s"[$id] $msg", cause)
+      case e: NotEnoughDiskSpaceException =>
+        log.error(s"[$id] ${ e.getMessage }", e.getCause)
         log.info(s"[$id] rescheduling while waiting for more diskspace")
         depositProcessingStream.onNext((id, mimetype))
       case NonFatal(e) =>
