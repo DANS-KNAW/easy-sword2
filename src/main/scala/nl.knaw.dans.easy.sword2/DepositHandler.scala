@@ -121,7 +121,7 @@ object DepositHandler {
           // replacing sensitive data
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
-      case NotEnoughDiskSpaceException(_, msg, cause) =>
+      case e @ NotEnoughDiskSpaceException(_, msg, cause) =>
         log.error(s"[$id] Rejected deposit", cause)
         for {
           // Currently, the only reason for SWORD 2 to reject a deposit, is insufficient disk space,
@@ -183,7 +183,7 @@ object DepositHandler {
       val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
       log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
-        Failure(NotEnoughDiskSpaceException(id, "Not enough disk space to process deposit.",
+        Failure(NotEnoughDiskSpaceException(id,
           new IllegalStateException(s"Required disk space for unzipping: ${ uncompressedSize + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
       else Success(())
     }
@@ -195,7 +195,7 @@ object DepositHandler {
           val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
           log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
           if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
-            Failure(NotEnoughDiskSpaceException(id, "Not enough disk space to process deposit.",
+            Failure(NotEnoughDiskSpaceException(id,
               new IllegalStateException(s"Required disk space for concatenating: ${ requiredSpace + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
           else Success(())
       }.getOrElse(Success(()))
