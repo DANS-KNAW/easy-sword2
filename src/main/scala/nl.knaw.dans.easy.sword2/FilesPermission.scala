@@ -21,7 +21,7 @@ import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
 
 import nl.knaw.dans.easy.sword2.DepositHandler.{ isOnPosixFileSystem, log }
 
-import scala.util.Try
+import scala.util.{ Success, Try, Failure }
 
 object FilesPermission {
 
@@ -33,14 +33,14 @@ object FilesPermission {
   case class ChangePermissionsRecursively(permissions: String, id: String) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
       log.debug(s"[$id] Setting the following permissions $permissions on file $path")
-      try {
+      Try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
-        FileVisitResult.CONTINUE
-      } catch {
-        case usoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system", usoe); FileVisitResult.TERMINATE
-        case cce: ClassCastException => log.error("No file permission elements in set", cce); FileVisitResult.TERMINATE
-        case ioe: IOException => log.error(s"Could not set file permissions on $path", ioe); FileVisitResult.TERMINATE
-        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path", se); FileVisitResult.TERMINATE
+      } match {
+        case Success(_) => FileVisitResult.CONTINUE
+        case Failure(uoe: UnsupportedOperationException) => log.error("Not on a POSIX supported file system", uoe); FileVisitResult.TERMINATE
+        case Failure(cce: ClassCastException) => log.error("No file permission elements in set", cce); FileVisitResult.TERMINATE
+        case Failure(ioe: IOException) => log.error(s"Could not set file permissions on $path", ioe); FileVisitResult.TERMINATE
+        case Failure(se: SecurityException) => log.error(s"Not enough privileges to set file permissions on $path", se); FileVisitResult.TERMINATE
       }
     }
 
