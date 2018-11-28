@@ -33,7 +33,7 @@ import scala.util.{ Failure, Success, Try }
  * @param depositId the deposit of which to load the properties
  * @param settings  application settings
  */
-class DepositProperties(depositId: String, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
+class DepositProperties(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
 
   import DepositProperties._
 
@@ -128,7 +128,7 @@ class DepositProperties(depositId: String, depositorId: Option[String] = None)(i
 object DepositProperties {
   val FILENAME = "deposit.properties"
 
-  def apply(depositId: String, depositorId: Option[String] = None)(implicit settings: Settings): Try[DepositProperties] = Try {
+  def apply(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings): Try[DepositProperties] = Try {
     new DepositProperties(depositId, depositorId)
   }
 }

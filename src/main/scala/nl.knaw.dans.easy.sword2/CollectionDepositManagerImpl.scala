@@ -51,7 +51,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
   }
 
-  private def setDepositStateToDraft(id: String, userId: String)(implicit settings: Settings): Try[Unit] = {
+  private def setDepositStateToDraft(id: DepositId, userId: String)(implicit settings: Settings): Try[Unit] = {
     for {
       props <- DepositProperties(id, Some(userId))
       props <- props.setState(DRAFT, "Deposit is open for additional data")
