@@ -15,11 +15,18 @@
  */
 package nl.knaw.dans.easy.sword2
 
-/**
- * Adds the implicits for calling the easy-bag-store functions.
- */
-trait BagStoreFixture {
-  val baseDir = "src/test/resources/input/bag-store"
-  val baseUrl = "http://deasy.dans.knaw.nl/aips"
-  implicit val bagStoreSettings = Some(BagStoreSettings(baseDir, baseUrl))
+import better.files.File
+import better.files.File.currentWorkingDirectory
+import org.scalatest.enablers.Existence
+import org.scalatest.{ FlatSpec, Matchers, OptionValues }
+
+trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
+  implicit def existenceOfFile[FILE <: better.files.File]: Existence[FILE] = _.exists
+
+  lazy val testDir: File = {
+    val path = currentWorkingDirectory / s"target/test/${ getClass.getSimpleName }"
+    if (path.exists) path.delete()
+    path.createDirectories()
+    path
+  }
 }
