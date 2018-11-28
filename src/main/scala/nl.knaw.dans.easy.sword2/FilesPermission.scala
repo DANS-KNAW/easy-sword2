@@ -16,12 +16,13 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
-import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
+import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 
 import nl.knaw.dans.easy.sword2.DepositHandler.{ isOnPosixFileSystem, log }
+import nl.knaw.dans.lib.error._
 
-import scala.util.{ Success, Try, Failure }
+import scala.util.Try
 
 object FilesPermission {
 
@@ -30,18 +31,20 @@ object FilesPermission {
       Files.walkFileTree(depositDir.toPath, ChangePermissionsRecursively(permissions, id))
   }
 
-  case class ChangePermissionsRecursively(permissions: String, id: DepositId) extends SimpleFileVisitor[Path] {
+  case class ChangePermissionsRecursively(permissions: String,
+                                          id: DepositId) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
       log.debug(s"[$id] Setting the following permissions $permissions on file $path")
       Try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
-      } match {
-        case Success(_) => FileVisitResult.CONTINUE
-        case Failure(uoe: UnsupportedOperationException) => log.error("Not on a POSIX supported file system", uoe); FileVisitResult.TERMINATE
-        case Failure(cce: ClassCastException) => log.error("No file permission elements in set", cce); FileVisitResult.TERMINATE
-        case Failure(ioe: IOException) => log.error(s"Could not set file permissions on $path", ioe); FileVisitResult.TERMINATE
-        case Failure(se: SecurityException) => log.error(s"Not enough privileges to set file permissions on $path", se); FileVisitResult.TERMINATE
-      }
+        FileVisitResult.CONTINUE
+      } doIfFailure {
+        case uoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system", uoe)
+        case cce: ClassCastException => log.error("No file permission elements in set", cce)
+        case ioe: IOException => log.error(s"Could not set file permissions on $path", ioe)
+        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path", se)
+        case e => log.error(s"Unexpected exception on $path", e)
+      } getOrElse FileVisitResult.TERMINATE
     }
 
     override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
