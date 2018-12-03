@@ -11,8 +11,14 @@
             <pattern>[%date{ISO8601}] %-5level %msg%n%ex</pattern>
         </encoder>
     </appender>
+    <appender name="journal" class="org.gnieh.logback.SystemdJournalAppender" >
+        <logStackTrace>true</logStackTrace>
+        <logLoggerName>true</logLoggerName>
+        <syslogIdentifier>easy-sword2</syslogIdentifier>
+    </appender>
     <root level="warn">
         <appender-ref ref="FILE"/>
+        <appender-ref ref="journal"/>
     </root>
     <logger name="nl.knaw.dans.easy" level="info"/>
 </configuration>
