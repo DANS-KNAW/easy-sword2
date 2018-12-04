@@ -53,6 +53,7 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
       props.setProperty("bag-store.bag-id", depositId)
       props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
       props.setProperty("identifier.dans-doi.registered", "no")
+      props.setProperty("identifier.dans-doi.action", "create")
     }
     debug(s"Using deposit.properties at $file")
     depositorId.foreach(props.setProperty("depositor.userId", _))
