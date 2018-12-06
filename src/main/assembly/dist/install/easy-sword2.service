@@ -7,6 +7,9 @@ ExecStart=/bin/java \
  -Dapp.home=/opt/dans.knaw.nl/easy-sword2 \
  -jar /opt/dans.knaw.nl/easy-sword2/bin/easy-sword2.jar run-service
 
+# Java returns 143 even if the SIGTERM was handled correctly.
+SuccessExitStatus=143
+
 User=easy-sword2
 Group=easy-sword2
 
