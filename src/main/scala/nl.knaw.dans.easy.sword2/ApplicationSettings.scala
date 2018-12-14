@@ -55,5 +55,5 @@ trait ApplicationSettings {
     bagStoreSettings = Some(BagStoreSettings(bagStoreBaseDir, bagStoreBaseUri))
   }
   val supportMailAddress = properties.getString("support.mailaddress")
-  val marginDiskSpace: Long = properties.getLong("tempdir.margin-available-diskspace-mb") * 1024 * 1024
+  val marginDiskSpace: Long = properties.getLong("tempdir.margin-available-diskspace")
 }

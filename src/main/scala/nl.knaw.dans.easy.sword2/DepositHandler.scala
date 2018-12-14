@@ -16,22 +16,22 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
-import java.net.{ MalformedURLException, URL, UnknownHostException }
+import java.net.{ MalformedURLException, UnknownHostException, URL }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
-import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
+import java.util.regex.Pattern
 
+import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
-import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import net.lingala.zip4j.core.ZipFile
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions }
+import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
@@ -41,11 +41,15 @@ import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
+import rx.lang.scala.Observable
 
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
-import scala.util.control.NonFatal
+import scala.concurrent.duration._
+import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
+
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -53,20 +57,62 @@ object DepositHandler {
 
   private val depositProcessingStream = PublishSubject[(DepositId, MimeType)]()
 
-  def startDepositProcessingStream(settings: Settings): Unit = {
+  def startDepositProcessingStream(implicit settings: Settings): Unit = {
     depositProcessingStream
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
       .foreach { case (id, mimetype) =>
         finalizeDeposit(mimetype)(settings, id)
-        log.info(s"[$id] Done finalizing deposit")
       }
+    settings
+      .tempDir.listFiles().toSeq
+      .filter(_.isDirectory)
+      .filter {
+        d =>
+          getDepositState(d)
+            .map(_ == State.UPLOADED)
+            .recoverWith {
+              case t: Throwable =>
+                log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
+                Success(false)
+            }.get
+      }.foreach {
+      d =>
+        getContentType(d).map {
+          mimeType =>
+            log.info(s"[${d.getName}] Scheduling UPLOADED deposit for finalizing.")
+            depositProcessingStream.onNext((d.getName, mimeType))
+        }.recover {
+          case _ : Throwable =>
+            log.warn(s"[${ d.getName }] Could not get deposit Content-Tyope. Not putting this deposit on the queue.")
+        }
+    }
+  }
+
+  private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {
+    for {
+      props <- DepositProperties(dir.getName)
+      state <- props.getState
+    } yield state
+  }
+
+  private def getContentType(dir: File)(implicit settings: Settings): Try[String] = {
+    for {
+      props <- DepositProperties(dir.getName)
+      contentType <- props.getContentType
+    } yield contentType
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
+    val contentLength = deposit.getContentLength
+    if (contentLength == -1) {
+      log.warn(s"[$id] Request did not contain a Content-Length header. Skipping disk space check.")
+    }
+
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
+
     for {
-      _ <- assertTempDirHasEnoughDiskspaceMarginForFile(payload)
+      _ <- if (contentLength > -1 ) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength) else Success(())
       _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
@@ -86,9 +132,21 @@ object DepositHandler {
     """.stripMargin
   }
 
-  private def assertTempDirHasEnoughDiskspaceMarginForFile(file: File)(implicit settings: Settings): Try[Unit] = Try {
-    if (settings.tempDir.getFreeSpace - file.length() < settings.marginDiskSpace)
-      throw new SwordError(503)
+  private def assertTempDirHasEnoughDiskspaceMarginForFile(len: Long)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
+    if (log.isDebugEnabled) {
+      log.debug(s"Free space  = ${ settings.tempDir.getFreeSpace }")
+      log.debug(s"File length = $len")
+      log.debug(s"Margin      = ${ settings.marginDiskSpace }")
+      log.debug(s"Extra space = ${ settings.tempDir.getFreeSpace - len - settings.marginDiskSpace }")
+    }
+
+    if (settings.tempDir.getFreeSpace - len < settings.marginDiskSpace) {
+      log.warn(s"[$id] Not enough disk space for request + margin ($len + ${ settings.marginDiskSpace } = ${ len + settings.marginDiskSpace }). Available: ${ settings.tempDir.getFreeSpace }, Short: ${ len + settings.marginDiskSpace - settings.tempDir.getFreeSpace }.")
+
+      throw new SwordError(503) {
+        override def getMessage: String = "503 Service temporarily unavailable"
+      }
+    }
   }
 
   def finalizeDeposit(mimetype: MimeType)(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -98,6 +156,9 @@ object DepositHandler {
     lazy val storageDir = new File(settings.depositRootDir, id)
 
     val result = for {
+      props <- DepositProperties(id)
+      _ <- props.setState(State.FINALIZING, "Finalizing deposit")
+      _ <- props.save()
       _ <- extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
@@ -110,7 +171,7 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    result.recover {
+    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
         for {
@@ -122,9 +183,18 @@ object DepositHandler {
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
       case e: NotEnoughDiskSpaceException =>
-        log.error(s"[$id] ${ e.getMessage }", e.getCause)
-        log.info(s"[$id] rescheduling while waiting for more diskspace")
-        depositProcessingStream.onNext((id, mimetype))
+        log.warn(s"[$id] ${ e.getMessage }")
+        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+
+        // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
+          _ <- props.save()
+        } yield()
+
+        Observable.timer(settings.rescheduleDelaySeconds seconds)
+          .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
       case NonFatal(e) =>
         log.error(s"[$id] Internal failure in deposit service", e)
         for {
@@ -173,22 +243,27 @@ object DepositHandler {
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
       val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
-      log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
-      if (uncompressedSize + settings.marginDiskSpace > availableDiskSize)
-        Failure(NotEnoughDiskSpaceException(id,
-          new IllegalStateException(s"Required disk space for unzipping: ${ uncompressedSize + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
+      val required = uncompressedSize + settings.marginDiskSpace
+      if (log.isDebugEnabled)
+        log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+      if (uncompressedSize + settings.marginDiskSpace > availableDiskSize) {
+        val diskSizeShort = uncompressedSize + settings.marginDiskSpace - availableDiskSize
+        Failure(NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
+      }
       else Success(())
     }
 
     def checkDiskspaceForMerging(files: Seq[File]): Try[Unit] = {
-      val requiredSpace = files.map(_.length).sum
+      val sumOfChunks = files.map(_.length).sum
       files.headOption.map {
         f =>
           val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
-          log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Spaces needed: $requiredSpace bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
-          if (requiredSpace + settings.marginDiskSpace > availableDiskSize)
-            Failure(NotEnoughDiskSpaceException(id,
-              new IllegalStateException(s"Required disk space for concatenating: ${ requiredSpace + settings.marginDiskSpace } (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize")))
+          val required = sumOfChunks + settings.marginDiskSpace
+          log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Sum of chunk sizes: $sumOfChunks bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+          if (sumOfChunks + settings.marginDiskSpace > availableDiskSize) {
+            val diskSizeShort = sumOfChunks + settings.marginDiskSpace - availableDiskSize
+            Failure(NotEnoughDiskSpaceException(id, s"Required disk space for concatenating: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
+          }
           else Success(())
       }.getOrElse(Success(()))
     }
@@ -217,7 +292,6 @@ object DepositHandler {
     }
 
     Try {
-      log.debug(s"[$id] Extracting bag")
       val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -229,13 +303,12 @@ object DepositHandler {
           })
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
-          files.foreach(f => log.debug(s"[$id] Merging file: ${ f.getName }"))
           checkDiskspaceForMerging(files).map {
             _ =>
               MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
                 .map(_ => checkAvailableDiskspace(mergedZip))
                 .map(_ => extract(mergedZip, depositDir.getPath)).get
-          }
+          }.get
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
@@ -272,6 +345,7 @@ object DepositHandler {
       for {
         props <- DepositProperties(id)
         _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
+        _ <- props.setContentType(deposit.getMimeType)
         _ <- props.save()
       } yield depositProcessingStream.onNext((id, deposit.getMimeType))
     }
@@ -472,7 +546,7 @@ object DepositHandler {
   def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: DepositId): Try[File] = {
     log.debug(s"[$id] Moving bag to permanent storage")
     FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-      .map(_ =>  Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
+      .map(_ => Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
       .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }
 

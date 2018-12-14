@@ -92,6 +92,17 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
 
+  def setContentType(contentType: String): Try[DepositProperties] = Try {
+    properties.setProperty("contentType", contentType)
+    this
+  }
+
+  def getContentType: Try[String] = {
+    Option(properties.getString("contentType"))
+      .map(Success(_))
+      .getOrElse(Failure(new IllegalStateException("Deposit without Content-Type")))
+  }
+
   /**
    * Returns the state description when the properties were loaded.
    *

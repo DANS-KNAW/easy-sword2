@@ -69,7 +69,7 @@ object Authentication {
             throw new SwordAuthException
           }
           case true => log.info(s"User ${ auth.getUsername } authentication through LDAP successful")
-            log.info("LDAP log in SUCCESS")
+            log.debug("LDAP log in SUCCESS")
             Success(())
         }
         case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
