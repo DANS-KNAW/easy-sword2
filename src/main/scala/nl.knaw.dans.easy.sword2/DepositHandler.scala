@@ -67,9 +67,15 @@ object DepositHandler {
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
+    val contentLength = deposit.getContentLength
+    if (contentLength == -1) {
+      log.warn(s"[$id] Request did not contain a Content-Length header. Skipping disk space check.")
+    }
+
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
+
     for {
-      _ <- assertTempDirHasEnoughDiskspaceMarginForFile(deposit.getContentLength)
+      _ <- if (contentLength > -1 ) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength) else Success(())
       _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
