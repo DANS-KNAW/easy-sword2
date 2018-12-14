@@ -98,7 +98,7 @@ object DepositHandler {
   private def assertTempDirHasEnoughDiskspaceMarginForFile(len: Long)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
     if (log.isDebugEnabled) {
       log.debug(s"Free space  = ${ settings.tempDir.getFreeSpace }")
-      log.debug(s"File length = ${ len }")
+      log.debug(s"File length = $len")
       log.debug(s"Margin      = ${ settings.marginDiskSpace }")
       log.debug(s"Extra space = ${ settings.tempDir.getFreeSpace - len - settings.marginDiskSpace }")
     }
