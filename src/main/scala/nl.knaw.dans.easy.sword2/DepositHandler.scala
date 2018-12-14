@@ -50,6 +50,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
+import nl.knaw.dans.lib.error._
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -131,7 +132,7 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    result.map(_ => log.info(s"[$id] Done finalizing deposit")).recover {
+    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
       case InvalidDepositException(_, msg, cause) =>
         log.error(s"[$id] Invalid deposit", cause)
         for {
