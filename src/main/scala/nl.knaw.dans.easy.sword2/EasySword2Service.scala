@@ -42,6 +42,7 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
     marginDiskSpace = app.wiring.marginDiskSpace,
     sample = app.wiring.sampleSettings,
     cleanup = app.wiring.cleanup,
+    rescheduleDelaySeconds = app.wiring.rescheduleDelaySeconds
   )
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
 

@@ -53,12 +53,13 @@ package object sword2 {
                       marginDiskSpace: Long,
                       sample: SampleTestDataSettings,
                       cleanup: Map[State, Boolean],
+                      rescheduleDelaySeconds: Int
                      )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
   case class InvalidDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
-  case class NotEnoughDiskSpaceException(id: DepositId, cause: Throwable) extends Exception("Not enough disk space to process deposit.", cause)
+  case class NotEnoughDiskSpaceException(id: DepositId, msg: String) extends Exception(s"Not enough disk space for processing deposit. $msg")
 
   implicit class FileOps(val thisFile: File) extends AnyVal {
 
@@ -79,7 +80,7 @@ package object sword2 {
           log.info(s"[$id] Sending deposit receipt")
           depositReceipt
         case Failure(e) =>
-          log.error(s"Error(s) occurred", e)
+          log.warn(s"Returning error to client: ${e.getMessage}")
           throw e
       }
     }

@@ -56,7 +56,7 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     bagStoreSettings = Some(BagStoreSettings(bagStoreBaseDir, bagStoreBaseUri))
   }
   val supportMailAddress = configuration.properties.getString("support.mailaddress")
-  val marginDiskSpace: Long = configuration.properties.getLong("tempdir.margin-available-diskspace-mb") * 1024 * 1024
+  val marginDiskSpace: Long = configuration.properties.getLong("tempdir.margin-available-diskspace")
 
   val sampleSettings = if (configuration.properties.getBoolean("sample-data.enabled")) {
     val sampleDir = new File(configuration.properties.getString("sample-data.dir"))
@@ -83,4 +83,6 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
     .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }
     .toMap
+
+  val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
 }
