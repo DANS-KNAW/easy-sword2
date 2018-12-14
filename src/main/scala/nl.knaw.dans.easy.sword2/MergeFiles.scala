@@ -18,10 +18,12 @@ package nl.knaw.dans.easy.sword2
 import java.io._
 
 import org.apache.commons.io.{ FileUtils, IOUtils }
+import org.slf4j.{ Logger, LoggerFactory }
 
 import scala.util.Try
 
 object MergeFiles {
+  private val log = LoggerFactory.getLogger(MergeFiles.getClass)
 
   def merge(destination: File, files: Seq[File]): Try[Unit] = Try {
     var output: OutputStream = null
@@ -40,6 +42,7 @@ object MergeFiles {
 
   @throws(classOf[IOException])
   private def appendFile(output: OutputStream)(file: File) {
+    log.debug(s"Appending file: ${file.getName}")
     var input: InputStream = null
     try {
       input = new BufferedInputStream(new FileInputStream(file))

@@ -28,11 +28,10 @@ import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
-import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import net.lingala.zip4j.core.ZipFile
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions }
+import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
@@ -50,7 +49,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
-import nl.knaw.dans.lib.error._
+
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -58,13 +57,50 @@ object DepositHandler {
 
   private val depositProcessingStream = PublishSubject[(DepositId, MimeType)]()
 
-  def startDepositProcessingStream(settings: Settings): Unit = {
+  def startDepositProcessingStream(implicit settings: Settings): Unit = {
     depositProcessingStream
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
       .foreach { case (id, mimetype) =>
         finalizeDeposit(mimetype)(settings, id)
       }
+    settings
+      .tempDir.listFiles().toSeq
+      .filter(_.isDirectory)
+      .filter {
+        d =>
+          getDepositState(d)
+            .map(_ == State.UPLOADED)
+            .recoverWith {
+              case t: Throwable =>
+                log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
+                Success(false)
+            }.get
+      }.foreach {
+      d =>
+        getContentType(d).map {
+          mimeType =>
+            log.info(s"[${d.getName}] Scheduling UPLOADED deposit for finalizing.")
+            depositProcessingStream.onNext((d.getName, mimeType))
+        }.recover {
+          case _ : Throwable =>
+            log.warn(s"[${ d.getName }] Could not get deposit Content-Tyope. Not putting this deposit on the queue.")
+        }
+    }
+  }
+
+  private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {
+    for {
+      props <- DepositProperties(dir.getName)
+      state <- props.getState
+    } yield state
+  }
+
+  private def getContentType(dir: File)(implicit settings: Settings): Try[String] = {
+    for {
+      props <- DepositProperties(dir.getName)
+      contentType <- props.getContentType
+    } yield contentType
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
@@ -120,6 +156,9 @@ object DepositHandler {
     lazy val storageDir = new File(settings.depositRootDir, id)
 
     val result = for {
+      props <- DepositProperties(id)
+      _ <- props.setState(State.FINALIZING, "Finalizing deposit")
+      _ <- props.save()
       _ <- extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
@@ -145,7 +184,15 @@ object DepositHandler {
         } yield ()
       case e: NotEnoughDiskSpaceException =>
         log.warn(s"[$id] ${ e.getMessage }")
-        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more diskspace")
+        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+
+        // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
+          _ <- props.save()
+        } yield()
+
         Observable.timer(settings.rescheduleDelaySeconds seconds)
           .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
       case NonFatal(e) =>
@@ -245,7 +292,6 @@ object DepositHandler {
     }
 
     Try {
-      log.debug(s"[$id] Extracting bag")
       val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
       mimeType match {
         case "application/zip" =>
@@ -257,13 +303,12 @@ object DepositHandler {
           })
         case "application/octet-stream" =>
           val mergedZip = new File(depositDir, "merged.zip")
-          files.foreach(f => log.debug(s"[$id] Merging file: ${ f.getName }"))
           checkDiskspaceForMerging(files).map {
             _ =>
               MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
                 .map(_ => checkAvailableDiskspace(mergedZip))
                 .map(_ => extract(mergedZip, depositDir.getPath)).get
-          }
+          }.get
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
@@ -300,6 +345,7 @@ object DepositHandler {
       for {
         props <- DepositProperties(id)
         _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
+        _ <- props.setContentType(deposit.getMimeType)
         _ <- props.save()
       } yield depositProcessingStream.onNext((id, deposit.getMimeType))
     }
