@@ -84,7 +84,7 @@ object DepositHandler {
             depositProcessingStream.onNext((d.getName, mimeType))
         }.recover {
           case _ : Throwable =>
-            log.warn(s"[${ d.getName }] Could not get deposit Content-Tyope. Not putting this deposit on the queue.")
+            log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
         }
     }
   }
@@ -113,10 +113,10 @@ object DepositHandler {
 
     for {
       _ <- if (contentLength > -1 ) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength) else Success(())
-      _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
+      _ <- copyPayloadToFile(deposit, payload)
+      _ <- FilesPermission.changePermissionsRecursively(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
-      _ <- FilesPermission.changePermissionsRecursively(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr

@@ -16,8 +16,8 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
+import java.nio.file._
 import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
-import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 
 import nl.knaw.dans.easy.sword2.DepositHandler.{ isOnPosixFileSystem, log }
 import nl.knaw.dans.lib.error._
@@ -29,6 +29,7 @@ object FilesPermission {
   def changePermissionsRecursively(depositDir: File, permissions: String, id: DepositId): Try[Unit] = Try {
     if (isOnPosixFileSystem(depositDir))
       Files.walkFileTree(depositDir.toPath, ChangePermissionsRecursively(permissions, id))
+    else throw new UnsupportedOperationException("Not on a POSIX supported file system")
   }
 
   case class ChangePermissionsRecursively(permissions: String,
@@ -43,8 +44,9 @@ object FilesPermission {
         case cce: ClassCastException => log.error("No file permission elements in set", cce)
         case ioe: IOException => log.error(s"Could not set file permissions on $path", ioe)
         case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path", se)
+        case iae: IllegalArgumentException => log.error(s"Incorrect permissions input string: $permissions, could not set permission on $path", iae)
         case e => log.error(s"Unexpected exception on $path", e)
-      } getOrElse FileVisitResult.TERMINATE
+      } unsafeGetOrThrow
     }
 
     override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
