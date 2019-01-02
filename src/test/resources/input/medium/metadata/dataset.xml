@@ -1,0 +1,43 @@
+<ddm:DDM
+        xmlns:dc="http://purl.org/dc/elements/1.1/"
+        xmlns:dcx-dai="http://easy.dans.knaw.nl/schemas/dcx/dai/"
+        xmlns:ddm="http://easy.dans.knaw.nl/schemas/md/ddm/"
+        xmlns:dcterms="http://purl.org/dc/terms/"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:id-type="http://easy.dans.knaw.nl/schemas/vocab/identifier-type/">
+    <ddm:profile>
+        <dc:title>A slightly bigger example bag</dc:title>
+        <dcterms:description>
+            A sample dataset
+            ================
+
+            This dataset is not too big, but big enough to demonstrate some features of the
+            SWORD v2.0 service and the EASY Ingest Flow.
+
+            - A display name is provided for data/random images/image01.png
+            - An additional license is selected
+        </dcterms:description>
+        <dcx-dai:creatorDetails>
+            <dcx-dai:author>
+                <dcx-dai:titles></dcx-dai:titles>
+                <dcx-dai:initials>I</dcx-dai:initials>
+                <dcx-dai:insertions></dcx-dai:insertions>
+                <dcx-dai:surname>Lastname</dcx-dai:surname>
+                <dcx-dai:organization>
+                    <dcx-dai:name xml:lang="en">Example Org</dcx-dai:name>
+                </dcx-dai:organization>
+            </dcx-dai:author>
+        </dcx-dai:creatorDetails>
+        <ddm:created>2015-09-09</ddm:created>
+        <ddm:available>2015-09-08</ddm:available>
+        <ddm:audience>D16300</ddm:audience>
+        <ddm:accessRights>NO_ACCESS</ddm:accessRights>
+    </ddm:profile>
+    <ddm:dcmiMetadata>
+        <dcterms:hasVersion>1.1</dcterms:hasVersion>
+        <dcterms:modified>2015-09-08</dcterms:modified>
+        <dcterms:identifier xsi:type="id-type:DOI">10.5072/test-other-access-doi</dcterms:identifier>
+        <dcterms:license xsi:type="dcterms:URI">http://opensource.org/licenses/MIT</dcterms:license>
+        <dcterms:rightsHolder>I Lastname</dcterms:rightsHolder>
+    </ddm:dcmiMetadata>
+</ddm:DDM>

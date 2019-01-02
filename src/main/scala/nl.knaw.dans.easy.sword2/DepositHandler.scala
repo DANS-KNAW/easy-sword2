@@ -72,7 +72,7 @@ object DepositHandler {
           getDepositState(d)
             .map(_ == State.UPLOADED)
             .recoverWith {
-              case t: Throwable =>
+              case _: Throwable =>
                 log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
                 Success(false)
             }.get
@@ -80,10 +80,10 @@ object DepositHandler {
       d =>
         getContentType(d).map {
           mimeType =>
-            log.info(s"[${d.getName}] Scheduling UPLOADED deposit for finalizing.")
+            log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
             depositProcessingStream.onNext((d.getName, mimeType))
         }.recover {
-          case _ : Throwable =>
+          case _: Throwable =>
             log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
         }
     }
@@ -105,16 +105,17 @@ object DepositHandler {
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     val contentLength = deposit.getContentLength
+    println(s"deposit file name is ${deposit.getFilename}")
     if (contentLength == -1) {
       log.warn(s"[$id] Request did not contain a Content-Length header. Skipping disk space check.")
     }
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
-
     for {
-      _ <- if (contentLength > -1 ) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength) else Success(())
+      _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
+           else Success(())
       _ <- copyPayloadToFile(deposit, payload)
-      _ <- FilesPermission.changePermissionsRecursively(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
+      _ <- FilesPermission.changePermissionsRecursively(payload, settings.depositPermissions, id)
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
       dr = createDepositReceipt(settings, id)
@@ -173,7 +174,7 @@ object DepositHandler {
 
     result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
       case InvalidDepositException(_, msg, cause) =>
-        log.error(s"[$id] Invalid deposit", cause)
+        log.error(s"[$id] Invalid deposit: $msg", cause)
         for {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
@@ -191,7 +192,7 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
           _ <- props.save()
-        } yield()
+        } yield ()
 
         Observable.timer(settings.rescheduleDelaySeconds seconds)
           .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
