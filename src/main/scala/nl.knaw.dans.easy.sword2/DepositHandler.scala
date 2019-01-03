@@ -111,19 +111,18 @@ object DepositHandler {
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     val depositDir = Paths.get(settings.tempDir.toString, id).toFile
-    val triedReceipt = extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
-    val filePermissionResult = setFilePermissions(settings, id, depositDir)
-
     // to ensure all files in deposit are accessible for the deposit group, the method setFilePermissions is always
     // executed (regardless of whether triedReceipt was successful or not). Otherwise operators don't
     // have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
-    for {
-      receipt <- triedReceipt
-      _ <- filePermissionResult
-    } yield receipt
+    extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
+      case Success(receipt) =>
+        setFilePermissions(depositDir).map(_ => receipt)
+      case Failure(exception) =>
+        setFilePermissions(depositDir).flatMap(_ => Failure(exception))
+    }
   }
 
-  private def setFilePermissions(settings: Settings, id: DepositId, depositDir: File): Try[Unit] = {
+  private def setFilePermissions(depositDir: File)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
       .doIfFailure {
         case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
