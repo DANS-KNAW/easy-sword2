@@ -112,8 +112,8 @@ object DepositHandler {
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     val depositDir = Paths.get(settings.tempDir.toString, id).toFile
     // to ensure all files in deposit are accessible for the deposit group, the method setFilePermissions is always
-    // executed (regardless of whether triedReceipt was successful or not). Otherwise operators don't
-    // have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
+    // executed (regardless of whether extractAndValidatePayloadAndGetDepositReceipt was successful or not).
+    // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
         setFilePermissions(depositDir).map(_ => receipt)
