@@ -111,9 +111,12 @@ object DepositHandler {
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     val depositDir = Paths.get(settings.tempDir.toString, id).toFile
-    val receipt: Try[DepositReceipt] = extractPayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
-    setFilePermissions(settings, id, depositDir) // ensure all files in deposit are accessible for the deposit group
-    receipt
+    val triedReceipt = extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
+    // ensure all files in deposit are accessible for the deposit group
+    setFilePermissions(settings, id, depositDir) match {
+      case Success(_) => triedReceipt
+      case Failure(exception) => Failure(new IllegalStateException(s"[$id] Error while setting file permissions for deposit: ${ exception.getMessage }"))
+    }
   }
 
   private def setFilePermissions(settings: Settings, id: DepositId, depositDir: File): Try[Unit] = {
@@ -123,7 +126,7 @@ object DepositHandler {
       }
   }
 
-  private def extractPayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
+  private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     for {
       _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
            else Success(())
