@@ -105,22 +105,37 @@ object DepositHandler {
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     val contentLength = deposit.getContentLength
-    println(s"deposit file name is ${deposit.getFilename}")
+    println(s"deposit file name is ${ deposit.getFilename }")
     if (contentLength == -1) {
       log.warn(s"[$id] Request did not contain a Content-Length header. Skipping disk space check.")
     }
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
-    for {
+    val depositDir = Paths.get(settings.tempDir.toString, id).toFile
+    val receipt: Try[DepositReceipt] = extractPayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
+    setFilePermissions(settings, id, depositDir) // ensure all files in deposit are accessible for the deposit group
+    receipt
+  }
+
+  private def setFilePermissions(settings: Settings, id: DepositId, depositDir: File) = {
+    Try {
+      FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+    }.doIfFailure {
+      case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
+    }
+  }
+
+  private def extractPayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId) = {
+    val receipt = for {
       _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
            else Success(())
       _ <- copyPayloadToFile(deposit, payload)
-      _ <- FilesPermission.changePermissionsRecursively(payload, settings.depositPermissions, id)
-      _ <- doesHashMatch(payload, deposit.getMd5)
+      _ <- doesHashMatch(payload, deposit.getMd5)(id)
       _ <- handleDepositAsync(deposit)
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
+    receipt
   }
 
   def genericErrorMessage(implicit settings: Settings, id: DepositId): String = {
