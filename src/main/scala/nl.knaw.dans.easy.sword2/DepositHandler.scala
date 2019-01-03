@@ -116,16 +116,15 @@ object DepositHandler {
     receipt
   }
 
-  private def setFilePermissions(settings: Settings, id: DepositId, depositDir: File) = {
-    Try {
-      FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-    }.doIfFailure {
-      case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
-    }
+  private def setFilePermissions(settings: Settings, id: DepositId, depositDir: File): Try[Unit] = {
+    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+      .doIfFailure {
+        case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
+      }
   }
 
-  private def extractPayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId) = {
-    val receipt = for {
+  private def extractPayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
+    for {
       _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
            else Success(())
       _ <- copyPayloadToFile(deposit, payload)
@@ -134,7 +133,6 @@ object DepositHandler {
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
-    receipt
   }
 
   def genericErrorMessage(implicit settings: Settings, id: DepositId): String = {
