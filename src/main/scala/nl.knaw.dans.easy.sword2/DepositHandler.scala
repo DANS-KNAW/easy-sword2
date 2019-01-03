@@ -105,7 +105,6 @@ object DepositHandler {
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     val contentLength = deposit.getContentLength
-    println(s"deposit file name is ${ deposit.getFilename }")
     if (contentLength == -1) {
       log.warn(s"[$id] Request did not contain a Content-Length header. Skipping disk space check.")
     }
