@@ -71,7 +71,7 @@ object DepositHandler {
           getDepositState(d)
             .map(_ == State.UPLOADED)
             .recoverWith {
-              case t: Throwable =>
+              case _: Throwable =>
                 log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
                 Success(false)
             }.get
@@ -83,7 +83,7 @@ object DepositHandler {
             depositProcessingStream.onNext((d.getName, mimeType))
         }.recover {
           case _: Throwable =>
-            log.warn(s"[${ d.getName }] Could not get deposit Content-Tyope. Not putting this deposit on the queue.")
+            log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
         }
     }
   }
@@ -109,14 +109,32 @@ object DepositHandler {
     }
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
+    val depositDir = Paths.get(settings.tempDir.toString, id).toFile
+    // to ensure all files in deposit are accessible for the deposit group, the method setFilePermissions is always
+    // executed (regardless of whether extractAndValidatePayloadAndGetDepositReceipt was successful or not).
+    // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
+    extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
+      case Success(receipt) =>
+        setFilePermissions(depositDir).map(_ => receipt)
+      case Failure(exception) =>
+        setFilePermissions(depositDir).flatMap(_ => Failure(exception))
+    }
+  }
 
+  private def setFilePermissions(depositDir: File)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+      .doIfFailure {
+        case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
+      }
+  }
+
+  private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     for {
       _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
            else Success(())
-      _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
-      _ <- doesHashMatch(payload, deposit.getMd5)
+      _ <- copyPayloadToFile(deposit, payload)
+      _ <- doesHashMatch(payload, deposit.getMd5)(id)
       _ <- handleDepositAsync(deposit)
-      _ <- FilesPermission.changePermissionsRecursively(deposit.getFile, settings.depositPermissions, id) // set file permissions after continued deposit is finished
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
@@ -173,7 +191,7 @@ object DepositHandler {
 
     result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
       case InvalidDepositException(_, msg, cause) =>
-        log.error(s"[$id] Invalid deposit", cause)
+        log.error(s"[$id] Invalid deposit: $msg", cause)
         for {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)

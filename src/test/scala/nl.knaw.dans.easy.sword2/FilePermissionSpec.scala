@@ -22,7 +22,9 @@ import java.util
 import better.files.File
 import org.scalatest.BeforeAndAfterEach
 
-class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEach {
+import scala.util.{ Failure, Success }
+
+class FilePermissionSpec extends TestSupportFixture with BeforeAndAfterEach {
 
   lazy private val inputDir = {
     val path = testDir / "input/"
@@ -34,7 +36,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   private val bagSequenceId = "bag-sequence"
   private val bagSequenceDirPath = bagSequenceDir.path
   private val ownerAndGroupRightsString = "rwxrwx---"
-  private val ownerRights = "rxw------"
+  private val ownerRights = "rwx------"
 
   override def beforeEach: Unit = {
     super.beforeEach()
@@ -45,7 +47,7 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
   "changePermissionsForAllDepositContent" should "give write access to the group when given string rwxrwx---" in {
     giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
 
-    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerAndGroupRightsString, bagSequenceId)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerAndGroupRightsString, bagSequenceId) shouldBe a[Success[_]]
     Files.getPosixFilePermissions(bagSequenceDirPath) should contain only(
       PosixFilePermission.OWNER_EXECUTE,
       PosixFilePermission.OWNER_READ,
@@ -56,10 +58,46 @@ class FilePermissionServiceSpec extends TestSupportFixture with BeforeAndAfterEa
     )
   }
 
-  "changePermissionsForAllDepositContent" should "not give write access to the group when given string rwx------" in {
+  it should "not give write access to the group when given string rwx------" in {
     giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
 
-    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerRights, bagSequenceId)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, ownerRights, bagSequenceId) shouldBe a[Success[_]]
+    assertFilesOnlyHasOwnerRights
+  }
+
+  it should "not change the file permissions when a invalid right input string has been given" in {
+    giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, "rxwrxwrxw", bagSequenceId) should matchPattern {
+      case Failure(iae: IllegalArgumentException) if iae.getMessage == "Invalid mode" =>
+    }
+    assertFilesOnlyHasOwnerRights
+  }
+
+  it should "not change the file permissions when a nonsense right input string has been given" in {
+    giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, "1241gip2jb", bagSequenceId) should matchPattern {
+      case Failure(iae: IllegalArgumentException) if iae.getMessage == "Invalid mode" =>
+    }
+    assertFilesOnlyHasOwnerRights
+  }
+
+  it should "not change the file permissions when an empty right input string has been given" in {
+    giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, "", bagSequenceId) should matchPattern {
+      case Failure(iae: IllegalArgumentException) if iae.getMessage == "Invalid mode" =>
+    }
+    assertFilesOnlyHasOwnerRights
+  }
+
+  it should "not change the file permissions when an null input string has been given" in {
+    giveDirectoryAndAllContentOnlyOwnerRights(bagSequenceDirPath)
+    FilesPermission.changePermissionsRecursively(bagSequenceDir.toJava, null, bagSequenceId) should matchPattern {
+      case Failure(npe: NullPointerException) =>
+    }
+    assertFilesOnlyHasOwnerRights
+  }
+
+  private def assertFilesOnlyHasOwnerRights = {
     Files.getPosixFilePermissions(bagSequenceDirPath) should contain only(
       PosixFilePermission.OWNER_EXECUTE,
       PosixFilePermission.OWNER_READ,
