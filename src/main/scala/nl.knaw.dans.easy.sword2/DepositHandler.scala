@@ -50,7 +50,6 @@ import scala.language.postfixOps
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
-
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
   private implicit val bagFactory: BagFactory = new BagFactory
@@ -80,10 +79,10 @@ object DepositHandler {
       d =>
         getContentType(d).map {
           mimeType =>
-            log.info(s"[${d.getName}] Scheduling UPLOADED deposit for finalizing.")
+            log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
             depositProcessingStream.onNext((d.getName, mimeType))
         }.recover {
-          case _ : Throwable =>
+          case _: Throwable =>
             log.warn(s"[${ d.getName }] Could not get deposit Content-Tyope. Not putting this deposit on the queue.")
         }
     }
@@ -112,7 +111,8 @@ object DepositHandler {
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
 
     for {
-      _ <- if (contentLength > -1 ) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength) else Success(())
+      _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
+           else Success(())
       _ <- copyPayloadToFile(deposit, payload) //TODO should file permissions also be set after this action?
       _ <- doesHashMatch(payload, deposit.getMd5)
       _ <- handleDepositAsync(deposit)
@@ -191,7 +191,7 @@ object DepositHandler {
           props <- DepositProperties(id)
           _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
           _ <- props.save()
-        } yield()
+        } yield ()
 
         Observable.timer(settings.rescheduleDelaySeconds seconds)
           .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
@@ -269,9 +269,16 @@ object DepositHandler {
     }
 
     def extract(file: File, outputPath: String): Unit = {
-      new ZipFile(file.getPath) {
-        setFileNameCharset(StandardCharsets.UTF_8.name)
-      }.extractAll(outputPath)
+      try {
+        new ZipFile(file.getPath) {
+          setFileNameCharset(StandardCharsets.UTF_8.name)
+        }.extractAll(outputPath)
+      } catch {
+        case e: Exception => {
+          log.error("Error while extracting zip file")
+          throw new IllegalArgumentException(s"Received an corrupt zipfile!! ${ e.getMessage }")
+        }
+      }
     }
 
     def getSequenceNumber(f: File): Int = {
