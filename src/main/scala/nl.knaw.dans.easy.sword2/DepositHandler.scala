@@ -16,11 +16,12 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
-import java.net.{ MalformedURLException, UnknownHostException, URL }
+import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.util.{ Collections, NoSuchElementException }
 import java.util.regex.Pattern
+import java.util.zip.ZipException
 
 import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
@@ -189,39 +190,46 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
-      case InvalidDepositException(_, msg, cause) =>
-        log.error(s"[$id] Invalid deposit: $msg", cause)
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(INVALID, msg)
-          _ <- props.save()
-          // we don't sample in this case, given that the deposit is invalid and we cannot automate
-          // replacing sensitive data
-          _ <- cleanupFiles(depositDir, INVALID)
-        } yield ()
-      case e: NotEnoughDiskSpaceException =>
-        log.warn(s"[$id] ${ e.getMessage }")
-        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
-
-        // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
-          _ <- props.save()
-        } yield ()
-
-        Observable.timer(settings.rescheduleDelaySeconds seconds)
-          .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
-      case NonFatal(e) =>
-        log.error(s"[$id] Internal failure in deposit service", e)
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(FAILED, genericErrorMessage)
-          _ <- props.save()
-          _ <- cleanupFiles(depositDir, FAILED)
-        } yield ()
+    val recoverdResult = result match {
+      case Failure(e: ZipException) => Failure(InvalidDepositException(id, e.getMessage, e.getCause))
+      case _ => result
     }
+
+    log.info("TESTTESTTEST!!!!!!!!")
+    recoverdResult.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
+      .recover {
+        case InvalidDepositException(_, msg, cause) =>
+          log.error(s"[$id] Invalid deposit: $msg", cause)
+          for {
+            props <- DepositProperties(id)
+            _ <- props.setState(INVALID, msg)
+            _ <- props.save()
+            // we don't sample in this case, given that the deposit is invalid and we cannot automate
+            // replacing sensitive data
+            _ <- cleanupFiles(depositDir, INVALID)
+          } yield ()
+        case e: NotEnoughDiskSpaceException =>
+          log.warn(s"[$id] ${ e.getMessage }")
+          log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+
+          // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
+          for {
+            props <- DepositProperties(id)
+            _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
+            _ <- props.save()
+          } yield ()
+          Observable.timer(settings.rescheduleDelaySeconds seconds)
+            .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
+        case NonFatal(e) =>
+          log.error("TESTTESTTEST!!!!!!!!")
+          log.error(s"[$id] Internal failure in deposit service", e)
+          for {
+            props <- DepositProperties(id)
+            _ <- props.setState(FAILED, genericErrorMessage)
+            _ <- props.save()
+            _ <- cleanupFiles(depositDir, FAILED)
+          } yield ()
+      }
   }
 
   private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -287,16 +295,9 @@ object DepositHandler {
     }
 
     def extract(file: File, outputPath: String): Unit = {
-      try {
-        new ZipFile(file.getPath) {
-          setFileNameCharset(StandardCharsets.UTF_8.name)
-        }.extractAll(outputPath)
-      } catch {
-        case e: Exception => {
-          log.error("Error while extracting zip file")
-          throw new IllegalArgumentException(s"Received an corrupt zipfile!! ${ e.getMessage }")
-        }
-      }
+      new ZipFile(file.getPath) {
+        setFileNameCharset(StandardCharsets.UTF_8.name)
+      }.extractAll(outputPath)
     }
 
     def getSequenceNumber(f: File): Int = {
@@ -323,7 +324,9 @@ object DepositHandler {
           files.foreach(file => {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
-            checkAvailableDiskspace(file).get
+            checkAvailableDiskspace(file)
+              .doIfFailure { case e: Exception => log.error(s"Error ${ e.getMessage }") }
+              .get
             extract(file, depositDir.getPath)
           })
         case "application/octet-stream" =>
