@@ -16,19 +16,20 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
-import java.net.{ MalformedURLException, UnknownHostException, URL }
+import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
-import java.util.{ Collections, NoSuchElementException }
 import java.util.regex.Pattern
+import java.util.{ Collections, NoSuchElementException }
 
-import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
+import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import net.lingala.zip4j.core.ZipFile
+import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
 import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
@@ -39,17 +40,16 @@ import org.joda.time.{ DateTime, DateTimeZone }
 import org.slf4j.{ Logger, LoggerFactory }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
+import rx.lang.scala.Observable
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
-import rx.lang.scala.Observable
 
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
-
+import scala.util.{ Failure, Success, Try }
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -211,7 +211,6 @@ object DepositHandler {
           _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
           _ <- props.save()
         } yield ()
-
         Observable.timer(settings.rescheduleDelaySeconds seconds)
           .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
       case NonFatal(e) =>
@@ -257,7 +256,7 @@ object DepositHandler {
   }
 
   private def extractBag(depositDir: File, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[File] = {
-    def checkAvailableDiskspace(file: File): Try[Unit] = {
+    def checkAvailableDiskspace(file: File): Try[Unit] = Try {
       val zipFile = new ZipFile(file.getPath)
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
@@ -267,9 +266,8 @@ object DepositHandler {
         log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize) {
         val diskSizeShort = uncompressedSize + settings.marginDiskSpace - availableDiskSize
-        Failure(NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
+        throw NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort.")
       }
-      else Success(())
     }
 
     def checkDiskspaceForMerging(files: Seq[File]): Try[Unit] = {
@@ -332,6 +330,8 @@ object DepositHandler {
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
       depositDir
+    }.recoverWith {
+      case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }"))
     }
   }
 
