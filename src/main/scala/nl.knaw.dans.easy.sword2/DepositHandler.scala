@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file._
 import java.util.{ Collections, NoSuchElementException }
 import java.util.regex.Pattern
-import java.util.zip.ZipException
 
 import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
@@ -30,6 +29,7 @@ import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import net.lingala.zip4j.core.ZipFile
+import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
 import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
@@ -190,13 +190,10 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    val recoverdResult = result match {
-      case Failure(e: ZipException) => Failure(InvalidDepositException(id, e.getMessage, e.getCause))
-      case _ => result
-    }
+    log.info(s"result is of type ${ result.getClass } ")
+    result.doIfFailure { case NonFatal(e) => log.error(s"Error occurred while finalizing deposit ${ e.getClass }  ${ e.getMessage }") }
 
-    log.info("TESTTESTTEST!!!!!!!!")
-    recoverdResult.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
+    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
       .recover {
         case InvalidDepositException(_, msg, cause) =>
           log.error(s"[$id] Invalid deposit: $msg", cause)
@@ -221,7 +218,6 @@ object DepositHandler {
           Observable.timer(settings.rescheduleDelaySeconds seconds)
             .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
         case NonFatal(e) =>
-          log.error("TESTTESTTEST!!!!!!!!")
           log.error(s"[$id] Internal failure in deposit service", e)
           for {
             props <- DepositProperties(id)
@@ -264,7 +260,7 @@ object DepositHandler {
   }
 
   private def extractBag(depositDir: File, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[File] = {
-    def checkAvailableDiskspace(file: File): Try[Unit] = {
+    def checkAvailableDiskspace(file: File): Try[Unit] = Try {
       val zipFile = new ZipFile(file.getPath)
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
@@ -274,9 +270,8 @@ object DepositHandler {
         log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
       if (uncompressedSize + settings.marginDiskSpace > availableDiskSize) {
         val diskSizeShort = uncompressedSize + settings.marginDiskSpace - availableDiskSize
-        Failure(NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
+        throw NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort.")
       }
-      else Success(())
     }
 
     def checkDiskspaceForMerging(files: Seq[File]): Try[Unit] = {
@@ -325,7 +320,7 @@ object DepositHandler {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
             checkAvailableDiskspace(file)
-              .doIfFailure { case e: Exception => log.error(s"Error ${ e.getMessage }") }
+              .doIfFailure { case e: Exception => log.error(s"Error ${ e.getClass } ${ e.getMessage }") }
               .get
             extract(file, depositDir.getPath)
           })
@@ -341,6 +336,8 @@ object DepositHandler {
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
       depositDir
+    }.recoverWith {
+      case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }"))
     }
   }
 
