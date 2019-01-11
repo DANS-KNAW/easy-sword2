@@ -19,15 +19,15 @@ import java.io.{ File, IOException }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.StandardCharsets
 import java.nio.file._
-import java.util.{ Collections, NoSuchElementException }
 import java.util.regex.Pattern
+import java.util.{ Collections, NoSuchElementException }
 
-import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
+import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import net.lingala.zip4j.core.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
@@ -40,16 +40,16 @@ import org.joda.time.{ DateTime, DateTimeZone }
 import org.slf4j.{ Logger, LoggerFactory }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
 import resource.Using
+import rx.lang.scala.Observable
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
-import rx.lang.scala.Observable
 
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
+import scala.util.{ Failure, Success, Try }
 
 object DepositHandler {
   val log: Logger = LoggerFactory.getLogger(getClass)
