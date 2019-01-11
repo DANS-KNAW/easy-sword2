@@ -190,9 +190,6 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    log.info(s"result is of type ${ result.getClass } ")
-    result.doIfFailure { case NonFatal(e) => log.error(s"Error occurred while finalizing deposit ${ e.getClass }  ${ e.getMessage }") }
-
     result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
       .recover {
         case InvalidDepositException(_, msg, cause) =>
