@@ -315,9 +315,7 @@ object DepositHandler {
           files.foreach(file => {
             if (!file.isFile)
               throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
-            checkAvailableDiskspace(file)
-              .doIfFailure { case e: Exception => log.error(s"Error ${ e.getClass } ${ e.getMessage }") }
-              .get
+            checkAvailableDiskspace(file).get
             extract(file, depositDir.getPath)
           })
         case "application/octet-stream" =>
