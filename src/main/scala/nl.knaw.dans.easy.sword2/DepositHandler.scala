@@ -190,39 +190,38 @@ object DepositHandler {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
-      .recover {
-        case InvalidDepositException(_, msg, cause) =>
-          log.error(s"[$id] Invalid deposit: $msg", cause)
-          for {
-            props <- DepositProperties(id)
-            _ <- props.setState(INVALID, msg)
-            _ <- props.save()
-            // we don't sample in this case, given that the deposit is invalid and we cannot automate
-            // replacing sensitive data
-            _ <- cleanupFiles(depositDir, INVALID)
-          } yield ()
-        case e: NotEnoughDiskSpaceException =>
-          log.warn(s"[$id] ${ e.getMessage }")
-          log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
+      case InvalidDepositException(_, msg, cause) =>
+        log.error(s"[$id] Invalid deposit: $msg", cause)
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(INVALID, msg)
+          _ <- props.save()
+          // we don't sample in this case, given that the deposit is invalid and we cannot automate
+          // replacing sensitive data
+          _ <- cleanupFiles(depositDir, INVALID)
+        } yield ()
+      case e: NotEnoughDiskSpaceException =>
+        log.warn(s"[$id] ${ e.getMessage }")
+        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
 
-          // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
-          for {
-            props <- DepositProperties(id)
-            _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
-            _ <- props.save()
-          } yield ()
-          Observable.timer(settings.rescheduleDelaySeconds seconds)
-            .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
-        case NonFatal(e) =>
-          log.error(s"[$id] Internal failure in deposit service", e)
-          for {
-            props <- DepositProperties(id)
-            _ <- props.setState(FAILED, genericErrorMessage)
-            _ <- props.save()
-            _ <- cleanupFiles(depositDir, FAILED)
-          } yield ()
-      }
+        // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
+          _ <- props.save()
+        } yield ()
+        Observable.timer(settings.rescheduleDelaySeconds seconds)
+          .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
+      case NonFatal(e) =>
+        log.error(s"[$id] Internal failure in deposit service", e)
+        for {
+          props <- DepositProperties(id)
+          _ <- props.setState(FAILED, genericErrorMessage)
+          _ <- props.save()
+          _ <- cleanupFiles(depositDir, FAILED)
+        } yield ()
+    }
   }
 
   private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings, id: DepositId): Try[Unit] = {
