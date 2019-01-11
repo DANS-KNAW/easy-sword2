@@ -22,6 +22,7 @@ import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
 import nl.knaw.dans.easy.sword2.DepositHandler.isOnPosixFileSystem
 import nl.knaw.dans.lib.error._
 import org.slf4j.{ Logger, LoggerFactory }
+import scala.language.postfixOps
 
 import scala.util.Try
 
