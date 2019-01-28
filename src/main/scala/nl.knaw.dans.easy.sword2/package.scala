@@ -28,6 +28,7 @@ import scala.util.{ Failure, Success, Try }
 
 package object sword2 {
   val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.dateTime()
+  val RESERVED_CHARACTERS = List(';', '&', '<', '>', '"')
 
   type DepositId = String
   type MimeType = String
@@ -58,6 +59,7 @@ package object sword2 {
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 
+  case class InvalidFileNameException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
   case class InvalidDepositException(id: DepositId, msg: String, cause: Throwable = null) extends Exception(msg, cause)
   case class NotEnoughDiskSpaceException(id: DepositId, msg: String) extends Exception(s"Not enough disk space for processing deposit. $msg")
 

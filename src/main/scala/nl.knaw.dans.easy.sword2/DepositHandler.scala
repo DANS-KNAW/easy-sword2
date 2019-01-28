@@ -36,6 +36,7 @@ import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ 
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
+import org.apache.commons.io.filefilter.TrueFileFilter.TRUE
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.slf4j.{ Logger, LoggerFactory }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
@@ -180,6 +181,7 @@ object DepositHandler {
       _ <- props.save()
       _ <- extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
+      _ <- checkFilenames(bagDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
@@ -379,6 +381,29 @@ object DepositHandler {
       case Seq(msg) => s"One error found in $in:\n\t- $msg"
       case msgs => msgs.map(msg => s"\t- $msg").mkString(s"Multiple errors found in $in:\n", "\n", "")
     }
+  }
+
+  def checkFilenames(bagDir: File)(implicit id: DepositId): Try[Unit] = {
+    log.debug(s"[$id] Checking file names for reserved characters in $bagDir")
+
+    listFilesAndDirs(bagDir, TRUE, TRUE)
+      .asScala
+      .map(file => checkForReservedCharacters(file))
+      .toSeq
+      .collectResults
+      .map(_ => ())
+      .recoverWith {
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "file names"), e))
+      }
+  }
+
+  private def checkForReservedCharacters(file: File)(implicit id: DepositId): Try[Unit] = Try {
+    file
+      .getName
+      .foreach(c => {
+        if (RESERVED_CHARACTERS contains c)
+          throw InvalidFileNameException(id, s"Reserved character '$c' found in ${if (file.isDirectory) "folder" else "file"} name '${file.getPath}'")
+      })
   }
 
   def checkFetchItemUrls(bagDir: File, urlPattern: Pattern)(implicit id: DepositId): Try[Unit] = {
