@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files xmlns="http://easy.dans.knaw.nl/schemas/bag/metadata/files/" xmlns:dcterms="http://purl.org/dc/terms/">
+    <file filepath="data/README.md">
+        <dcterms:format>text/plain</dcterms:format>
+    </file>
+    <file filepath="data/random;images#/image&01.png">
+        <dcterms:title>The first image</dcterms:title>
+        <dcterms:description>This description will be archived, but not displayed anywhere in the Web-UI</dcterms:description>
+        <dcterms:format>image/png</dcterms:format>
+        <dcterms:created>2016-11-11</dcterms:created>
+    </file>
+    <file filepath="data/random;images#/image02.jpeg">
+        <dcterms:format>image/jpeg</dcterms:format>
+        <dcterms:created>2016-11-10</dcterms:created>
+    </file>
+    <file filepath="data/random;images#/"image03"".jpeg">
+        <dcterms:format>image/jpeg</dcterms:format>
+        <dcterms:created>2016-11-10</dcterms:created>
+    </file>
+    <file filepath="data/a/deeper/path/With some > file.txt">
+        <dcterms:format>text/plain</dcterms:format>
+        <dcterms:created>2016-11-09</dcterms:created>
+    </file>
+</files>
+
