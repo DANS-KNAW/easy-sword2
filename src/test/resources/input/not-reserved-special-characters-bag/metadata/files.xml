@@ -17,7 +17,7 @@
         <dcterms:format>image/jpeg</dcterms:format>
         <dcterms:created>2016-11-10</dcterms:created>
     </file>
-    <file filepath="data/a/deeper/path/Special characters §±@#$%^*()-_=+[]{}'|`~,.¡™£¢∞§¶•ªº–≠œ∑´®†¥ˆøπ‘åß∂ƒ©˙∆˚¬…æ«Ω≈ç√∫µ≤≥÷.txt">
+    <file filepath="data/a/deeper/path/Special characters §±@#$%^*()-_=+[]{}'|`~,.¡™£¢∞§¶•ªº–œ∑´®†¥ˆøπ‘ß∂ƒ©∆˚¬…æ«Ω≈√∫µ≤≥çöäåÖÄÅ好棒啊汉子也可以.txt">
         <dcterms:format>text/plain</dcterms:format>
         <dcterms:created>2016-11-09</dcterms:created>
     </file>
