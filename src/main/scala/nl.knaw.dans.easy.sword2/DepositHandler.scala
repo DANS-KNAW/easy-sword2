@@ -189,6 +189,7 @@ object DepositHandler {
       _ <- removeZipFiles(depositDir)
       _ <- moveBagToStorage(depositDir, storageDir)
       _ <- props.removeClientMessageContentType()
+      _ <- props.save()
     } yield ()
 
     result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
