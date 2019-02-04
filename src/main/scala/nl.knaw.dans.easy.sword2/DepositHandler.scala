@@ -187,9 +187,10 @@ object DepositHandler {
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
-      _ <- moveBagToStorage(depositDir, storageDir)
+      // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
       _ <- props.removeClientMessageContentType()
       _ <- props.save()
+      _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
     result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
