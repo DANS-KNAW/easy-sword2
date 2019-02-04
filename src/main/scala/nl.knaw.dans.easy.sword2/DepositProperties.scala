@@ -21,6 +21,7 @@ import java.nio.file.attribute.FileTime
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
+import org.apache.commons.lang.StringUtils
 import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.util.{ Failure, Success, Try }
@@ -92,15 +93,24 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
       .getOrElse(Failure(new IllegalStateException("Deposit without state")))
   }
 
-  def setContentType(contentType: String): Try[DepositProperties] = Try {
-    properties.setProperty("contentType", contentType)
+  def setClientMessageContentType(contentType: String): Try[DepositProperties] = Try {
+    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, contentType)
     this
   }
 
-  def getContentType: Try[String] = {
-    Option(properties.getString("contentType"))
+  def removeClientMessageContentType(): Try[DepositProperties] = Try {
+    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, null)
+    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD, null) // Also clean up old contentType property if still found
+    this
+  }
+
+  def getClientMessageContentType: Try[String] = {
+    Seq(properties.getString(CLIENT_MESSAGE_CONTENT_TYPE_KEY),
+      properties.getString(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD)) // Also look for old contentType to support pre-upgrade deposits
+      .find(StringUtils.isNotBlank)
       .map(Success(_))
-      .getOrElse(Failure(new IllegalStateException("Deposit without Content-Type")))
+      .getOrElse(
+        Failure(new IllegalStateException(s"Deposit without $CLIENT_MESSAGE_CONTENT_TYPE_KEY")))
   }
 
   /**
@@ -139,6 +149,8 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
 
 object DepositProperties {
   val FILENAME = "deposit.properties"
+  val CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD = "contentType" // for backwards compatibility
+  val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
 
   def apply(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings): Try[DepositProperties] = Try {
     new DepositProperties(depositId, depositorId)
