@@ -99,8 +99,8 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
   }
 
   def removeClientMessageContentType(): Try[DepositProperties] = Try {
-    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, null)
-    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD, null) // Also clean up old contentType property if still found
+    properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY)
+    properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD) // Also clean up old contentType property if still found
     this
   }
 
