@@ -99,7 +99,7 @@ object DepositHandler {
   private def getContentType(dir: File)(implicit settings: Settings): Try[String] = {
     for {
       props <- DepositProperties(dir.getName)
-      contentType <- props.getContentType
+      contentType <- props.getClientMessageContentType
     } yield contentType
   }
 
@@ -187,6 +187,9 @@ object DepositHandler {
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
+      // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
+      _ <- props.removeClientMessageContentType()
+      _ <- props.save()
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
@@ -364,7 +367,7 @@ object DepositHandler {
       for {
         props <- DepositProperties(id)
         _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
-        _ <- props.setContentType(deposit.getMimeType)
+        _ <- props.setClientMessageContentType(deposit.getMimeType)
         _ <- props.save()
       } yield depositProcessingStream.onNext((id, deposit.getMimeType))
     }
