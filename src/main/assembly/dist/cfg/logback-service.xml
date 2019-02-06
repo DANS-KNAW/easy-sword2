@@ -8,7 +8,7 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>[%date{ISO8601}] %-5level [..%t8.8] %msg%n%ex</pattern>
+            <pattern>[%date{ISO8601}] %-5level %msg%n%ex</pattern>
         </encoder>
     </appender>
     <root level="warn">
