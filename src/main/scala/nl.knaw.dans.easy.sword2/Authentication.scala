@@ -17,14 +17,15 @@ package nl.knaw.dans.easy.sword2
 
 import java.net.URI
 import java.util
+
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 import javax.naming.{ AuthenticationException, Context }
-
 import org.apache.commons.lang.StringUtils._
 import org.slf4j.LoggerFactory
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
+import resource.{ ManagedResource, managed }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -46,7 +47,7 @@ object Authentication {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[LdapContext] = getInitialContext): Try[Unit] = {
+  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]] = getInitialContext): Try[Unit] = {
     log.debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf)) {
       Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
@@ -87,27 +88,28 @@ object Authentication {
     } yield ()
   }
 
-  private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[LdapContext]): Try[Boolean] = {
-    getLdapContext(user, password, authSettings.ldapUrl, authSettings.usersParentEntry).map {
-      context =>
-        val attrs = context.getAttributes(s"uid=$user, ${ authSettings.usersParentEntry }")
+  private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]]): Try[Boolean] = {
+    getLdapContext(user, password, authSettings.ldapUrl, authSettings.usersParentEntry)
+      .flatMap(_.map(ctx => {
+        val attrs = ctx.getAttributes(s"uid=$user, ${ authSettings.usersParentEntry }")
         val enabled = attrs.get(authSettings.swordEnabledAttributeName)
         enabled != null && enabled.size == 1 && enabled.get(0) == authSettings.swordEnabledAttributeValue
-    }.recoverWith {
-      case t: AuthenticationException => Success(false)
-      case t =>
-        log.debug("Unexpected exception", t)
-        Failure(new RuntimeException("Error trying to authenticate", t))
-    }
+      }).tried)
+      .recoverWith {
+        case _: AuthenticationException => Success(false)
+        case t =>
+          log.error("Unexpected exception", t)
+          Failure(new RuntimeException("Error trying to authenticate", t))
+      }
   }
 
-  private def getInitialContext(userName: UserName, password: Password, providerUrl: ProviderUrl, usersParentEntry: UsersParentEntry): Try[InitialLdapContext] = Try {
+  private def getInitialContext(userName: UserName, password: Password, providerUrl: ProviderUrl, usersParentEntry: UsersParentEntry): Try[ManagedResource[InitialLdapContext]] = Try {
     val env = new util.Hashtable[String, String]()
     env.put(Context.PROVIDER_URL, providerUrl.toASCIIString)
     env.put(Context.SECURITY_AUTHENTICATION, "simple")
     env.put(Context.SECURITY_PRINCIPAL, s"uid=$userName, $usersParentEntry")
     env.put(Context.SECURITY_CREDENTIALS, password)
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
-    new InitialLdapContext(env, null)
+    managed(new InitialLdapContext(env, null))
   }
 }
