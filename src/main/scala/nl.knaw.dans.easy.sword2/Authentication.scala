@@ -25,7 +25,7 @@ import javax.naming.{ AuthenticationException, Context }
 import org.apache.commons.lang.StringUtils._
 import org.slf4j.LoggerFactory
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
-import resource.ManagedResource
+import resource.{ ManagedResource, managed }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -110,6 +110,6 @@ object Authentication {
     env.put(Context.SECURITY_PRINCIPAL, s"uid=$userName, $usersParentEntry")
     env.put(Context.SECURITY_CREDENTIALS, password)
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
-    resource.managed(new InitialLdapContext(env, null))
+    managed(new InitialLdapContext(env, null))
   }
 }

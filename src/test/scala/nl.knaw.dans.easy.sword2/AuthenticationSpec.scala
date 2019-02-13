@@ -26,7 +26,7 @@ import nl.knaw.dans.easy.sword2.Authentication._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{ FlatSpec, Matchers, _ }
 import org.swordapp.server.{ AuthCredentials, SwordAuthException }
-import resource.ManagedResource
+import resource.{ ManagedResource, managed }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -52,7 +52,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   private val swordEnabledAttribute = mock[Attribute]
 
   private implicit def getMockedLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[ManagedResource[LdapContext]] = Try {
-    resource.managed(ldapContext)
+    managed(ldapContext)
   }
 
   (ldapContext.getAttributes(_: String)) expects * anyNumberOfTimes() returning attributes
@@ -65,7 +65,6 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   private def expectNumberOfSwordEnabledAttributeValues(n: Int) = swordEnabledAttribute.size _ expects() anyNumberOfTimes() returning n
 
   private def expectSwordEnabledAttributeValue(value: String) = (swordEnabledAttribute.get(_: Int)) expects 0 anyNumberOfTimes() returning value
-
 
   val command = "echo -n 'SomePassword' | openssl sha1 -hmac 'someUserNameAsSalt' -binary | base64"
   val output = "WjYViDQOdGR8V1kkTs900ZfoLXU="
