@@ -18,15 +18,15 @@ package nl.knaw.dans.easy.sword2
 import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
+
 import javax.naming.AuthenticationException
 import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
-
 import nl.knaw.dans.easy.sword2.Authentication._
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.Inside._
 import org.scalatest.{ FlatSpec, Matchers, _ }
 import org.swordapp.server.{ AuthCredentials, SwordAuthException }
+import resource.ManagedResource
 
 import scala.util.{ Failure, Success, Try }
 
@@ -51,8 +51,12 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
   private val attributes = mock[Attributes]
   private val swordEnabledAttribute = mock[Attribute]
 
+  private implicit def getMockedLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[ManagedResource[LdapContext]] = Try {
+    resource.managed(ldapContext)
+  }
 
   (ldapContext.getAttributes(_: String)) expects * anyNumberOfTimes() returning attributes
+  ldapContext.close _ expects() anyNumberOfTimes()
 
   private def expectSwordEnabledAttributePresent(present: Boolean) =
     (attributes.get(_: String)) expects "enabled" anyNumberOfTimes() returning (if (present) swordEnabledAttribute
@@ -83,12 +87,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
 
-    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
-      ldapContext
-    }
-
-    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
-    result shouldBe a[Success[_]]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) shouldBe a[Success[_]]
   }
 
   it should "return Failure if swordEnabled set to false" in {
@@ -96,14 +95,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("false")
 
-    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
-      ldapContext
-    }
-
-    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
-    result shouldBe a[Failure[_]]
-    inside(result) {
-      case Failure(e) => e shouldBe a[SwordAuthException]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+      case Failure(_: SwordAuthException) =>
     }
   }
 
@@ -111,14 +104,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectSwordEnabledAttributePresent(false)
     expectNumberOfSwordEnabledAttributeValues(1)
 
-    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
-      ldapContext
-    }
-
-    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
-    result shouldBe a[Failure[_]]
-    inside(result) {
-      case Failure(e) => e shouldBe a[SwordAuthException]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+      case Failure(_: SwordAuthException) =>
     }
   }
 
@@ -126,14 +113,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(0)
 
-    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Try {
-      ldapContext
-    }
-
-    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
-    result shouldBe a[Failure[_]]
-    inside(result) {
-      case Failure(e) => e shouldBe a[SwordAuthException]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+      case Failure(_: SwordAuthException) =>
     }
   }
 
@@ -141,14 +122,12 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
 
-    implicit def getLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[LdapContext] = Failure(new AuthenticationException())
+    implicit def getFailedLdapContext(u: UserName, p: Password, uri: ProviderUrl, parentEntry: UsersParentEntry): Try[ManagedResource[LdapContext]] = {
+      Failure(new AuthenticationException())
+    }
 
-    val result = Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))
-    result shouldBe a[Failure[_]]
-    inside(result) {
-      case Failure(e) => e shouldBe a[SwordAuthException]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings, getFailedLdapContext) should matchPattern {
+      case Failure(_: SwordAuthException) =>
     }
   }
-
-
 }
