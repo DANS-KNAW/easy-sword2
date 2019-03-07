@@ -574,7 +574,7 @@ object DepositHandler {
 
   def doesHashMatch(zipFile: File, MD5: String)(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
-    lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
+    lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch", 400))
 
     Using.fileInputStream(zipFile)
       .map(is => {
