@@ -79,9 +79,6 @@ package object sword2 {
         case Success((id, depositReceipt)) =>
           log.info(s"[$id] Sending deposit receipt")
           depositReceipt
-        case Failure(se: SwordError) =>
-          log.warn(s"Returning error to client: ${ se.getMessage }")
-          throw new StackTracelessSwordError(se.getErrorUri, se.getStatus, se.getMessage, se.getCause)
         case Failure(e) =>
           log.warn(s"Returning error to client: ${ e.getMessage }")
           throw e
