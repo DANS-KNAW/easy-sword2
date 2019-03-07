@@ -21,7 +21,7 @@ import java.nio.file.Paths
 import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2.State._
 import org.apache.commons.lang.StringUtils._
-import org.swordapp.server._
+import org.swordapp.server.{ SwordError, _ }
 
 import scala.util.Try
 
@@ -31,7 +31,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-    val result = for {
+    (for {
       _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
       maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
@@ -40,9 +40,8 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       _ = log.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(settings, id)
-    } yield (id, depositReceipt)
-
-    result.getOrThrow
+    } yield (id, depositReceipt))
+      .getOrThrow
   }
 
   def checkValidCollectionId(iri: String)(implicit settings: Settings): Try[Unit] = Try {

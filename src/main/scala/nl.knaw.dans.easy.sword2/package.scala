@@ -22,7 +22,7 @@ import java.util.regex.Pattern
 import nl.knaw.dans.easy.sword2.DepositHandler.log
 import nl.knaw.dans.easy.sword2.State.State
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
-import org.swordapp.server.DepositReceipt
+import org.swordapp.server.{ DepositReceipt, SwordError }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -79,6 +79,9 @@ package object sword2 {
         case Success((id, depositReceipt)) =>
           log.info(s"[$id] Sending deposit receipt")
           depositReceipt
+        case Failure(se: SwordError) =>
+          log.warn(s"Returning error to client: ${se.getMessage}")
+          throw new StackTracelessSwordError(se.getErrorUri, se.getStatus, se.getMessage, se.getCause)
         case Failure(e) =>
           log.warn(s"Returning error to client: ${e.getMessage}")
           throw e
