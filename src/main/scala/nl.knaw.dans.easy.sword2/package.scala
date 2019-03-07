@@ -22,7 +22,7 @@ import java.util.regex.Pattern
 import nl.knaw.dans.easy.sword2.DepositHandler.log
 import nl.knaw.dans.easy.sword2.State.State
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
-import org.swordapp.server.{ DepositReceipt, SwordError }
+import org.swordapp.server.DepositReceipt
 
 import scala.util.{ Failure, Success, Try }
 
