@@ -21,7 +21,7 @@ import java.nio.file.Paths
 import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2.State._
 import org.apache.commons.lang.StringUtils._
-import org.swordapp.server.{ SwordError, _ }
+import org.swordapp.server._
 
 import scala.util.Try
 
