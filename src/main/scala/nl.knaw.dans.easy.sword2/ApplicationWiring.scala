@@ -85,4 +85,5 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .toMap
 
   val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
+  val version = configuration.version
 }

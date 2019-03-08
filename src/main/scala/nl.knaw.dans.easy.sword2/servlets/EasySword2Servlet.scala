@@ -16,15 +16,18 @@
 package nl.knaw.dans.easy.sword2.servlets
 
 import java.io._
+
 import javax.servlet._
 import javax.servlet.http._
 
-class EasySword2Servlet extends HttpServlet {
+class EasySword2Servlet(version: String) extends HttpServlet {
+
+
   @throws(classOf[ServletException])
   @throws(classOf[IOException])
-  override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
+    override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
     val out: PrintWriter = response.getWriter
-    out.println("EASY Sword2 Service running...")
+    out.println(s"EASY Sword2 Service running $version")
     out.flush()
     out.close()
   }
