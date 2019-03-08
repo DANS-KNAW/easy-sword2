@@ -38,7 +38,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.slf4j.{ Logger, LoggerFactory }
-import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
+import org.swordapp.server.{ Deposit, DepositReceipt, SwordError, UriRegistry }
 import resource.Using
 import rx.lang.scala.Observable
 import rx.lang.scala.schedulers.NewThreadScheduler
@@ -574,7 +574,7 @@ object DepositHandler {
 
   def doesHashMatch(zipFile: File, MD5: String)(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
-    lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch", 400))
+    lazy val fail = Failure(new SwordError(UriRegistry.ERROR_CHECKSUM_MISMATCH))
 
     Using.fileInputStream(zipFile)
       .map(is => {
