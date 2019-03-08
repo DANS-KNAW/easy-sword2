@@ -15,20 +15,17 @@
  */
 package nl.knaw.dans.easy.sword2.servlets
 
-import java.io._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import org.scalatra.{ Ok, ScalatraServlet }
+import nl.knaw.dans.lib.logging.servlet._
 
-import javax.servlet._
-import javax.servlet.http._
+class EasySword2Servlet(version: String) extends ScalatraServlet
+  with ServletLogger
+  with PlainLogFormatter
+  with DebugEnhancedLogging {
 
-class EasySword2Servlet(version: String) extends HttpServlet {
-
-  @throws(classOf[ServletException])
-  @throws(classOf[IOException])
-  override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
-    val out: PrintWriter = response.getWriter
-    out.println(s"EASY Sword2 Service running $version")
-    out.flush()
-    out.close()
+  get("/") {
+    contentType = "text/plain"
+    Ok(s"EASY File Index is running v$version.").logResponse
   }
 }
-
