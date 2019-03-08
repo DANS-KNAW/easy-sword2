@@ -47,7 +47,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   def checkValidCollectionId(iri: String)(implicit settings: Settings): Try[Unit] = Try {
     val collectionPath = new URI(iri).getPath
     if (Paths.get("/").relativize(Paths.get(collectionPath)).toString != settings.collectionPath)
-      throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
+      throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
   }
 
   private def setDepositStateToDraft(id: DepositId, userId: String)(implicit settings: Settings): Try[Unit] = {

@@ -19,7 +19,7 @@ import org.swordapp.server.SwordConfigurationDefault
 
 class SwordConfig extends SwordConfigurationDefault {
   override def getAuthType: String = "Basic"
-  override def returnStackTraceInError(): Boolean = false //TODO would it be desirable to do this with the application.properties file?
+  override def returnStackTraceInError(): Boolean = false
   override def getMaxUploadSize: Int = -1
 
   var settings: Settings = _
