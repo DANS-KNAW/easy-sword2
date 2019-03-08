@@ -22,10 +22,9 @@ import javax.servlet.http._
 
 class EasySword2Servlet(version: String) extends HttpServlet {
 
-
   @throws(classOf[ServletException])
   @throws(classOf[IOException])
-    override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
+  override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
     val out: PrintWriter = response.getWriter
     out.println(s"EASY Sword2 Service running $version")
     out.flush()

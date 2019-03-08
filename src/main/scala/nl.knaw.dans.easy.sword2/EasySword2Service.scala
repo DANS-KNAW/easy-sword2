@@ -48,7 +48,6 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
   /*
    * Map URLs to servlets
    */
-
   context.addServlet(new ServletHolder(new EasySword2Servlet(app.wiring.version)), "/")
   context.addServlet(classOf[ServiceDocumentServletImpl], "/servicedocument")
   context.addServlet(classOf[CollectionServletImpl], "/collection/*")
