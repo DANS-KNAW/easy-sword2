@@ -49,7 +49,7 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
   /*
    * Map URLs to servlets
    */
-  context.addServlet(classOf[HelloServlet], "/hello")
+  context.addServlet(classOf[EasySword2Servlet], "/")
   context.addServlet(classOf[ServiceDocumentServletImpl], "/servicedocument")
   context.addServlet(classOf[CollectionServletImpl], "/collection/*")
   context.addServlet(classOf[ContainerServletImpl], "/container/*")

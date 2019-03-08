@@ -13,15 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.servlets
 
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.scalatra._
+import java.io._
+import javax.servlet._
+import javax.servlet.http._
 
-class EasySword2Servlet(app: EasySword2App) extends ScalatraServlet with DebugEnhancedLogging {
-
-  get("/") {
-    contentType = "text/plain"
-    Ok("EASY Sword2 Service running...")
+class EasySword2Servlet extends HttpServlet {
+  @throws(classOf[ServletException])
+  @throws(classOf[IOException])
+  override def doGet(request: HttpServletRequest, response: HttpServletResponse): Unit = {
+    val out: PrintWriter = response.getWriter
+    out.println("EASY Sword2 Service running...")
+    out.flush()
+    out.close()
   }
 }
+
