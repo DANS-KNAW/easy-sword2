@@ -349,7 +349,7 @@ object DepositHandler {
       props <- DepositProperties(id)
       state <- props.getState
       _ <- if (state == DRAFT) Success(())
-           else Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
+           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
     } yield ()
   }
 
@@ -358,7 +358,7 @@ object DepositHandler {
       log.debug(s"[$id] Copying payload to: $zipFile")
       Success(copyInputStreamToFile(deposit.getInputStream, zipFile))
     } catch {
-      case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
+      case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
     }
 
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[Unit] = {
