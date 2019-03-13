@@ -13,15 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.servlets
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.scalatra._
+import org.scalatra.{ Ok, ScalatraServlet }
+import nl.knaw.dans.lib.logging.servlet._
 
-class EasySword2Servlet(app: EasySword2App) extends ScalatraServlet with DebugEnhancedLogging {
+class EasySword2Servlet(version: String) extends ScalatraServlet
+  with ServletLogger
+  with PlainLogFormatter
+  with DebugEnhancedLogging {
 
   get("/") {
     contentType = "text/plain"
-    Ok("EASY Sword2 Service running...")
+    Ok(s"EASY File Index is running v$version.").logResponse
   }
 }

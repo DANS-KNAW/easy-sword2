@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.sword2
 import nl.knaw.dans.easy.sword2.servlets._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.server.Server
-import org.eclipse.jetty.servlet.ServletContextHandler
+import org.eclipse.jetty.servlet.{ ServletContextHandler, ServletHolder }
 
 import scala.util.Try
 
@@ -45,11 +45,10 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
     rescheduleDelaySeconds = app.wiring.rescheduleDelaySeconds
   )
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
-
   /*
    * Map URLs to servlets
    */
-  context.addServlet(classOf[HelloServlet], "/hello")
+  context.addServlet(new ServletHolder(new EasySword2Servlet(app.wiring.version)), "/")
   context.addServlet(classOf[ServiceDocumentServletImpl], "/servicedocument")
   context.addServlet(classOf[CollectionServletImpl], "/collection/*")
   context.addServlet(classOf[ContainerServletImpl], "/container/*")

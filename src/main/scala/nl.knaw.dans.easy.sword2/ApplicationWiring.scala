@@ -77,7 +77,8 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
       .toMap
 
     SampleTestDataEnabled(sampleDir, sampleRates)
-  } else SampleTestDataDisabled
+  }
+                       else SampleTestDataDisabled
 
   val cleanup: Map[State, Boolean] = State.values.toSeq
     .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
@@ -85,4 +86,5 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .toMap
 
   val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
+  val version = configuration.version
 }
