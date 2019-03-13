@@ -51,28 +51,28 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def replaceMetadata(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def replaceMetadataAndMediaResource(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addMetadataAndResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addMetadata(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
@@ -98,15 +98,15 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
-  def deleteContainer(editIRI: String, auth: AuthCredentials, config: SwordConfiguration) {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+  def deleteContainer(editIRI: String, auth: AuthCredentials, config: SwordConfiguration): Unit = {
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def useHeaders(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
@@ -115,6 +115,5 @@ class ContainerManagerImpl extends ContainerManager {
   override def isStatementRequest(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Boolean = {
     false
   }
-
 }
 

@@ -38,7 +38,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.slf4j.{ Logger, LoggerFactory }
-import org.swordapp.server.{ Deposit, DepositReceipt, SwordError }
+import org.swordapp.server.{ Deposit, DepositReceipt, SwordError, UriRegistry }
 import resource.Using
 import rx.lang.scala.Observable
 import rx.lang.scala.schedulers.NewThreadScheduler
@@ -349,7 +349,7 @@ object DepositHandler {
       props <- DepositProperties(id)
       state <- props.getState
       _ <- if (state == DRAFT) Success(())
-           else Failure(new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Deposit $id is not in DRAFT state."))
+           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
     } yield ()
   }
 
@@ -358,7 +358,7 @@ object DepositHandler {
       log.debug(s"[$id] Copying payload to: $zipFile")
       Success(copyInputStreamToFile(deposit.getInputStream, zipFile))
     } catch {
-      case t: Throwable => Failure(new SwordError("http://purl.org/net/sword/error/ErrorBadRequest", t))
+      case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
     }
 
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -574,7 +574,7 @@ object DepositHandler {
 
   def doesHashMatch(zipFile: File, MD5: String)(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
-    lazy val fail = Failure(new SwordError("http://purl.org/net/sword/error/ErrorChecksumMismatch"))
+    lazy val fail = Failure(new SwordError(UriRegistry.ERROR_CHECKSUM_MISMATCH))
 
     Using.fileInputStream(zipFile)
       .map(is => {

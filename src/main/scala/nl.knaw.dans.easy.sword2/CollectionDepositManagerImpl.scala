@@ -31,7 +31,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings = config.asInstanceOf[SwordConfig].settings
-    val result = for {
+    (for {
       _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
       maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
@@ -40,15 +40,14 @@ class CollectionDepositManagerImpl extends CollectionDepositManager {
       _ = log.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(settings, id)
-    } yield (id, depositReceipt)
-
-    result.getOrThrow
+    } yield (id, depositReceipt))
+      .getOrThrow
   }
 
   def checkValidCollectionId(iri: String)(implicit settings: Settings): Try[Unit] = Try {
     val collectionPath = new URI(iri).getPath
     if (Paths.get("/").relativize(Paths.get(collectionPath)).toString != settings.collectionPath)
-      throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed", 405, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
+      throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
   }
 
   private def setDepositStateToDraft(id: DepositId, userId: String)(implicit settings: Settings): Try[Unit] = {

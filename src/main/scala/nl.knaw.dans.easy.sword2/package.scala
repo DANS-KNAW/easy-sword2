@@ -80,7 +80,7 @@ package object sword2 {
           log.info(s"[$id] Sending deposit receipt")
           depositReceipt
         case Failure(e) =>
-          log.warn(s"Returning error to client: ${e.getMessage}")
+          log.warn(s"Returning error to client: ${ e.getMessage }")
           throw e
       }
     }
