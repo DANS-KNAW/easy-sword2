@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import java.io.{ File, IOException }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
-import java.nio.charset.StandardCharsets
+import java.nio.charset.{ Charset, StandardCharsets }
 import java.nio.file._
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
@@ -289,9 +289,9 @@ object DepositHandler {
     }
 
     def extract(file: File, outputPath: String): Unit = {
-      new ZipFile(file.getPath) {
-        setFileNameCharset(StandardCharsets.UTF_8.name)
-      }.extractAll(outputPath)
+      val f = better.files.File(file.getAbsolutePath)
+      implicit val charset: Charset = StandardCharsets.UTF_8
+      f unzipTo better.files.File(outputPath)
     }
 
     def getSequenceNumber(f: File): Int = {
