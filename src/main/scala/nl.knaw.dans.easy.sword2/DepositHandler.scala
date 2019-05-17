@@ -289,9 +289,9 @@ object DepositHandler {
     }
 
     def extract(file: File, outputPath: String): Unit = {
-      val f = better.files.File(file.getAbsolutePath)
+      import better.files._
       implicit val charset: Charset = StandardCharsets.UTF_8
-      f unzipTo better.files.File(outputPath)
+      file.toScala unzipTo outputPath.toFile
     }
 
     def getSequenceNumber(f: File): Int = {
