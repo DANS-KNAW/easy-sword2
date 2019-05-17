@@ -26,12 +26,12 @@ trait BagValidationExtension {
 
   def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
     verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList)
-      .flatMap(_ => Success(bag.verifyValid))
+      .map(_ => bag.verifyValid) //throws message-less IllegalArgumentException when manifest cannot be found
   }
 
   private def verifyPayloadManifestAlgorithm(manifests: List[Manifest])(implicit depositId: DepositId): Try[Unit] = {
     manifests.map { manifest =>
-      Try(manifest.getAlgorithm)
+      Try(manifest.getAlgorithm) //throws message-less IllegalArgumentException when manifest cannot be found
         .fold(_ => Failure(InvalidDepositException(depositId, s"unrecognized algorithm for payload manifest: supported algorithms are: ${ BagValidationExtension.acceptedValues }")), _ => Success(()))
     }.collectFirst { case f @ Failure(_: Exception) => f }
       .getOrElse(Success(()))
