@@ -80,11 +80,11 @@ object DepositHandler extends BagValidationExtension {
       }
   }
 
-  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = getDepositState(deposit).fold(_ => logWarnAndReturnFalse(deposit), _ == State.UPLOADED)
+  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = getDepositState(deposit).fold(_ => logWarnAndReturnBool(deposit, bool = false), _ == State.UPLOADED)
 
-  private def logWarnAndReturnFalse(deposit: File): Boolean = {
+  private def logWarnAndReturnBool(deposit: File, bool : Boolean): Boolean = {
     log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.")
-    false
+    bool
   }
 
   private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {
