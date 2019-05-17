@@ -455,9 +455,17 @@ object DepositHandler {
       _ <- if (itemsToResolve.isEmpty) Success(())
            else pruneFetchTxt(bagDir, itemsToResolve)
       bag <- getBag(bagDir)
-      validationResult = bag.verifyValid
+      validationResult <- verifyBagIsValid(bag)
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
+  }
+
+  private def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
+    Try {
+      bag.verifyValid // throws empty IllegalArgumentException if algorithm type in the name of the manifest is not recognized
+    }.recoverWith {
+      case _: Exception => Failure(InvalidDepositException(depositId, "unrecognized javaSecurityAlgorithm"))
+    }
   }
 
   def getFetchTxt(bagDir: File): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)
