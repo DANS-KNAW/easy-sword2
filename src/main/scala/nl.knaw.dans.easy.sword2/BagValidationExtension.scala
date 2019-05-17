@@ -25,8 +25,8 @@ import scala.util.{ Failure, Success, Try }
 trait BagValidationExtension {
 
   def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
-     verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList)
-         .flatMap(_ => Success(bag.verifyValid))
+    verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList)
+      .flatMap(_ => Success(bag.verifyValid))
   }
 
   private def verifyPayloadManifestAlgorithm(manifests: List[Manifest])(implicit depositId: DepositId): Try[Unit] = {
@@ -48,5 +48,3 @@ object BagValidationExtension {
       .mkString(", ")
   }
 }
-
-

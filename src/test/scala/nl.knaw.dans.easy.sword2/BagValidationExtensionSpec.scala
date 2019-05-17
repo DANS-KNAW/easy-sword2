@@ -16,8 +16,8 @@
 package nl.knaw.dans.easy.sword2
 
 import better.files.File
+import gov.loc.repository.bagit.BagFactory
 import gov.loc.repository.bagit.utilities.SimpleResult
-import gov.loc.repository.bagit.{ Bag, BagFactory }
 import org.scalatest.{ BeforeAndAfterEach, Matchers }
 
 import scala.util.{ Failure, Success }
@@ -58,8 +58,8 @@ class BagValidationExtensionSpec extends TestSupportFixture
 
     val testBag = bagFactory.createBag(seqADir.toJava)
     implicit val depositId: DepositId = "1234566"
-    verifyBagIsValid(testBag) should matchPattern{
-     case Success(s: SimpleResult) if s.isSuccess =>
+    verifyBagIsValid(testBag) should matchPattern {
+      case Success(s: SimpleResult) if s.isSuccess =>
     }
   }
 }
