@@ -464,7 +464,7 @@ object DepositHandler {
     Try {
       bag.verifyValid // throws empty IllegalArgumentException if algorithm type in the name of the manifest is not recognized
     }.recoverWith {
-      case _: Exception => Failure(InvalidDepositException(depositId, "unrecognized javaSecurityAlgorithm"))
+      case _: IllegalArgumentException => Failure(InvalidDepositException(depositId, "unrecognized javaSecurityAlgorithm"))
     }
   }
 
