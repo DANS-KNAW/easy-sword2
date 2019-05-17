@@ -51,7 +51,7 @@ import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-object DepositHandler {
+object DepositHandler extends BagValidationExtension {
   val log: Logger = LoggerFactory.getLogger(getClass)
   private implicit val bagFactory: BagFactory = new BagFactory
 
@@ -66,27 +66,25 @@ object DepositHandler {
       }
     settings
       .tempDir.listFiles().toSeq
-      .filter(_.isDirectory)
-      .filter {
+      .filter(d => d.isDirectory && filterNonUploadedDeposits(d))
+      .foreach {
         d =>
-          getDepositState(d)
-            .map(_ == State.UPLOADED)
-            .recoverWith {
-              case _: Throwable =>
-                log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
-                Success(false)
-            }.get
-      }.foreach {
-      d =>
-        getContentType(d).map {
-          mimeType =>
-            log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
-            depositProcessingStream.onNext((d.getName, mimeType))
-        }.recover {
-          case _: Throwable =>
-            log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
-        }
-    }
+          getContentType(d).map {
+            mimeType =>
+              log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
+              depositProcessingStream.onNext((d.getName, mimeType))
+          }.recover {
+            case _: Throwable =>
+              log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
+          }
+      }
+  }
+
+  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = getDepositState(deposit).fold(_ => logWarnAndReturnFalse(deposit), _ == State.UPLOADED)
+
+  private def logWarnAndReturnFalse(deposit: File): Boolean = {
+    log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.")
+    false
   }
 
   private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {
@@ -458,14 +456,6 @@ object DepositHandler {
       validationResult <- verifyBagIsValid(bag)
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
-  }
-
-  private def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
-    Try {
-      bag.verifyValid // throws empty IllegalArgumentException if algorithm type in the name of the manifest is not recognized
-    }.recoverWith {
-      case _: IllegalArgumentException => Failure(InvalidDepositException(depositId, "unrecognized javaSecurityAlgorithm"))
-    }
   }
 
   def getFetchTxt(bagDir: File): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)

@@ -29,4 +29,22 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
     path.createDirectories()
     path
   }
+
+  def createSettings(bag: File, collectionPath: File): SwordConfig = {
+    new SwordConfig {
+      settings = Settings(depositRootDir = bag.toJava,
+        "rwxrwxrwx",
+        collectionPath.toJava,
+        "",
+        "",
+        null,
+        null,
+        None,
+        "support@dans.knaw.nl",
+        9090000L,
+        null,
+        Map(),
+        90000)
+    }
+  }
 }

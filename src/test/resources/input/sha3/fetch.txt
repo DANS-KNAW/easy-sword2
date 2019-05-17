@@ -1,0 +1,6 @@
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.1/data/z  12  data/z
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.1/data/sub/w  12  data/sub/w
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.1/data/y  12  data/y-old
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.1/data/x  12  data/x
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.1/data/sub/u  12  data/sub-copy/u
+http://deasy.dans.knaw.nl/aips/1053546d-80e1-4c27-bccf-dd839c8d16d9.2/data/y  24  data/y
