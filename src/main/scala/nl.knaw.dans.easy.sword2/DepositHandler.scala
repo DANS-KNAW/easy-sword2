@@ -67,17 +67,14 @@ object DepositHandler extends BagValidationExtension {
     settings
       .tempDir.listFiles().toSeq
       .filter(deposit => deposit.isDirectory && filterNonUploadedDeposits(deposit))
-      .foreach {
-        d =>
-          getContentType(d).map {
-            mimeType =>
-              log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
-              depositProcessingStream.onNext((d.getName, mimeType))
-          }.recover {
-            case _: Throwable =>
-              log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
-          }
-      }
+      .foreach(getContentTypeOnNext(_))
+  }
+
+  private def getContentTypeOnNext(d: File)(implicit settings: Settings): Try[Unit] = {
+    getContentType(d)
+      .doIfSuccess(_ => log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing."))
+      .doIfFailure { case _: Throwable => log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.") }
+      .map(mimeType => depositProcessingStream.onNext((d.getName, mimeType)))
   }
 
   private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = {
