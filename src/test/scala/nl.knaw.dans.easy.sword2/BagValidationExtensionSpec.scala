@@ -44,7 +44,7 @@ class BagValidationExtensionSpec extends TestSupportFixture
   }
 
   "verifyBagIsValid" should "fail if a not recognized sha-algorithm is given" in {
-    implicit val settings: SwordConfig = createSettings(shaDir, inputDir)
+    implicit val settings: SwordConfig = createMinimalSettings(shaDir)
 
     val testBag = bagFactory.createBag(shaDir.toJava)
     implicit val depositId: DepositId = "1234566"
@@ -54,7 +54,7 @@ class BagValidationExtensionSpec extends TestSupportFixture
   }
 
   it should "succeed if an recognized sha-algorhithm is given" in {
-    implicit val settings: SwordConfig = createSettings(seqADir, inputDir)
+    implicit val settings: SwordConfig = createMinimalSettings(seqADir)
 
     val testBag = bagFactory.createBag(seqADir.toJava)
     implicit val depositId: DepositId = "1234566"

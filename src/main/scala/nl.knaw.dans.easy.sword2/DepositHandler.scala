@@ -66,7 +66,7 @@ object DepositHandler extends BagValidationExtension {
       }
     settings
       .tempDir.listFiles().toSeq
-      .filter(d => d.isDirectory && filterNonUploadedDeposits(d))
+      .filter(deposit => deposit.isDirectory && filterNonUploadedDeposits(deposit))
       .foreach {
         d =>
           getContentType(d).map {
@@ -80,11 +80,10 @@ object DepositHandler extends BagValidationExtension {
       }
   }
 
-  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = getDepositState(deposit).fold(_ => logWarnAndReturnBool(deposit, bool = false), _ == State.UPLOADED)
-
-  private def logWarnAndReturnBool(deposit: File, bool : Boolean): Boolean = {
-    log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.")
-    bool
+  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = {
+    getDepositState(deposit)
+      .doIfFailure { case _: Throwable => log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.") }
+      .fold(_ => false, _ == State.UPLOADED)
   }
 
   private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {

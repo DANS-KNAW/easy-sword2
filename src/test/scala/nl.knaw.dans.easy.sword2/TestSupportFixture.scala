@@ -30,11 +30,11 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
     path
   }
 
-  def createSettings(bag: File, collectionPath: File): SwordConfig = {
+  def createMinimalSettings(bag: File): SwordConfig = {
     new SwordConfig {
       settings = Settings(depositRootDir = bag.toJava,
         "rwxrwxrwx",
-        collectionPath.toJava,
+        new java.io.File("dummy"),
         "",
         "",
         null,
