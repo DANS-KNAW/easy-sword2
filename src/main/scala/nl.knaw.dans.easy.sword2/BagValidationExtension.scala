@@ -18,6 +18,8 @@ package nl.knaw.dans.easy.sword2
 import gov.loc.repository.bagit.Manifest.Algorithm
 import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.{ Bag, Manifest }
+import nl.knaw.dans.easy.sword2.DepositHandler.formatMessages
+import nl.knaw.dans.lib.error._
 
 import scala.collection.JavaConverters._
 import scala.util.{ Failure, Success, Try }
@@ -25,26 +27,24 @@ import scala.util.{ Failure, Success, Try }
 trait BagValidationExtension {
 
   def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
-    verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList)
+    verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList ::: bag.getTagManifests.asScala.toList)
       .map(_ => bag.verifyValid) //throws message-less IllegalArgumentException when manifest cannot be found
   }
 
   private def verifyPayloadManifestAlgorithm(manifests: List[Manifest])(implicit depositId: DepositId): Try[Unit] = {
     manifests.map { manifest =>
       Try(manifest.getAlgorithm) //throws message-less IllegalArgumentException when manifest cannot be found
-        .fold(_ => Failure(InvalidDepositException(depositId, s"unrecognized algorithm for payload manifest: supported algorithms are: ${ BagValidationExtension.acceptedValues }")), _ => Success(()))
-    }.collectFirst { case f @ Failure(_: Exception) => f }
-      .getOrElse(Success(()))
+        .fold(_ => Failure(InvalidDepositException(depositId, s"unrecognized algorithm for manifest: ${ manifest.getFilepath } supported algorithms are: ${ BagValidationExtension.acceptedValues }")), _ => Success(()))
+    }.collectResults
+      .map(_ => ()).recoverWith {
+      case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), "BagValidationExtension verifyPayloadManifestAlgorithm"), e))
+    }
   }
 }
 
 object BagValidationExtension {
-  lazy val acceptedValues: String = getSupportedAlgorithms
-
-  private def getSupportedAlgorithms: String = {
-    Algorithm
-      .values()
-      .flatMap(algo => List(algo.toString.toUpperCase(), algo.toString.toLowerCase()))
-      .mkString(", ")
-  }
+  lazy val acceptedValues: String = Algorithm
+    .values()
+    .flatMap(algo => List(algo.toString.toUpperCase(), algo.toString.toLowerCase()))
+    .mkString(", ")
 }

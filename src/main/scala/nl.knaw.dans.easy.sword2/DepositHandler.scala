@@ -66,7 +66,8 @@ object DepositHandler extends BagValidationExtension {
       }
     settings
       .tempDir.listFiles().toSeq
-      .filter(deposit => deposit.isDirectory && filterNonUploadedDeposits(deposit))
+      .withFilter(_.isDirectory)
+      .withFilter(isDepositUploaded)
       .foreach(getContentTypeOnNext(_))
   }
 
@@ -77,7 +78,7 @@ object DepositHandler extends BagValidationExtension {
       .map(mimeType => depositProcessingStream.onNext((d.getName, mimeType)))
   }
 
-  private def filterNonUploadedDeposits(deposit: File)(implicit settings: Settings): Boolean = {
+  private def isDepositUploaded(deposit: File)(implicit settings: Settings): Boolean = {
     getDepositState(deposit)
       .doIfFailure { case _: Throwable => log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.") }
       .fold(_ => false, _ == State.UPLOADED)
