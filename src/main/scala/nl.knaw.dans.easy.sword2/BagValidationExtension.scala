@@ -37,7 +37,7 @@ trait BagValidationExtension {
         .fold(_ => Failure(InvalidDepositException(depositId, s"unrecognized algorithm for manifest: ${ manifest.getFilepath } supported algorithms are: ${ BagValidationExtension.acceptedValues }")), _ => Success(()))
     }.collectResults
       .map(_ => ()).recoverWith {
-      case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), "BagValidationExtension verifyPayloadManifestAlgorithm"), e))
+      case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), ""), e))
     }
   }
 }
@@ -45,6 +45,6 @@ trait BagValidationExtension {
 object BagValidationExtension {
   lazy val acceptedValues: String = Algorithm
     .values()
-    .flatMap(algo => List(algo.toString.toUpperCase(), algo.toString.toLowerCase()))
+    .map(_.bagItAlgorithm)
     .mkString(", ")
 }
