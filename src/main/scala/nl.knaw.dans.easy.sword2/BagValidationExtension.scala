@@ -27,18 +27,21 @@ import scala.util.{ Failure, Success, Try }
 trait BagValidationExtension {
 
   def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
-    verifyPayloadManifestAlgorithm(bag.getPayloadManifests.asScala.toList ::: bag.getTagManifests.asScala.toList)
-      .map(_ => bag.verifyValid) //throws message-less IllegalArgumentException when manifest cannot be found
+    (bag.getPayloadManifests.asScala.toList ::: bag.getTagManifests.asScala.toList)
+      .map(verifyPayloadManifestAlgorithm) // note: the signature of that method changes to taking a single manifest
+      .collectResults
+      .recoverWith {
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), ""), e))
+      }
+      .map(_ => bag.verifyValid)
+
+
+    //throws message-less IllegalArgumentException when manifest cannot be found
   }
 
-  private def verifyPayloadManifestAlgorithm(manifests: List[Manifest])(implicit depositId: DepositId): Try[Unit] = {
-    manifests.map { manifest =>
-      Try(manifest.getAlgorithm) //throws message-less IllegalArgumentException when manifest cannot be found
-        .fold(_ => Failure(InvalidDepositException(depositId, s"Unrecognized algorithm for manifest: ${ manifest.getFilepath }. Supported algorithms are: ${ BagValidationExtension.acceptedValues }.")), _ => Success(()))
-    }.collectResults
-      .map(_ => ()).recoverWith {
-      case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), ""), e))
-    }
+  private def verifyPayloadManifestAlgorithm(manifest: Manifest)(implicit depositId: DepositId): Try[Unit] = {
+    Try(manifest.getAlgorithm) //throws message-less IllegalArgumentException when manifest cannot be found
+      .fold(_ => Failure(InvalidDepositException(depositId, s"Unrecognized algorithm for manifest: ${ manifest.getFilepath }. Supported algorithms are: ${ BagValidationExtension.acceptedValues }.")), _ => Success(()))
   }
 }
 
