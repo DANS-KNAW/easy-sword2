@@ -28,15 +28,12 @@ trait BagValidationExtension {
 
   def verifyBagIsValid(bag: Bag)(implicit depositId: DepositId): Try[SimpleResult] = {
     (bag.getPayloadManifests.asScala.toList ::: bag.getTagManifests.asScala.toList)
-      .map(verifyPayloadManifestAlgorithm) // note: the signature of that method changes to taking a single manifest
+      .map(verifyPayloadManifestAlgorithm)
       .collectResults
       .recoverWith {
         case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), ""), e))
       }
       .map(_ => bag.verifyValid)
-
-
-    //throws message-less IllegalArgumentException when manifest cannot be found
   }
 
   private def verifyPayloadManifestAlgorithm(manifest: Manifest)(implicit depositId: DepositId): Try[Unit] = {
