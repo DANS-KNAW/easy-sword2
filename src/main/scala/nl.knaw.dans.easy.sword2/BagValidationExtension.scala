@@ -34,7 +34,7 @@ trait BagValidationExtension {
   private def verifyPayloadManifestAlgorithm(manifests: List[Manifest])(implicit depositId: DepositId): Try[Unit] = {
     manifests.map { manifest =>
       Try(manifest.getAlgorithm) //throws message-less IllegalArgumentException when manifest cannot be found
-        .fold(_ => Failure(InvalidDepositException(depositId, s"unrecognized algorithm for manifest: ${ manifest.getFilepath } supported algorithms are: ${ BagValidationExtension.acceptedValues }")), _ => Success(()))
+        .fold(_ => Failure(InvalidDepositException(depositId, s"Unrecognized algorithm for manifest: ${ manifest.getFilepath }. Supported algorithms are: ${ BagValidationExtension.acceptedValues }.")), _ => Success(()))
     }.collectResults
       .map(_ => ()).recoverWith {
       case e @ CompositeException(throwables) => Failure(InvalidDepositException(depositId, formatMessages(throwables.map(_.getMessage), ""), e))
