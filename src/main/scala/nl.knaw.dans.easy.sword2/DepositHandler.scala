@@ -15,7 +15,7 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{ File, IOException }
+import java.io.{ File => JFile, IOException } //https://github.com/pathikrit/better-files#instantiation
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.{ Charset, StandardCharsets }
 import java.nio.file._
@@ -51,7 +51,7 @@ import scala.language.postfixOps
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-object DepositHandler {
+object DepositHandler extends BagValidationExtension {
   val log: Logger = LoggerFactory.getLogger(getClass)
   private implicit val bagFactory: BagFactory = new BagFactory
 
@@ -65,38 +65,34 @@ object DepositHandler {
         finalizeDeposit(mimetype)(settings, id)
       }
     settings
-      .tempDir.listFiles().toSeq
-      .filter(_.isDirectory)
-      .filter {
-        d =>
-          getDepositState(d)
-            .map(_ == State.UPLOADED)
-            .recoverWith {
-              case _: Throwable =>
-                log.warn(s"[${ d.getName }] Could not get deposit state. Not putting this deposit on the queue.")
-                Success(false)
-            }.get
-      }.foreach {
-      d =>
-        getContentType(d).map {
-          mimeType =>
-            log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing.")
-            depositProcessingStream.onNext((d.getName, mimeType))
-        }.recover {
-          case _: Throwable =>
-            log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.")
-        }
-    }
+      .tempDir
+      .listFiles()
+      .withFilter(_.isDirectory)
+      .withFilter(isDepositUploaded)
+      .foreach(getContentTypeOnNext(_))
   }
 
-  private def getDepositState(dir: File)(implicit settings: Settings): Try[State] = {
+  private def getContentTypeOnNext(d: JFile)(implicit settings: Settings): Try[Unit] = {
+    getContentType(d)
+      .doIfSuccess(_ => log.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing."))
+      .doIfFailure { case _: Throwable => log.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.") }
+      .map(mimeType => depositProcessingStream.onNext((d.getName, mimeType)))
+  }
+
+  private def isDepositUploaded(deposit: JFile)(implicit settings: Settings): Boolean = {
+    getDepositState(deposit)
+      .doIfFailure { case _: Throwable => log.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.") }
+      .fold(_ => false, _ == State.UPLOADED)
+  }
+
+  private def getDepositState(dir: JFile)(implicit settings: Settings): Try[State] = {
     for {
       props <- DepositProperties(dir.getName)
       state <- props.getState
     } yield state
   }
 
-  private def getContentType(dir: File)(implicit settings: Settings): Try[String] = {
+  private def getContentType(dir: JFile)(implicit settings: Settings): Try[String] = {
     for {
       props <- DepositProperties(dir.getName)
       contentType <- props.getClientMessageContentType
@@ -122,14 +118,14 @@ object DepositHandler {
     }
   }
 
-  private def setFilePermissions(depositDir: File)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def setFilePermissions(depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
       .doIfFailure {
         case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
       }
   }
 
-  private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: File, depositDir: File)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
+  private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     for {
       _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
            else Success(())
@@ -171,8 +167,8 @@ object DepositHandler {
   def finalizeDeposit(mimetype: MimeType)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     log.info(s"[$id] Finalizing deposit")
     implicit val bagStoreSettings: Option[BagStoreSettings] = settings.bagStoreSettings
-    val depositDir = new File(settings.tempDir, id)
-    lazy val storageDir = new File(settings.depositRootDir, id)
+    val depositDir = new JFile(settings.tempDir, id)
+    lazy val storageDir = new JFile(settings.depositRootDir, id)
 
     val result = for {
       props <- DepositProperties(id)
@@ -227,7 +223,7 @@ object DepositHandler {
     }
   }
 
-  private def cleanupFiles(depositDir: File, state: State)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def cleanupFiles(depositDir: JFile, state: State)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     if (settings.cleanup.getOrElse(state, false)) {
       log.info(s"[$id] cleaning up zip files and bag directory for deposit due to state $state")
       for {
@@ -248,7 +244,7 @@ object DepositHandler {
       Success(())
   }
 
-  private def removeZipFiles(depositDir: File)(implicit id: DepositId): Try[Unit] = Try {
+  private def removeZipFiles(depositDir: JFile)(implicit id: DepositId): Try[Unit] = Try {
     log.debug(s"[$id] removing zip files")
     for (file <- depositDir.listFiles().toList
          if isPartOfDeposit(file)
@@ -258,8 +254,8 @@ object DepositHandler {
     }
   }
 
-  private def extractBag(depositDir: File, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[File] = {
-    def checkAvailableDiskspace(file: File): Try[Unit] = Try {
+  private def extractBag(depositDir: JFile, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[JFile] = {
+    def checkAvailableDiskspace(file: JFile): Try[Unit] = Try {
       val zipFile = new ZipFile(file.getPath)
       val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
       val uncompressedSize = headers.map(_.getUncompressedSize).sum
@@ -273,7 +269,7 @@ object DepositHandler {
       }
     }
 
-    def checkDiskspaceForMerging(files: Seq[File]): Try[Unit] = {
+    def checkDiskspaceForMerging(files: Seq[JFile]): Try[Unit] = {
       val sumOfChunks = files.map(_.length).sum
       files.headOption.map {
         f =>
@@ -288,13 +284,13 @@ object DepositHandler {
       }.getOrElse(Success(()))
     }
 
-    def extract(file: File, outputPath: String): Unit = {
+    def extract(file: JFile, outputPath: String): Unit = {
       import better.files._
       implicit val charset: Charset = StandardCharsets.UTF_8
       file.toScala unzipTo outputPath.toFile
     }
 
-    def getSequenceNumber(f: File): Int = {
+    def getSequenceNumber(f: JFile): Int = {
       try {
         val seqNumber = f.getName
           .split('.')
@@ -322,7 +318,7 @@ object DepositHandler {
             extract(file, depositDir.getPath)
           })
         case "application/octet-stream" =>
-          val mergedZip = new File(depositDir, "merged.zip")
+          val mergedZip = new JFile(depositDir, "merged.zip")
           checkDiskspaceForMerging(files).map {
             _ =>
               MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
@@ -338,7 +334,7 @@ object DepositHandler {
     }
   }
 
-  private def getBagDir(depositDir: File): Try[File] = Try {
+  private def getBagDir(depositDir: JFile): Try[JFile] = Try {
     val depositFiles = depositDir.listFiles.filter(_.isDirectory)
     if (depositFiles.length != 1) throw InvalidDepositException(depositDir.getName, s"A deposit package must contain exactly one top-level directory, number found: ${ depositFiles.length }")
     depositFiles(0)
@@ -353,7 +349,7 @@ object DepositHandler {
     } yield ()
   }
 
-  def copyPayloadToFile(deposit: Deposit, zipFile: File)(implicit id: DepositId): Try[Unit] =
+  def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] =
     try {
       log.debug(s"[$id] Copying payload to: $zipFile")
       Success(copyInputStreamToFile(deposit.getInputStream, zipFile))
@@ -384,7 +380,7 @@ object DepositHandler {
     }
   }
 
-  def checkFetchItemUrls(bagDir: File, urlPattern: Pattern)(implicit id: DepositId): Try[Unit] = {
+  def checkFetchItemUrls(bagDir: JFile, urlPattern: Pattern)(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking validity of urls in fetch.txt")
 
     getFetchTxt(bagDir)
@@ -416,7 +412,7 @@ object DepositHandler {
     } yield ()
   }
 
-  def checkBagVirtualValidity(bagDir: File)(implicit id: DepositId, bagStoreSettings: Option[BagStoreSettings]): Try[Unit] = {
+  def checkBagVirtualValidity(bagDir: JFile)(implicit id: DepositId, bagStoreSettings: Option[BagStoreSettings]): Try[Unit] = {
     log.debug(s"[$id] Verifying bag validity")
 
     def handleValidationResult(bag: Bag, validationResult: SimpleResult, fetchItemsInBagStore: Seq[FilenameSizeUrl]): Try[Unit] = {
@@ -455,14 +451,14 @@ object DepositHandler {
       _ <- if (itemsToResolve.isEmpty) Success(())
            else pruneFetchTxt(bagDir, itemsToResolve)
       bag <- getBag(bagDir)
-      validationResult = bag.verifyValid
+      validationResult <- verifyBagIsValid(bag)
       _ <- handleValidationResult(bag, validationResult, fetchItemsInBagStore)
     } yield ()
   }
 
-  def getFetchTxt(bagDir: File): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)
+  def getFetchTxt(bagDir: JFile): Try[FetchTxt] = getBag(bagDir).map(_.getFetchTxt).filter(_ != null)
 
-  def pruneFetchTxt(bagDir: File, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
+  def pruneFetchTxt(bagDir: JFile, items: Seq[FetchTxt.FilenameSizeUrl]): Try[Unit] =
     getBag(bagDir)
       .map(bag => {
         Option(bag.getFetchTxt).map(fetchTxt => Try {
@@ -480,17 +476,17 @@ object DepositHandler {
         }).getOrElse(Success(()))
       })
 
-  private def getBag(bagDir: File): Try[Bag] = Try {
+  private def getBag(bagDir: JFile): Try[Bag] = Try {
     bagFactory.createBag(bagDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
   }
 
-  private def resolveFetchItems(bagDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: DepositId): Try[Unit] = {
+  private def resolveFetchItems(bagDir: JFile, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: DepositId): Try[Unit] = {
     if (fetchItems.nonEmpty) log.debug(s"[$id] Resolving files in fetch.txt, those referring outside the bag store.")
 
     fetchItems
       .map(item => Using.urlInputStream(new URL(item.getUrl))
         .map(src => {
-          val file = new File(bagDir.getAbsoluteFile, item.getFilename)
+          val file = new JFile(bagDir.getAbsoluteFile, item.getFilename)
           if (file.exists)
             Failure(InvalidDepositException(id, s"File ${ item.getFilename } in the fetch.txt is already present in the bag."))
           else
@@ -512,10 +508,10 @@ object DepositHandler {
       }
   }
 
-  private def noFetchItemsAlreadyInBag(bagDir: File, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: DepositId): Try[Unit] = {
+  private def noFetchItemsAlreadyInBag(bagDir: JFile, fetchItems: Seq[FetchTxt.FilenameSizeUrl])(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking that the files in fetch.txt are absent in the bag.")
 
-    val presentFiles = fetchItems.filter(item => new File(bagDir.getAbsoluteFile, item.getFilename).exists)
+    val presentFiles = fetchItems.filter(item => new JFile(bagDir.getAbsoluteFile, item.getFilename).exists)
     if (presentFiles.nonEmpty)
       Failure(InvalidDepositException(id, s"Fetch.txt file ${ presentFiles.head.getFilename } is already present in the bag."))
     else
@@ -563,16 +559,16 @@ object DepositHandler {
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
 
-  def isOnPosixFileSystem(file: File): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
+  def isOnPosixFileSystem(file: JFile): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
-  def moveBagToStorage(depositDir: File, storageDir: File)(implicit settings: Settings, id: DepositId): Try[File] = {
+  def moveBagToStorage(depositDir: JFile, storageDir: JFile)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     log.debug(s"[$id] Moving bag to permanent storage")
     FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
       .map(_ => Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
       .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }
 
-  def doesHashMatch(zipFile: File, MD5: String)(implicit id: DepositId): Try[Unit] = {
+  def doesHashMatch(zipFile: JFile, MD5: String)(implicit id: DepositId): Try[Unit] = {
     log.debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
     lazy val fail = Failure(new SwordError(UriRegistry.ERROR_CHECKSUM_MISMATCH))
 
@@ -608,7 +604,7 @@ object DepositHandler {
         .flatMap(_.asScala)
     })
 
-  private def getReferredBagDir(url: String)(implicit bagStoreSettings: BagStoreSettings): File = {
+  private def getReferredBagDir(url: String)(implicit bagStoreSettings: BagStoreSettings): JFile = {
     //  http://deasy.dans.knaw.nl/aips/31aef203-55ed-4b1f-81f6-b9f67f324c87.2/data/x -> 31/aef20355ed4b1f81f6b9f67f324c87/2
     val Array(uuid, version) = url.stripPrefix(bagStoreSettings.baseUrl)
       .split("/data").head.replaceAll("-", "")
