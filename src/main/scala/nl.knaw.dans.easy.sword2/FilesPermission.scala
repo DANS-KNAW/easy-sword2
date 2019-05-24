@@ -35,6 +35,8 @@ object FilesPermission {
       log.info(s"[$id] Successfully given $permissions to ${ depositDir.getName }")
     }
     else throw new UnsupportedOperationException("Not on a POSIX supported file system")
+  }.doIfFailure {
+    case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
   }
 
   case class RecursiveFilePermissionVisitor(permissions: String,

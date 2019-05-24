@@ -107,17 +107,10 @@ object DepositHandler extends BagValidationExtension {
     // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
-        setFilePermissions(depositDir).map(_ => receipt)
-      case Failure(exception) =>
-        setFilePermissions(depositDir).flatMap(_ => Failure(exception))
+        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
+      case f @ Failure(_) =>
+        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
     }
-  }
-
-  private def setFilePermissions(depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
-    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-      .doIfFailure {
-        case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
-      }
   }
 
   private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
