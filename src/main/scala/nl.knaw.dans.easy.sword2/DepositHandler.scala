@@ -15,12 +15,14 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{ File => JFile, IOException } //https://github.com/pathikrit/better-files#instantiation
+import java.io.{ IOException, File => JFile }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.{ Charset, StandardCharsets }
 import java.nio.file._
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
+
+import better.files.File
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
@@ -168,6 +170,7 @@ object DepositHandler extends BagValidationExtension {
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
+      _ <- props.setBagName(File(bagDir.getPath))
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)

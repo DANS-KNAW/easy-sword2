@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.sword2
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
+import better.files.File
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -43,20 +44,23 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
   private val (properties, modified) = {
     val props = new PropertiesConfiguration()
     props.setDelimiterParsingDisabled(true)
-    val depositInTemp = settings.tempDir.toPath.resolve(depositId)
-    val depositInInbox = settings.depositRootDir.toPath.resolve(depositId)
-    val file = if (Files.exists(depositInTemp)) depositInTemp.resolve(FILENAME)
-               else if (Files.exists(depositInInbox)) depositInInbox.resolve(FILENAME)
-               else depositInTemp.resolve(FILENAME)
-    props.setFile(file.toFile)
-    if (Files.exists(file)) props.load(file.toFile)
+    val depositInTemp = File(settings.tempDir.toPath.resolve(depositId))
+    val depositInInbox = File(settings.depositRootDir.toPath.resolve(depositId))
+    val depositPropertiesFile = if (depositInTemp.exists) depositInTemp / FILENAME
+                                else if (depositInInbox.exists) depositInInbox / FILENAME
+                                else depositInTemp / FILENAME
+    props.setFile(depositPropertiesFile.toJava)
+
+    if (depositPropertiesFile.exists) {
+      props.load(depositPropertiesFile.toJava)
+    }
     else {
       props.setProperty("bag-store.bag-id", depositId)
       props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
     }
-    debug(s"Using deposit.properties at $file")
+    debug(s"Using deposit.properties at $depositPropertiesFile")
     depositorId.foreach(props.setProperty("depositor.userId", _))
-    (props, if (Files.exists(file)) Some(Files.getLastModifiedTime(file))
+    (props, if (depositPropertiesFile.exists) Some(Files.getLastModifiedTime(depositPropertiesFile.path))
             else None)
   }
 
@@ -75,6 +79,11 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
   def setState(state: State, descr: String): Try[DepositProperties] = Try {
     properties.setProperty("state.label", state)
     properties.setProperty("state.description", descr)
+    this
+  }
+
+  def setBagName(bagDir: File): Try[DepositProperties] = Try {
+    properties.setProperty("bag-store.bag-name", bagDir.name)
     this
   }
 
