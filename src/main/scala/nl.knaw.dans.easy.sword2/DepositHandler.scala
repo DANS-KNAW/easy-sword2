@@ -110,7 +110,7 @@ object DepositHandler extends BagValidationExtension {
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
-      case f @ Failure(_) =>
+      case f: Failure =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
     }
   }
@@ -343,7 +343,7 @@ object DepositHandler extends BagValidationExtension {
   def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {
     log.debug(s"[$id] Copying payload to: $zipFile")
     copyInputStreamToFile(deposit.getInputStream, zipFile)
-  } recover {
+  } recoverWith {
     case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
   }
 
