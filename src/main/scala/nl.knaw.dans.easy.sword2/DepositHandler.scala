@@ -110,7 +110,7 @@ object DepositHandler extends BagValidationExtension {
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
-      case f @ Failure(_) =>
+      case f: Failure =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
     }
   }
