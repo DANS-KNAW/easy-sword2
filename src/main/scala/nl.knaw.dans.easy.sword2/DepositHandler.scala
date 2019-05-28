@@ -342,7 +342,7 @@ object DepositHandler extends BagValidationExtension {
   def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {
     log.debug(s"[$id] Copying payload to: $zipFile")
     copyInputStreamToFile(deposit.getInputStream, zipFile)
-  } recover {
+  } recoverWith {
     case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
   }
 
