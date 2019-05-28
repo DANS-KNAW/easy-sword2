@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.sword2
 
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
@@ -75,6 +76,11 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
   def setState(state: State, descr: String): Try[DepositProperties] = Try {
     properties.setProperty("state.label", state)
     properties.setProperty("state.description", descr)
+    this
+  }
+
+  def setBagName(bagDir: File): Try[DepositProperties] = Try {
+    properties.setProperty("bag-store.bag-name", bagDir.getName)
     this
   }
 

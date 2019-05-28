@@ -15,13 +15,14 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{ File => JFile, IOException } //https://github.com/pathikrit/better-files#instantiation
+import java.io.{ IOException, File => JFile }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.charset.{ Charset, StandardCharsets }
 import java.nio.file._
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
 
+import better.files.File
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
@@ -86,17 +87,13 @@ object DepositHandler extends BagValidationExtension {
   }
 
   private def getDepositState(dir: JFile)(implicit settings: Settings): Try[State] = {
-    for {
-      props <- DepositProperties(dir.getName)
-      state <- props.getState
-    } yield state
+    DepositProperties(dir.getName)
+      .flatMap(_.getState)
   }
 
   private def getContentType(dir: JFile)(implicit settings: Settings): Try[String] = {
-    for {
-      props <- DepositProperties(dir.getName)
-      contentType <- props.getClientMessageContentType
-    } yield contentType
+    DepositProperties(dir.getName)
+      .flatMap(_.getClientMessageContentType)
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
@@ -112,17 +109,10 @@ object DepositHandler extends BagValidationExtension {
     // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
-        setFilePermissions(depositDir).map(_ => receipt)
-      case Failure(exception) =>
-        setFilePermissions(depositDir).flatMap(_ => Failure(exception))
+        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
+      case f@ Failure(_) =>
+        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
     }
-  }
-
-  private def setFilePermissions(depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
-    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-      .doIfFailure {
-        case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
-      }
   }
 
   private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
@@ -180,6 +170,7 @@ object DepositHandler extends BagValidationExtension {
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
+      _ <- props.setBagName(bagDir)
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
@@ -285,8 +276,8 @@ object DepositHandler extends BagValidationExtension {
     }
 
     def extract(file: JFile, outputPath: String): Unit = {
-      import better.files._
       implicit val charset: Charset = StandardCharsets.UTF_8
+      import better.files._
       file.toScala unzipTo outputPath.toFile
     }
 
@@ -341,21 +332,20 @@ object DepositHandler extends BagValidationExtension {
   }
 
   def checkDepositIsInDraft(id: DepositId)(implicit settings: Settings): Try[Unit] = {
-    for {
-      props <- DepositProperties(id)
-      state <- props.getState
-      _ <- if (state == DRAFT) Success(())
-           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
-    } yield ()
+    DepositProperties(id)
+      .flatMap(_.getState)
+      .flatMap {
+        case State.DRAFT => Success(())
+        case _ => Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
+      }
   }
 
-  def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] =
-    try {
-      log.debug(s"[$id] Copying payload to: $zipFile")
-      Success(copyInputStreamToFile(deposit.getInputStream, zipFile))
-    } catch {
-      case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
-    }
+  def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {
+    log.debug(s"[$id] Copying payload to: $zipFile")
+    copyInputStreamToFile(deposit.getInputStream, zipFile)
+  } recoverWith {
+    case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
+  }
 
   def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     if (!deposit.isInProgress) {
@@ -558,8 +548,6 @@ object DepositHandler extends BagValidationExtension {
     val afterBaseUrl = url.stripPrefix(baseUrl)
     afterBaseUrl.substring(afterBaseUrl.indexOf("/data/") + 1)
   }
-
-  def isOnPosixFileSystem(file: JFile): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 
   def moveBagToStorage(depositDir: JFile, storageDir: JFile)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     log.debug(s"[$id] Moving bag to permanent storage")

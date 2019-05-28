@@ -15,27 +15,28 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{ File, IOException }
+import java.io.{ IOException, File => JFile }
 import java.nio.file._
 import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
 
-import nl.knaw.dans.easy.sword2.DepositHandler.isOnPosixFileSystem
 import nl.knaw.dans.lib.error._
 import org.slf4j.{ Logger, LoggerFactory }
-import scala.language.postfixOps
 
+import scala.language.postfixOps
 import scala.util.Try
 
 object FilesPermission {
   val log: Logger = LoggerFactory.getLogger(getClass)
 
-  def changePermissionsRecursively(depositDir: File, permissions: String, id: DepositId): Try[Unit] = Try {
+  def changePermissionsRecursively(depositDir: JFile, permissions: String, id: DepositId): Try[Unit] = Try {
     log.debug(s"[$id] starting with setting permissions $permissions for file ${ depositDir.getName }")
     if (isOnPosixFileSystem(depositDir)) {
       Files.walkFileTree(depositDir.toPath, RecursiveFilePermissionVisitor(permissions, id))
       log.info(s"[$id] Successfully given $permissions to ${ depositDir.getName }")
     }
     else throw new UnsupportedOperationException("Not on a POSIX supported file system")
+  }.doIfFailure {
+    case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
   }
 
   case class RecursiveFilePermissionVisitor(permissions: String,
@@ -62,4 +63,5 @@ object FilesPermission {
       else FileVisitResult.TERMINATE
     }
   }
+  private def isOnPosixFileSystem(file: JFile): Boolean = Try(Files.getPosixFilePermissions(file.toPath)).fold(_ => false, _ => true)
 }
