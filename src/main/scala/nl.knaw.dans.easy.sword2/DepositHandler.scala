@@ -110,7 +110,7 @@ object DepositHandler extends BagValidationExtension {
     extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
       case Success(receipt) =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
-      case f: Failure =>
+      case f@ Failure(_) =>
         FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
     }
   }
@@ -170,7 +170,7 @@ object DepositHandler extends BagValidationExtension {
       _ <- checkBagVirtualValidity(bagDir)
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
-      _ <- props.setBagName(File(bagDir.getPath))
+      _ <- props.setBagName(bagDir)
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
