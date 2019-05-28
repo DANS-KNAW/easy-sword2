@@ -333,10 +333,11 @@ object DepositHandler extends BagValidationExtension {
 
   def checkDepositIsInDraft(id: DepositId)(implicit settings: Settings): Try[Unit] = {
     DepositProperties(id)
-      .flatMap(_.getState).flatMap {
-      case State.DRAFT => Success(())
-      case _ => Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
-    }
+      .flatMap(_.getState)
+      .flatMap {
+        case State.DRAFT => Success(())
+        case _ => Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
+      }
   }
 
   def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {
