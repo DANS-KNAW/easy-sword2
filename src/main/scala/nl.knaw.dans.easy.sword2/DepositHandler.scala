@@ -127,11 +127,11 @@ object DepositHandler extends BagValidationExtension {
     } yield dr
   }
 
-  def genericErrorMessage(implicit settings: Settings, id: DepositId): String = {
+  def genericErrorMessage(msg: String)(implicit settings: Settings, id: DepositId): String = {
     val mailaddress = settings.supportMailAddress
     val timestamp = DateTime.now(DateTimeZone.UTC).toString
 
-    s"""The server encountered an unexpected condition.
+    s"""The server encountered an unexpected condition: $msg.
        |Please contact the SWORD service administrator at $mailaddress.
        |The error occurred at $timestamp. Your 'DepositID' is $id.
     """.stripMargin
@@ -207,7 +207,7 @@ object DepositHandler extends BagValidationExtension {
         log.error(s"[$id] Internal failure in deposit service", e)
         for {
           props <- DepositProperties(id)
-          _ <- props.setState(FAILED, genericErrorMessage)
+          _ <- props.setState(FAILED, genericErrorMessage(e.getMessage))
           _ <- props.save()
           _ <- cleanupFiles(depositDir, FAILED)
         } yield ()
