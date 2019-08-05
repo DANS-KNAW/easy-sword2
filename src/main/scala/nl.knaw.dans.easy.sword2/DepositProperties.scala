@@ -84,8 +84,8 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     this
   }
 
-  def setDepositSource(source: String): Try[DepositProperties] = Try {
-    properties.setProperty("deposit.source", source)
+  def setDepositOrigin(origin: String): Try[DepositProperties] = Try {
+    properties.setProperty("deposit.origin", origin)
     this
   }
 

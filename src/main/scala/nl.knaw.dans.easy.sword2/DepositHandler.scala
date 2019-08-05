@@ -171,7 +171,7 @@ object DepositHandler extends BagValidationExtension {
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir)
-      _ <- props.setDepositSource("SWORD2")
+      _ <- props.setDepositOrigin("SWORD2")
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
