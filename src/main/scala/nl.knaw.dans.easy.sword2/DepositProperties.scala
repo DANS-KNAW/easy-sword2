@@ -84,6 +84,11 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     this
   }
 
+  def setDepositOrigin(origin: String): Try[DepositProperties] = Try {
+    properties.setProperty("deposit.origin", origin)
+    this
+  }
+
   /**
    * Returns the state when the properties were loaded.
    *
