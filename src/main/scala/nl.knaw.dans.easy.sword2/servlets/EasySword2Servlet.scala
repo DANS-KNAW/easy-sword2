@@ -21,7 +21,7 @@ import nl.knaw.dans.lib.logging.servlet._
 
 class EasySword2Servlet(version: String) extends ScalatraServlet
   with ServletLogger
-  with PlainLogFormatter
+  with MaskedLogFormatter
   with DebugEnhancedLogging {
 
   get("/") {
