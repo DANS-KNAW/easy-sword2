@@ -19,6 +19,7 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
+import nl.knaw.dans.easy.sword2.DepositProperties._
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -37,8 +38,6 @@ import scala.util.{ Failure, Success, Try }
  */
 class DepositProperties(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
 
-  import DepositProperties._
-
   trace(depositId, depositorId)
 
   private val (properties, modified) = {
@@ -54,6 +53,7 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     else {
       props.setProperty("bag-store.bag-id", depositId)
       props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
+      props.setProperty("deposit.origin", "SWORD2")
     }
     debug(s"Using deposit.properties at $file")
     depositorId.foreach(props.setProperty("depositor.userId", _))
@@ -81,11 +81,6 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
 
   def setBagName(bagDir: File): Try[DepositProperties] = Try {
     properties.setProperty("bag-store.bag-name", bagDir.getName)
-    this
-  }
-
-  def setDepositOrigin(origin: String): Try[DepositProperties] = Try {
-    properties.setProperty("deposit.origin", origin)
     this
   }
 

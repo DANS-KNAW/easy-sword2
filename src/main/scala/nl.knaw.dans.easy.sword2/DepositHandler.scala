@@ -22,7 +22,6 @@ import java.nio.file._
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
 
-import better.files.File
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
 import gov.loc.repository.bagit.utilities.SimpleResult
@@ -171,7 +170,6 @@ object DepositHandler extends BagValidationExtension {
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir)
-      _ <- props.setDepositOrigin("SWORD2")
       _ <- props.save()
       _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
