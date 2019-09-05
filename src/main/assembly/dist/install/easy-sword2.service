@@ -3,6 +3,7 @@ Description=EASY SWORD v2 Deposit Service
 
 [Service]
 ExecStart=/bin/java \
+ $INITIAL_HEAP_SIZE \
  -Dlogback.configurationFile=/etc/opt/dans.knaw.nl/easy-sword2/logback-service.xml \
  -Dapp.home=/opt/dans.knaw.nl/easy-sword2 \
  -Dorg.scalatra.environment="production" \
