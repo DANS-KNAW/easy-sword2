@@ -45,7 +45,8 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         null,
         Map(),
         90000,
-        null)
+        null,
+        DepositPropertiesMode.FILE)
     }
   }
 }

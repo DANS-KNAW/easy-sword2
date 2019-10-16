@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import javax.servlet.ServletException
+import nl.knaw.dans.easy.sword2.DepositPropertiesMode.DepositPropertiesMode
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import nl.knaw.dans.lib.string.StringExtensions
@@ -85,6 +86,9 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }
     .toMap
   val depositPropertiesUrl: URI = new URI(configuration.properties.getString("easy-deposit-properties.url"))
+  val depositPropertiesMode: DepositPropertiesMode = DepositPropertiesMode
+    .fromString(configuration.properties.getString("easy-deposit-properties.mode"))
+    .getOrElse(DepositPropertiesMode.FILE)
 
   val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
   val version = configuration.version

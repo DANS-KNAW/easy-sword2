@@ -45,7 +45,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     sample = SampleTestDataEnabled(new File("sample-dummy"), Map.empty),
     cleanup = Map.empty,
     rescheduleDelaySeconds = 0,
-    depositPropertiesUrl = null
+    depositPropertiesUrl = null,
+    depositPropertiesMode = DepositPropertiesMode.FILE
   )
 
   private val ldapContext = mock[LdapContext]
