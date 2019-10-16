@@ -29,126 +29,33 @@ import org.joda.time.{ DateTime, DateTimeZone }
 import scala.util.{ Failure, Success, Try }
 
 /**
- * Loads the current `deposit.properties` for the specified deposit. This class is not thread-safe, so it is assumed
- * that it is used from one processing thread only (at least per deposit). It looks for the deposit first in the
- * temporary download directory, and if not found there, in the ingest-flow inbox.
- *
- * @param depositId the deposit of which to load the properties
- * @param settings  application settings
+ * Interface to the deposit properties. These properties may be saved to a deposit.properties file, to an easy-deposit-properties micro-service or both.
  */
-class DepositProperties(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings) extends DebugEnhancedLogging {
+trait DepositProperties {
 
-  trace(depositId, depositorId)
+  def save(): Try[Unit]
 
-  private val (properties, modified) = {
-    val props = new PropertiesConfiguration()
-    props.setDelimiterParsingDisabled(true)
-    val depositInTemp = settings.tempDir.toPath.resolve(depositId)
-    val depositInInbox = settings.depositRootDir.toPath.resolve(depositId)
-    val file = if (Files.exists(depositInTemp)) depositInTemp.resolve(FILENAME)
-               else if (Files.exists(depositInInbox)) depositInInbox.resolve(FILENAME)
-               else depositInTemp.resolve(FILENAME)
-    props.setFile(file.toFile)
-    if (Files.exists(file)) props.load(file.toFile)
-    else {
-      props.setProperty("bag-store.bag-id", depositId)
-      props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
-      props.setProperty("deposit.origin", "SWORD2")
-    }
-    debug(s"Using deposit.properties at $file")
-    depositorId.foreach(props.setProperty("depositor.userId", _))
-    (props, if (Files.exists(file)) Some(Files.getLastModifiedTime(file))
-            else None)
-  }
+  def exists: Boolean
 
-  /**
-   * Saves the deposit file to disk.
-   *
-   * @return
-   */
-  def save(): Try[Unit] = Try {
-    debug("Saving deposit.properties")
-    properties.save()
-  }
+  def setState(state: State, descr: String): Try[DepositProperties]
 
-  def exists: Boolean = properties.getFile.exists
+  def setBagName(bagDir: File): Try[DepositProperties]
 
-  def setState(state: State, descr: String): Try[DepositProperties] = Try {
-    properties.setProperty("state.label", state)
-    properties.setProperty("state.description", descr)
-    this
-  }
+  def getState: Try[State]
 
-  def setBagName(bagDir: File): Try[DepositProperties] = Try {
-    properties.setProperty("bag-store.bag-name", bagDir.getName)
-    this
-  }
+  def setClientMessageContentType(contentType: String): Try[DepositProperties]
 
-  /**
-   * Returns the state when the properties were loaded.
-   *
-   * @return
-   */
-  def getState: Try[State] = {
-    Option(properties.getProperty("state.label"))
-      .map(_.toString)
-      .map(State.withName)
-      .map(Success(_))
-      .getOrElse(Failure(new IllegalStateException("Deposit without state")))
-  }
+  def removeClientMessageContentType(): Try[DepositProperties]
 
-  def setClientMessageContentType(contentType: String): Try[DepositProperties] = Try {
-    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, contentType)
-    this
-  }
+  def getClientMessageContentType: Try[String]
 
-  def removeClientMessageContentType(): Try[DepositProperties] = Try {
-    properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY)
-    properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD) // Also clean up old contentType property if still found
-    this
-  }
+  def getStateDescription: Try[String]
 
-  def getClientMessageContentType: Try[String] = {
-    Seq(properties.getString(CLIENT_MESSAGE_CONTENT_TYPE_KEY),
-      properties.getString(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD)) // Also look for old contentType to support pre-upgrade deposits
-      .find(StringUtils.isNotBlank)
-      .map(Success(_))
-      .getOrElse(
-        Failure(new IllegalStateException(s"Deposit without $CLIENT_MESSAGE_CONTENT_TYPE_KEY")))
-  }
+  def getDepositorId: Try[String]
 
-  /**
-   * Returns the state description when the properties were loaded.
-   *
-   * @return
-   */
-  def getStateDescription: Try[String] = {
-    Option(properties.getProperty("state.description"))
-      .map(_.toString)
-      .map(Success(_))
-      .getOrElse(Failure(new IllegalStateException("Deposit without state")))
-  }
+  def getDoi: Option[String]
 
-  def getDepositorId: Try[String] = {
-    Option(properties.getProperty("depositor.userId"))
-      .map(_.toString)
-      .map(Success(_))
-      .getOrElse(Failure(new IllegalStateException("Deposit without depositor")))
-  }
-
-  def getDoi: Option[String] = {
-    Option(properties.getProperty("identifier.doi"))
-      .map(_.toString)
-  }
-
-  /**
-   * Returns the last modified timestamp when the properties were loaded.
-   *
-   * @return
-   */
-  def getLastModifiedTimestamp: Option[FileTime] = {
-    modified
-  }
+  def getLastModifiedTimestamp: Option[FileTime]
 }
 
 object DepositProperties {
@@ -157,6 +64,6 @@ object DepositProperties {
   val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
 
   def apply(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings): Try[DepositProperties] = Try {
-    new DepositProperties(depositId, depositorId)
+    new DepositPropertiesFile(depositId, depositorId)
   }
 }
