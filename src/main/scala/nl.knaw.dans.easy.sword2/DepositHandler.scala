@@ -106,12 +106,7 @@ object DepositHandler extends BagValidationExtension {
     // to ensure all files in deposit are accessible for the deposit group, the method setFilePermissions is always
     // executed (regardless of whether extractAndValidatePayloadAndGetDepositReceipt was successful or not).
     // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
-    extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir) match {
-      case Success(receipt) =>
-        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).map(_ => receipt)
-      case f@ Failure(_) =>
-        FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id).flatMap(_ => f)
-    }
+    extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
   }
 
   private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
@@ -120,7 +115,10 @@ object DepositHandler extends BagValidationExtension {
            else Success(())
       _ <- copyPayloadToFile(deposit, payload)
       _ <- doesHashMatch(payload, deposit.getMd5)(id)
+      _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
       _ <- handleDepositAsync(deposit)
+      // Attention: do not access the deposit after this call. handleDepositAsync will finalize the deposit on a different thread than this one and so we cannot know if the
+      // deposit is still in the easy-sword2 temp directory.
       dr = createDepositReceipt(settings, id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
