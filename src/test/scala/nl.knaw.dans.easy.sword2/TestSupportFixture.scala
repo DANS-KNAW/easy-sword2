@@ -44,7 +44,8 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         9090000L,
         null,
         Map(),
-        90000)
+        90000,
+        null)
     }
   }
 }

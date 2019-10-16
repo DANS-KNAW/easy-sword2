@@ -53,8 +53,9 @@ package object sword2 {
                       marginDiskSpace: Long,
                       sample: SampleTestDataSettings,
                       cleanup: Map[State, Boolean],
-                      rescheduleDelaySeconds: Int
-                     )
+                      rescheduleDelaySeconds: Int,
+                      depositPropertiesUrl: URI)
+
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
 

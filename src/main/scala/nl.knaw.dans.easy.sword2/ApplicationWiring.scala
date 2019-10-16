@@ -84,6 +84,7 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
     .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }
     .toMap
+  val depositPropertiesUrl: URI = new URI(configuration.properties.getString("easy-deposit-properties.url"))
 
   val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
   val version = configuration.version
