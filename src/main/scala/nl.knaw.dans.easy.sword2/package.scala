@@ -55,7 +55,7 @@ package object sword2 {
                       sample: SampleTestDataSettings,
                       cleanup: Map[State, Boolean],
                       rescheduleDelaySeconds: Int,
-                      depositPropertiesUrl: URI,
+                      depositPropertiesClient: GraphQlClient,
                       depositPropertiesMode: DepositPropertiesMode)
 
 

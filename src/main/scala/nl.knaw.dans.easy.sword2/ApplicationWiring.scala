@@ -24,6 +24,7 @@ import nl.knaw.dans.easy.sword2.DepositPropertiesMode.DepositPropertiesMode
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import nl.knaw.dans.lib.string.StringExtensions
+import scalaj.http.{ BaseHttp, Http }
 
 import scala.collection.JavaConverters._
 import scala.util.{ Success, Try }
@@ -85,10 +86,19 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
     .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
     .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }
     .toMap
-  val depositPropertiesUrl: URI = new URI(configuration.properties.getString("easy-deposit-properties.url"))
+
   val depositPropertiesMode: DepositPropertiesMode = DepositPropertiesMode
     .fromString(configuration.properties.getString("easy-deposit-properties.mode"))
     .getOrElse(DepositPropertiesMode.FILE)
+  val depositPropertiesClient: GraphQlClient = {
+    implicit val baseHttp: BaseHttp = Http
+    new GraphQlClient(
+      url = new URI(configuration.properties.getString("easy-deposit-properties.url")),
+      credentials = Option((
+        configuration.properties.getString("easy-deposit-properties.user"),
+          configuration.properties.getString("easy-deposit-properties.password")))
+    )
+  }
 
   val rescheduleDelaySeconds: Int = configuration.properties.getInt("reschedule-delay-seconds")
   val version = configuration.version

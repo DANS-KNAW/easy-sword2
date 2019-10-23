@@ -43,7 +43,7 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
     sample = app.wiring.sampleSettings,
     cleanup = app.wiring.cleanup,
     rescheduleDelaySeconds = app.wiring.rescheduleDelaySeconds,
-    depositPropertiesUrl = app.wiring.depositPropertiesUrl,
+    depositPropertiesClient = app.wiring.depositPropertiesClient,
     depositPropertiesMode = app.wiring.depositPropertiesMode
   )
   context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)

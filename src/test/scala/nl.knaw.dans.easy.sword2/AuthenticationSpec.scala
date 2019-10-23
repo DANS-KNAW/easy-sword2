@@ -45,7 +45,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     sample = SampleTestDataEnabled(new File("sample-dummy"), Map.empty),
     cleanup = Map.empty,
     rescheduleDelaySeconds = 0,
-    depositPropertiesUrl = null,
+    depositPropertiesClient = null,
     depositPropertiesMode = DepositPropertiesMode.FILE
   )
 

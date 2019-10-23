@@ -16,43 +16,55 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.File
-import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
-import nl.knaw.dans.easy.sword2.DepositProperties.FILENAME
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.util.Try
+import org.json4s.JsonAST.{ JArray, JObject, JString }
+import org.json4s.JsonDSL._
+import org.json4s.native.{ JsonMethods, Serialization }
+import org.json4s.{ DefaultFormats, Formats, JValue }
 
-class DepositPropertiesService(depositId: DepositId, depositorId: Option[String] = None)(implicit settings: Settings) extends DepositProperties with DebugEnhancedLogging {
+
+class DepositPropertiesService(depositId: DepositId, depositorId: Option[String] = None)(implicit depositPropertiesClient: GraphQlClient) extends DepositProperties with DebugEnhancedLogging {
   trace(depositId, depositorId)
 
-  private val (properties, modified) = {
-    val props = new PropertiesConfiguration()
-    props.setDelimiterParsingDisabled(true)
-    val depositInTemp = settings.tempDir.toPath.resolve(depositId)
-    val depositInInbox = settings.depositRootDir.toPath.resolve(depositId)
-    val file = if (Files.exists(depositInTemp)) depositInTemp.resolve(FILENAME)
-               else if (Files.exists(depositInInbox)) depositInInbox.resolve(FILENAME)
-               else depositInTemp.resolve(FILENAME)
-    props.setFile(file.toFile)
-    if (Files.exists(file)) props.load(file.toFile)
-    else {
-      props.setProperty("bag-store.bag-id", depositId)
-      props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
-      props.setProperty("deposit.origin", "SWORD2")
-    }
-    debug(s"Using deposit.properties at $file")
-    depositorId.foreach(props.setProperty("depositor.userId", _))
-    (props, if (Files.exists(file)) Some(Files.getLastModifiedTime(file))
-            else None)
+  val query =
+    """
+      |query GetDeposit($id: UUID!) {
+      |  deposit(id:$id) {
+      |    depositId
+      |    creationTimestamp
+      |    id
+      |    state {
+      |      label
+      |      description
+      |    }
+      |    lastModified
+      |  }
+      |}
+      |""".stripMargin.stripLineEnd
+
+
+  val result = depositPropertiesClient.doQuery(query, Map("id" -> depositId))
+
+  result match {
+    case Right(JObject(List((_, JObject(properties))))) =>
+      val propMap = properties.toMap
+      println(propMap.get("depositId"))
+
+
+    case Right(other) => println(s"Something else??: $other")
+    case Left(errors) => print(errors)
   }
 
 
-
+//  private val (properties, modified) = {
+//    val props = new PropertiesConfiguration()
+//  }
 
   override def save(): Try[Unit] = ???
 
