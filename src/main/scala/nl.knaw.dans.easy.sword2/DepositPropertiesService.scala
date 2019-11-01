@@ -23,16 +23,19 @@ import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
 
 import scala.util.Try
-import org.json4s.JsonAST.{ JArray, JObject, JString }
 import org.json4s.JsonDSL._
-import org.json4s.native.{ JsonMethods, Serialization }
-import org.json4s.{ DefaultFormats, Formats, JValue }
+import org.json4s.ext.UUIDSerializer
+import org.json4s._
+
+
+case class State(label: String, description: String)
+case class Deposit(depositId: String, creationTimeStamp: String, id: String, state: State, lastModified: String)
 
 
 class DepositPropertiesService(depositId: DepositId, depositorId: Option[String] = None)(implicit depositPropertiesClient: GraphQlClient) extends DepositProperties with DebugEnhancedLogging {
   trace(depositId, depositorId)
 
-  val query =
+  private val query =
     """
       |query GetDeposit($id: UUID!) {
       |  deposit(id:$id) {
@@ -48,18 +51,34 @@ class DepositPropertiesService(depositId: DepositId, depositorId: Option[String]
       |}
       |""".stripMargin.stripLineEnd
 
+  /*
+      deposit: {
+        depositId: "...",
+        creationTimestamp: "...",
+        id: "...",
+        state: {
+          label: : "...",
+          description: : "...",
+        },
+        lastModified: : "..."
+      }
+   */
 
-  val result = depositPropertiesClient.doQuery(query, Map("id" -> depositId))
+  private implicit val jsonFormats: Formats = new DefaultFormats {} + UUIDSerializer
+  private val result = depositPropertiesClient.doQuery(query, Map("id" -> depositId))
 
-  result match {
-    case Right(JObject(List((_, JObject(properties))))) =>
-      val propMap = properties.toMap
-      println(propMap.get("depositId"))
+  result.map(_.extract[Deposit])
 
 
-    case Right(other) => println(s"Something else??: $other")
-    case Left(errors) => print(errors)
-  }
+
+
+
+
+
+
+
+
+
 
 
 //  private val (properties, modified) = {
