@@ -41,8 +41,6 @@
             <outputDirectory>bin</outputDirectory>
             <includes>
                 <include>easy-sword2</include>
-                <include>easy-sword2-service-start</include>
-                <include>easy-sword2-initd.sh</include>
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
