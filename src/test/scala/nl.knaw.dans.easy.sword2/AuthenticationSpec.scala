@@ -33,6 +33,7 @@ import scala.util.{ Failure, Success, Try }
 class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with OneInstancePerTest {
   implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
+    archivedDepositRootDir = Option(new File("dummy")),
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
     serviceBaseUrl = "dummy",
