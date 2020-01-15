@@ -43,11 +43,12 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
   private val (properties, modified) = {
     val props = new PropertiesConfiguration()
     props.setDelimiterParsingDisabled(true)
-    val depositInTemp = settings.tempDir.toPath.resolve(depositId)
-    val depositInInbox = settings.depositRootDir.toPath.resolve(depositId)
-    val file = if (Files.exists(depositInTemp)) depositInTemp.resolve(FILENAME)
-               else if (Files.exists(depositInInbox)) depositInInbox.resolve(FILENAME)
-               else depositInTemp.resolve(FILENAME)
+
+    val file = (settings.tempDir #:: settings.depositRootDir #:: settings.archivedDepositRootDir.toStream)
+      .map(_.toPath.resolve(depositId))
+      .collectFirst { case path if Files.exists(path) => path.resolve(FILENAME) }
+      .getOrElse { settings.tempDir.toPath.resolve(depositId).resolve(FILENAME) }
+
     props.setFile(file.toFile)
     if (Files.exists(file)) props.load(file.toFile)
     else {

@@ -31,6 +31,7 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
   // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
   val settings = Settings(
     depositRootDir = app.wiring.depositRootDir,
+    archivedDepositRootDir = app.wiring.archivedDepositRootDir,
     depositPermissions = app.wiring.depositPermissions,
     tempDir = app.wiring.tempDir,
     serviceBaseUrl = app.wiring.baseUrl,

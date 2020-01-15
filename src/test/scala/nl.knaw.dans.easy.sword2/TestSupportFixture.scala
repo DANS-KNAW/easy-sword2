@@ -33,6 +33,7 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
   def createMinimalSettings(bag: File): SwordConfig = {
     new SwordConfig {
       settings = Settings(depositRootDir = bag.toJava,
+        archivedDepositRootDir = Option.empty,
         "rwxrwxrwx",
         new java.io.File("dummy"),
         "",
@@ -44,7 +45,8 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         9090000L,
         null,
         Map(),
-        90000)
+        90000,
+      )
     }
   }
 }

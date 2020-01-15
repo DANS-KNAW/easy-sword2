@@ -42,6 +42,7 @@ package object sword2 {
   case object SampleTestDataDisabled extends SampleTestDataSettings
 
   case class Settings(depositRootDir: File,
+                      archivedDepositRootDir: Option[File],
                       depositPermissions: String,
                       tempDir: File,
                       serviceBaseUrl: String, // TODO: refactor to URL?
