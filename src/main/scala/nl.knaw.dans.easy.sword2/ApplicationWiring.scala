@@ -30,7 +30,7 @@ import scala.util.{ Success, Try }
 class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLogging {
   val depositRootDir = new File(configuration.properties.getString("deposits.rootdir"))
   if (!depositRootDir.canRead) throw new ServletException("Cannot read deposits dir")
-  val archivedDepositRootDir: Option[File] = Option(configuration.properties.getString("deposits.archived-rootdir")).map(new File(_)).filter(d => d.exists() && d.canRead)
+  val archivedDepositRootDir: Option[File] = configuration.properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead)
   val depositPermissions = configuration.properties.getString("deposits.permissions")
   val tempDir = new File(configuration.properties.getString("tempdir"))
   if (!tempDir.canRead) throw new ServletException("Cannot read tempdir")
