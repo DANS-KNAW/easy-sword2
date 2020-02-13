@@ -11,7 +11,10 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-EASY SWORD v2 Deposit Service
+EASY SWORD v2 Deposit Service.
+
+See the [SWORD2 documentation pages](http://swordapp.org/sword-v2/sword-v2-specifications/
+) for documentation of the HTTP interface.
 
 
 ARGUMENTS
