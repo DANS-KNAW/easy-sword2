@@ -114,6 +114,7 @@
         <dependency>
             <groupId>gov.loc</groupId>
             <artifactId>bagit</artifactId>
+            <version>4.12.3</version>
         </dependency>
         <dependency>
             <groupId>net.lingala.zip4j</groupId>
