@@ -22,7 +22,7 @@ import java.nio.file.{ Files, NoSuchFileException, Path, Paths }
 import java.security.MessageDigest
 import java.util.UUID
 
-import net.lingala.zip4j.core.ZipFile
+import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.model.ZipParameters
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.error._
@@ -109,9 +109,7 @@ object SampleTestData extends DebugEnhancedLogging {
     val extractSampleDir = targetDir.resolve("unzipped")
     debug(s"extracting $zip to $extractSampleDir")
 
-    new ZipFile(zip.toString) {
-      setFileNameCharset(StandardCharsets.UTF_8.name)
-    }.extractAll(extractSampleDir.toString)
+    new ZipFile(zip.toString).extractAll(extractSampleDir.toString)
 
     if (logger.underlying.isDebugEnabled)
       debug(s"extracted $zip into $extractSampleDir: ${ extractSampleDir.toFile.listFilesSafe.mkString("[", ", ", "]") }")
@@ -247,9 +245,7 @@ object SampleTestData extends DebugEnhancedLogging {
 
     Files.deleteIfExists(target)
 
-    val zip = new ZipFile(target.toFile) {
-      setFileNameCharset(StandardCharsets.UTF_8.name)
-    }
+    val zip = new ZipFile(target.toFile)
     zip.addFolder(bag.toFile, new ZipParameters)
   }
 

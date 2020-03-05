@@ -26,6 +26,6 @@ class EasySword2Servlet(version: String) extends ScalatraServlet
 
   get("/") {
     contentType = "text/plain"
-    Ok(s"EASY SWORD2 is running v$version.").logResponse
+    logResponse(Ok(s"EASY SWORD2 is running v$version."))
   }
 }
