@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import java.net.URI
 import java.util
+import java.util.Base64
 
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
@@ -42,7 +43,7 @@ object Authentication {
     val mac = Mac.getInstance("HmacSHA1")
     mac.init(signingKey)
     val rawHmac = mac.doFinal(password.getBytes())
-    new sun.misc.BASE64Encoder().encode(rawHmac)
+    Base64.getEncoder().encodeToString(rawHmac)
   }
 
   @throws(classOf[SwordError])

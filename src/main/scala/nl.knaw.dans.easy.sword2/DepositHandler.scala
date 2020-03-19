@@ -28,7 +28,7 @@ import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
-import net.lingala.zip4j.core.ZipFile
+import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
