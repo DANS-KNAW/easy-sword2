@@ -304,12 +304,11 @@ object DepositHandler extends BagValidationExtension {
           })
         case "application/octet-stream" =>
           val mergedZip = new JFile(depositDir, "merged.zip")
-          checkDiskspaceForMerging(files).map {
-            _ =>
-              MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-                .map(_ => checkAvailableDiskspace(mergedZip))
-                .map(_ => extract(mergedZip, depositDir.getPath)).get
-          }.get
+          (for {
+            _ <- checkDiskspaceForMerging(files)
+            _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
+            _ <- checkAvailableDiskspace(mergedZip)
+          } yield extract(mergedZip, depositDir.getPath)).get
         case _ =>
           throw InvalidDepositException(id, s"Invalid content type: $mimeType")
       }
