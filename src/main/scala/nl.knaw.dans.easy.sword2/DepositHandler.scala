@@ -17,7 +17,6 @@ package nl.knaw.dans.easy.sword2
 
 import java.io.{ IOException, File => JFile }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
-import java.nio.charset.{ Charset, StandardCharsets }
 import java.nio.file._
 import java.util.regex.Pattern
 import java.util.{ Collections, NoSuchElementException }
@@ -28,9 +27,6 @@ import gov.loc.repository.bagit.utilities.SimpleResult
 import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
-import net.lingala.zip4j.ZipFile
-import net.lingala.zip4j.exception.ZipException
-import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.easy.sword2.State._
 import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
 import org.apache.abdera.i18n.iri.IRI
@@ -45,7 +41,6 @@ import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
 import scala.collection.JavaConverters._
-import scala.collection.convert.Wrappers.JListWrapper
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.control.NonFatal
