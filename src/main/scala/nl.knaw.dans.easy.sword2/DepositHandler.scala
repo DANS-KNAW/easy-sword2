@@ -161,7 +161,7 @@ object DepositHandler extends BagValidationExtension {
       props <- DepositProperties(id)
       _ <- props.setState(State.FINALIZING, "Finalizing deposit")
       _ <- props.save()
-      _ <- extractBag(depositDir, mimetype)
+      _ <- BagExtractor.extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
@@ -237,88 +237,6 @@ object DepositHandler extends BagValidationExtension {
       log.debug(s"[$id] removing $file")
       deleteQuietly(file)
     }
-  }
-
-  private def extractBag(depositDir: JFile, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[JFile] = {
-    def checkAvailableDiskspace(file: JFile): Try[Unit] = Try {
-      val zipFile = new ZipFile(file.getPath)
-      val headers = zipFile.getFileHeaders.asScala.asInstanceOf[JListWrapper[FileHeader]] // Look out! Not sure how robust this cast is!
-      val uncompressedSize = headers.map(_.getUncompressedSize).sum
-      val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
-      val required = uncompressedSize + settings.marginDiskSpace
-      if (log.isDebugEnabled)
-        log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
-      if (uncompressedSize + settings.marginDiskSpace > availableDiskSize) {
-        val diskSizeShort = uncompressedSize + settings.marginDiskSpace - availableDiskSize
-        throw NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort.")
-      }
-    }
-
-    def checkDiskspaceForMerging(files: Seq[JFile]): Try[Unit] = {
-      val sumOfChunks = files.map(_.length).sum
-      files.headOption.map {
-        f =>
-          val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
-          val required = sumOfChunks + settings.marginDiskSpace
-          log.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Sum of chunk sizes: $sumOfChunks bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
-          if (sumOfChunks + settings.marginDiskSpace > availableDiskSize) {
-            val diskSizeShort = sumOfChunks + settings.marginDiskSpace - availableDiskSize
-            Failure(NotEnoughDiskSpaceException(id, s"Required disk space for concatenating: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
-          }
-          else Success(())
-      }.getOrElse(Success(()))
-    }
-
-    def extract(file: JFile, outputPath: String): Unit = {
-      implicit val charset: Charset = StandardCharsets.UTF_8
-      import better.files._
-      file.toScala unzipTo outputPath.toFile
-    }
-
-    def getSequenceNumber(f: JFile): Int = {
-      try {
-        val seqNumber = f.getName
-          .split('.')
-          .lastOption
-          .getOrElse(throw InvalidDepositException(id, s"Partial file ${ f.getName } has no extension. It should be a positive sequence number."))
-          .toInt
-
-        if (seqNumber > 0) seqNumber
-        else throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
-      }
-      catch {
-        case _: NumberFormatException =>
-          throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. Should be a positive sequence number.")
-      }
-    }
-
-    def extractZip(files: Array[JFile]): Try[Unit] = Try {
-      for (file <- files) {
-        if (!file.isFile)
-          throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
-        checkAvailableDiskspace(file)
-          .map(_ => extract(file, depositDir.getPath))
-          .unsafeGetOrThrow
-      }
-    }
-
-    def extractOctetStream(files: Array[JFile]): Try[Unit] = {
-      val mergedZip = new JFile(depositDir, "merged.zip")
-      for {
-        _ <- checkDiskspaceForMerging(files)
-        _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-        _ <- checkAvailableDiskspace(mergedZip)
-      } yield extract(mergedZip, depositDir.getPath)
-    }
-
-    lazy val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
-    (mimeType match {
-      case "application/zip" => extractZip(files)
-      case "application/octet-stream" => extractOctetStream(files)
-      case _ => Failure(InvalidDepositException(id, s"Invalid content type: $mimeType"))
-    })
-      .map(_ => depositDir)
-      .recoverWith { case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }")) }
   }
 
   private def getBagDir(depositDir: JFile): Try[JFile] = Try {
