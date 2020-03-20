@@ -292,30 +292,33 @@ object DepositHandler extends BagValidationExtension {
       }
     }
 
-    Try {
-      val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
-      mimeType match {
-        case "application/zip" =>
-          files.foreach(file => {
-            if (!file.isFile)
-              throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
-            checkAvailableDiskspace(file).get
-            extract(file, depositDir.getPath)
-          })
-        case "application/octet-stream" =>
-          val mergedZip = new JFile(depositDir, "merged.zip")
-          (for {
-            _ <- checkDiskspaceForMerging(files)
-            _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
-            _ <- checkAvailableDiskspace(mergedZip)
-          } yield extract(mergedZip, depositDir.getPath)).get
-        case _ =>
-          throw InvalidDepositException(id, s"Invalid content type: $mimeType")
+    def extractZip(files: Array[JFile]): Try[Unit] = Try {
+      for (file <- files) {
+        if (!file.isFile)
+          throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
+        checkAvailableDiskspace(file)
+          .map(_ => extract(file, depositDir.getPath))
+          .unsafeGetOrThrow
       }
-      depositDir
-    }.recoverWith {
-      case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }"))
     }
+
+    def extractOctetStream(files: Array[JFile]): Try[Unit] = {
+      val mergedZip = new JFile(depositDir, "merged.zip")
+      for {
+        _ <- checkDiskspaceForMerging(files)
+        _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
+        _ <- checkAvailableDiskspace(mergedZip)
+      } yield extract(mergedZip, depositDir.getPath)
+    }
+
+    lazy val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
+    (mimeType match {
+      case "application/zip" => extractZip(files)
+      case "application/octet-stream" => extractOctetStream(files)
+      case _ => Failure(InvalidDepositException(id, s"Invalid content type: $mimeType"))
+    })
+      .map(_ => depositDir)
+      .recoverWith { case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }")) }
   }
 
   private def getBagDir(depositDir: JFile): Try[JFile] = Try {
