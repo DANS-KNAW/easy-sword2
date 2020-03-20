@@ -171,36 +171,46 @@ object DepositHandler extends BagValidationExtension {
       _ <- moveBagToStorage(depositDir, storageDir)
     } yield ()
 
-    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit")).recover {
-      case InvalidDepositException(_, msg, cause) =>
-        log.error(s"[$id] Invalid deposit: $msg", cause)
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(INVALID, msg)
-          _ <- props.save()
-          _ <- cleanupFiles(depositDir, INVALID)
-        } yield ()
-      case e: NotEnoughDiskSpaceException =>
-        log.warn(s"[$id] ${ e.getMessage }")
-        log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+    result.doIfSuccess(_ => log.info(s"[$id] Done finalizing deposit"))
+      .recoverWith {
+        case e: InvalidDepositException => recoverInvalidDeposit(e, depositDir)
+        case e: NotEnoughDiskSpaceException => recoverNotEnoughDiskSpace(e, mimetype)
+        case NonFatal(e) => recoverNonFatalException(e, depositDir)
+      }
+  }
 
-        // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
-          _ <- props.save()
-        } yield ()
-        Observable.timer(settings.rescheduleDelaySeconds seconds)
-          .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
-      case NonFatal(e) =>
-        log.error(s"[$id] Internal failure in deposit service", e)
-        for {
-          props <- DepositProperties(id)
-          _ <- props.setState(FAILED, genericErrorMessage)
-          _ <- props.save()
-          _ <- cleanupFiles(depositDir, FAILED)
-        } yield ()
-    }
+  private def recoverInvalidDeposit(e: InvalidDepositException, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    log.error(s"[$id] Invalid deposit: ${ e.msg }", e.cause)
+    for {
+      props <- DepositProperties(id)
+      _ <- props.setState(INVALID, e.msg)
+      _ <- props.save()
+      _ <- cleanupFiles(depositDir, INVALID)
+    } yield ()
+  }
+
+  private def recoverNotEnoughDiskSpace(e: NotEnoughDiskSpaceException, mimetype: MimeType)(implicit settings: Settings, id: DepositId) = {
+    log.warn(s"[$id] ${ e.getMessage }")
+    log.info(s"[$id] rescheduling after ${ settings.rescheduleDelaySeconds } seconds, while waiting for more disk space")
+
+    // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
+    for {
+      props <- DepositProperties(id)
+      _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
+      _ <- props.save()
+      _ = Observable.timer(settings.rescheduleDelaySeconds seconds)
+        .subscribe(_ => depositProcessingStream.onNext((id, mimetype)))
+    } yield ()
+  }
+
+  private def recoverNonFatalException(e: Throwable, depositDir: JFile)(implicit settings: Settings, id: DepositId) = {
+    log.error(s"[$id] Internal failure in deposit service", e)
+    for {
+      props <- DepositProperties(id)
+      _ <- props.setState(FAILED, genericErrorMessage)
+      _ <- props.save()
+      _ <- cleanupFiles(depositDir, FAILED)
+    } yield ()
   }
 
   private def cleanupFiles(depositDir: JFile, state: State)(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -289,8 +299,8 @@ object DepositHandler extends BagValidationExtension {
       .collectResults
       .map(_ => ()) // Try map
       .recoverWith {
-      case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "fetch.txt URLs"), e))
-    }
+        case e @ CompositeException(throwables) => Failure(InvalidDepositException(id, formatMessages(throwables.map(_.getMessage), "fetch.txt URLs"), e))
+      }
   }
 
   private def checkUrlValidity(url: String, urlPattern: Pattern)(implicit id: DepositId): Try[Unit] = {
