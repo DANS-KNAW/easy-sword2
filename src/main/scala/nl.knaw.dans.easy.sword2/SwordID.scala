@@ -23,15 +23,12 @@ import scala.util.{ Failure, Success, Try }
 
 object SwordID {
   def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[DepositId] = Try {
-    maybeSlug match {
-      case Some(slug) => slug
-      case None => UUID.randomUUID().toString
-    }
+    maybeSlug.getOrElse { UUID.randomUUID().toString }
   }
 
   def extract(IRI: String): Try[DepositId] = {
     val parts = IRI.split("/")
-    if (parts.length < 1) Failure(new SwordError(404))
+    if (parts.isEmpty) Failure(new SwordError(404))
     else Success(parts.last)
   }
 }

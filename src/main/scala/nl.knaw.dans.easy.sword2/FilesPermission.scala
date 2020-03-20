@@ -20,44 +20,43 @@ import java.nio.file._
 import java.nio.file.attribute.{ BasicFileAttributes, PosixFilePermissions }
 
 import nl.knaw.dans.lib.error._
-import org.slf4j.{ Logger, LoggerFactory }
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.language.postfixOps
 import scala.util.Try
 
-object FilesPermission {
-  val log: Logger = LoggerFactory.getLogger(getClass)
+object FilesPermission extends DebugEnhancedLogging {
 
   def changePermissionsRecursively(depositDir: JFile, permissions: String, id: DepositId): Try[Unit] = Try {
-    log.debug(s"[$id] starting with setting permissions $permissions for file ${ depositDir.getName }")
+    debug(s"[$id] starting with setting permissions $permissions for file ${ depositDir.getName }")
     if (isOnPosixFileSystem(depositDir)) {
       Files.walkFileTree(depositDir.toPath, RecursiveFilePermissionVisitor(permissions, id))
-      log.info(s"[$id] Successfully given $permissions to ${ depositDir.getName }")
+      logger.info(s"[$id] Successfully given $permissions to ${ depositDir.getName }")
     }
     else throw new UnsupportedOperationException("Not on a POSIX supported file system")
   }.doIfFailure {
-    case e: Exception => log.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
+    case e: Exception => logger.error(s"[$id] error while setting filePermissions for deposit: ${ e.getMessage }")
   }
 
   case class RecursiveFilePermissionVisitor(permissions: String,
                                             id: DepositId) extends SimpleFileVisitor[Path] {
     override def visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult = {
-      log.debug(s"[$id] Setting the following permissions $permissions on file $path")
+      debug(s"[$id] Setting the following permissions $permissions on file $path")
       Try {
         Files.setPosixFilePermissions(path, PosixFilePermissions.fromString(permissions))
         FileVisitResult.CONTINUE
       } doIfFailure {
-        case uoe: UnsupportedOperationException => log.error("Not on a POSIX supported file system", uoe)
-        case cce: ClassCastException => log.error("No file permission elements in set", cce)
-        case ioe: IOException => log.error(s"Could not set file permissions on $path", ioe)
-        case se: SecurityException => log.error(s"Not enough privileges to set file permissions on $path", se)
-        case iae: IllegalArgumentException => log.error(s"Incorrect permissions input string: $permissions, could not set permission on $path", iae)
-        case e => log.error(s"Unexpected exception on $path", e)
+        case uoe: UnsupportedOperationException => logger.error("Not on a POSIX supported file system", uoe)
+        case cce: ClassCastException => logger.error("No file permission elements in set", cce)
+        case ioe: IOException => logger.error(s"Could not set file permissions on $path", ioe)
+        case se: SecurityException => logger.error(s"Not enough privileges to set file permissions on $path", se)
+        case iae: IllegalArgumentException => logger.error(s"Incorrect permissions input string: $permissions, could not set permission on $path", iae)
+        case e => logger.error(s"Unexpected exception on $path", e)
       } unsafeGetOrThrow
     }
 
     override def postVisitDirectory(dir: Path, ex: IOException): FileVisitResult = {
-      log.debug(s"[$id] Setting the following permissions $permissions on directory $dir")
+      debug(s"[$id] Setting the following permissions $permissions on directory $dir")
       Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(permissions))
       if (ex == null) FileVisitResult.CONTINUE
       else FileVisitResult.TERMINATE

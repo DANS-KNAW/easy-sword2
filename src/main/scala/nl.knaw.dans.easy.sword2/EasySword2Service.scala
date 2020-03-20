@@ -29,7 +29,7 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
   private val server = new Server(serverPort)
   val context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
   // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
-  val settings = Settings(
+  val settings: Settings = Settings(
     depositRootDir = app.wiring.depositRootDir,
     archivedDepositRootDir = app.wiring.archivedDepositRootDir,
     depositPermissions = app.wiring.depositPermissions,

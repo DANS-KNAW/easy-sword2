@@ -18,30 +18,26 @@ package nl.knaw.dans.easy.sword2
 import java.util
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
+import nl.knaw.dans.lib.error._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
 import scala.util.{ Failure, Success, Try }
 
-class ContainerManagerImpl extends ContainerManager {
+class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
   this: ApplicationSettings =>
 
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
   override def getEntry(editIRI: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    implicit val settings = config.asInstanceOf[SwordConfig].settings
+    implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        val result = for {
-          props <- DepositProperties(id)
-          receipt <- Try {
-            if (props.exists) Some(DepositHandler.createDepositReceipt(settings, id))
-            else None
-          }
-        } yield receipt
-        result match {
-          case Success(maybeReceipt) => maybeReceipt.getOrElse { throw new SwordError(404) }
-          case Failure(e) => throw new SwordError(500)
+        DepositProperties(id) match {
+          case Success(props) if props.exists => DepositHandler.createDepositReceipt(id)
+          case Success(_) => throw new SwordError(404)
+          case Failure(_) => throw new SwordError(500)
         }
       case _ => throw new SwordError(500)
     }
@@ -79,20 +75,27 @@ class ContainerManagerImpl extends ContainerManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    implicit val settings = config.asInstanceOf[SwordConfig].settings
+    implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
       _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
-      _ <- settings.auth match {
-        case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to continue deposit for other user")
-        case _ => Success(())
-      }
-      _ = log.debug(s"[$id] Continued deposit")
+      _ <- authenticate(id, auth)
+      _ = debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
       depositReceipt <- handleDeposit(deposit)(settings, id)
-    } yield (id, depositReceipt)
+      _ = logger.info(s"[$id] Sending deposit receipt")
+    } yield depositReceipt
 
-    result.getOrThrow
+    result
+      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
+      .unsafeGetOrThrow
+  }
+
+  private def authenticate(id: DepositId, auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
+    settings.auth match {
+      case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to continue deposit for other user")
+      case _ => Success(())
+    }
   }
 
   @throws(classOf[SwordError])

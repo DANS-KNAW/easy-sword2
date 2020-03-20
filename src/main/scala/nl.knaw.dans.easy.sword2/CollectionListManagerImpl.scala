@@ -20,21 +20,18 @@ import org.apache.abdera.i18n.iri.IRI
 import org.apache.abdera.model.{ Entry, Feed }
 import org.swordapp.server._
 
-import scala.util.Success
-
 class CollectionListManagerImpl extends CollectionListManager {
 
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   @throws(classOf[SwordError])
   def listCollectionContents(collectionIRI: IRI, auth: AuthCredentials, config: SwordConfiguration): Feed = {
-    implicit val settings = config.asInstanceOf[SwordConfig].settings
+    implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     Authentication.checkAuthentication(auth).get
     val abdera = new Abdera
-    SwordID.extract(collectionIRI.toString) match {
-      case Success(id) => abdera.newFeed.addEntry(createEntry(id, abdera))
-      case _ => abdera.newFeed.addEntry(createEmptyEntry(abdera))
-    }
+    SwordID.extract(collectionIRI.toString)
+      .map(id => abdera.newFeed.addEntry(createEntry(id, abdera)))
+      .getOrElse { abdera.newFeed.addEntry(createEmptyEntry(abdera)) }
   }
 
   private def createEntry(id: DepositId, abdera: Abdera): Entry = abdera.newEntry // TODO: implement me

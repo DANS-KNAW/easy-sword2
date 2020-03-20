@@ -19,12 +19,8 @@ import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 
-import nl.knaw.dans.easy.sword2.DepositHandler.log
 import nl.knaw.dans.easy.sword2.State.State
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
-import org.swordapp.server.DepositReceipt
-
-import scala.util.{ Failure, Success, Try }
 
 package object sword2 {
   val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.dateTime()
@@ -66,19 +62,5 @@ package object sword2 {
   }
 
   def isPartOfDeposit(f: File): Boolean = f.getName != DepositProperties.FILENAME
-
-  implicit class TryDepositResultOps(val thisResult: Try[(String, DepositReceipt)]) extends AnyVal {
-
-    def getOrThrow: DepositReceipt = {
-      thisResult match {
-        case Success((id, depositReceipt)) =>
-          log.info(s"[$id] Sending deposit receipt")
-          depositReceipt
-        case Failure(e) =>
-          log.warn(s"Returning error to client: ${ e.getMessage }")
-          throw e
-      }
-    }
-  }
 }
 
