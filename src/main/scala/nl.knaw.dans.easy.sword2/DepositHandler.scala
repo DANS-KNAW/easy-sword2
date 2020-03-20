@@ -169,7 +169,6 @@ object DepositHandler extends BagValidationExtension {
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir)
       _ <- props.save()
-      _ <- SampleTestData.sampleData(id, depositDir, props)(settings.sample)
       _ <- removeZipFiles(depositDir)
       // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
       _ <- props.removeClientMessageContentType()
@@ -184,8 +183,6 @@ object DepositHandler extends BagValidationExtension {
           props <- DepositProperties(id)
           _ <- props.setState(INVALID, msg)
           _ <- props.save()
-          // we don't sample in this case, given that the deposit is invalid and we cannot automate
-          // replacing sensitive data
           _ <- cleanupFiles(depositDir, INVALID)
         } yield ()
       case e: NotEnoughDiskSpaceException =>

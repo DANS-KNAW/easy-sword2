@@ -36,11 +36,6 @@ package object sword2 {
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
 
-  sealed abstract class SampleTestDataSettings
-  case class SampleTestDataEnabled(sampleRootDir: File,
-                                   sampleRates: Map[String, Double]) extends SampleTestDataSettings
-  case object SampleTestDataDisabled extends SampleTestDataSettings
-
   case class Settings(depositRootDir: File,
                       archivedDepositRootDir: Option[File],
                       depositPermissions: String,
@@ -52,7 +47,6 @@ package object sword2 {
                       bagStoreSettings: Option[BagStoreSettings],
                       supportMailAddress: String,
                       marginDiskSpace: Long,
-                      sample: SampleTestDataSettings,
                       cleanup: Map[State, Boolean],
                       rescheduleDelaySeconds: Int
                      )

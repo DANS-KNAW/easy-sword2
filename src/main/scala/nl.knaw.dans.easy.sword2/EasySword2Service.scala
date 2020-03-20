@@ -41,7 +41,6 @@ class EasySword2Service(val serverPort: Int, app: EasySword2App) extends DebugEn
     bagStoreSettings = app.wiring.bagStoreSettings,
     supportMailAddress = app.wiring.supportMailAddress,
     marginDiskSpace = app.wiring.marginDiskSpace,
-    sample = app.wiring.sampleSettings,
     cleanup = app.wiring.cleanup,
     rescheduleDelaySeconds = app.wiring.rescheduleDelaySeconds
   )

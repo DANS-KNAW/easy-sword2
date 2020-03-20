@@ -22,7 +22,7 @@ import resource.managed
 
 import scala.io.Source
 
-case class Configuration(version: String, properties: PropertiesConfiguration, sampleRates: PropertiesConfiguration)
+case class Configuration(version: String, properties: PropertiesConfiguration)
 
 object Configuration {
 
@@ -39,10 +39,6 @@ object Configuration {
         // Needed, because we need values with comma's in them, such as LDAP names
         setDelimiterParsingDisabled(true)
         load(cfgPath.resolve("application.properties").toFile)
-      },
-      sampleRates = new PropertiesConfiguration() {
-        setDelimiterParsingDisabled(true)
-        load(cfgPath.resolve("sample-rates.properties").toFile)
       }
     )
   }

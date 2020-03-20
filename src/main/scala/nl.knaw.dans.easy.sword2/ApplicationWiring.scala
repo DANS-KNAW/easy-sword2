@@ -59,28 +59,6 @@ class ApplicationWiring(configuration: Configuration) extends DebugEnhancedLoggi
   val supportMailAddress = configuration.properties.getString("support.mailaddress")
   val marginDiskSpace: Long = configuration.properties.getLong("tempdir.margin-available-diskspace")
 
-  val sampleSettings = if (configuration.properties.getBoolean("sample-data.enabled")) {
-    val sampleDir = new File(configuration.properties.getString("sample-data.dir"))
-    if (!sampleDir.exists) throw new RuntimeException(s"Sample base directory ${ sampleDir.getAbsolutePath } doesn't exist")
-    if (!sampleDir.canWrite) throw new RuntimeException(s"Sample base directory ${ sampleDir.getAbsolutePath } is not writeable")
-
-    val sampleRates = configuration.sampleRates.getKeys.asScala
-      .map(key => {
-        val username = key.stripSuffix(".sample-rate")
-        val rate = configuration.sampleRates.getDouble(key)
-        val actualRate = math.max(0.0, math.min(rate, 1.0))
-
-        if (actualRate != rate)
-          logger.warn(s"Invalid sampling rate for user $username. Was $rate, set to $actualRate.")
-
-        username -> actualRate
-      })
-      .toMap
-
-    SampleTestDataEnabled(sampleDir, sampleRates)
-  }
-                       else SampleTestDataDisabled
-
   val cleanup: Map[State, Boolean] = State.values.toSeq
     .map(state => state -> Try(configuration.properties.getBoolean(s"cleanup.$state")))
     .collect { case (key, Success(cleanupSetting)) => key -> cleanupSetting }

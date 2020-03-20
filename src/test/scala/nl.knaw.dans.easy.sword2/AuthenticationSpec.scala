@@ -43,7 +43,6 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     bagStoreSettings = None,
     supportMailAddress = "dummy",
     marginDiskSpace = 0,
-    sample = SampleTestDataEnabled(new File("sample-dummy"), Map.empty),
     cleanup = Map.empty,
     rescheduleDelaySeconds = 0
   )
