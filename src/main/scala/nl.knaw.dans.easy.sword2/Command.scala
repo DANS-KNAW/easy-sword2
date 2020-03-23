@@ -19,7 +19,6 @@ import java.nio.file.Paths
 
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import resource.managed
 
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
@@ -29,30 +28,22 @@ object Command extends App with DebugEnhancedLogging {
   type FeedBackMessage = String
 
   private val configuration = Configuration(Paths.get(System.getProperty("app.home")))
-  private val commandLine = new CommandLineOptions(args, configuration) {
-    verify()
-  }
-  val app = new EasySword2App(new ApplicationWiring(configuration))
-  managed(app)
-    .acquireAndGet(app => {
-      for {
-        _ <- app.init()
-        msg <- runSubcommand()
-      } yield msg
-    })
+  private val commandLine = CommandLineOptions(args, configuration)
+
+  runSubcommand()
     .doIfSuccess(msg => println(s"OK: $msg"))
     .doIfFailure { case e => logger.error(e.getMessage, e) }
     .doIfFailure { case NonFatal(e) => println(s"FAILED: ${ e.getMessage }") }
 
   private def runSubcommand(): Try[FeedBackMessage] = {
     commandLine.subcommand match {
-      case Some(cmd @ commandLine.runService) => runAsService()
-      case _ => Failure(new IllegalArgumentException(s"Unknown command: ${ commandLine.subcommand }"))
+      case Some(commandLine.runService) => runAsService()
+      case subcommand => Failure(new IllegalArgumentException(s"Unknown command: $subcommand"))
     }
   }
 
   private def runAsService(): Try[FeedBackMessage] = Try {
-    val service = new EasySword2Service(configuration.properties.getInt("daemon.http.port"), app)
+    val service = new EasySword2Service(configuration)
     Runtime.getRuntime.addShutdownHook(new Thread("service-shutdown") {
       override def run(): Unit = {
         service.stop()

@@ -25,7 +25,6 @@ import org.swordapp.server._
 import scala.util.{ Failure, Success, Try }
 
 class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
-  this: ApplicationSettings =>
 
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])

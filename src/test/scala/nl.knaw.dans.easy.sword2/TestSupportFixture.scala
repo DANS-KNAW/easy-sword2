@@ -45,6 +45,7 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         9090000L,
         Map(),
         90000,
+        serverPort = 12345,
       )
     }
   }

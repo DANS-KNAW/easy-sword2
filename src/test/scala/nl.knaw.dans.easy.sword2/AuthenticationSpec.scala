@@ -44,7 +44,8 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     supportMailAddress = "dummy",
     marginDiskSpace = 0,
     cleanup = Map.empty,
-    rescheduleDelaySeconds = 0
+    rescheduleDelaySeconds = 0,
+    serverPort = 12345,
   )
 
   private val ldapContext = mock[LdapContext]

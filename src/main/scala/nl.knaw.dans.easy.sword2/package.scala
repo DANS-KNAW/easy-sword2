@@ -44,7 +44,8 @@ package object sword2 {
                       supportMailAddress: String,
                       marginDiskSpace: Long,
                       cleanup: Map[State, Boolean],
-                      rescheduleDelaySeconds: Int
+                      rescheduleDelaySeconds: Int,
+                      serverPort: Int,
                      )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
