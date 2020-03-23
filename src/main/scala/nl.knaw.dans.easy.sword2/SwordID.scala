@@ -22,7 +22,7 @@ import org.swordapp.server.SwordError
 import scala.util.{ Failure, Success, Try }
 
 object SwordID {
-  def generate(maybeSlug: Option[String], user: String)(implicit settings: Settings): Try[DepositId] = Try {
+  def generate(maybeSlug: Option[String], user: String): Try[DepositId] = Try {
     maybeSlug.getOrElse { UUID.randomUUID().toString }
   }
 
