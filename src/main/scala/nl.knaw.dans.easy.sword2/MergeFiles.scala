@@ -17,38 +17,23 @@ package nl.knaw.dans.easy.sword2
 
 import java.io._
 
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.io.{ FileUtils, IOUtils }
-import org.slf4j.{ Logger, LoggerFactory }
+import resource.Using
 
 import scala.util.Try
 
-object MergeFiles {
-  private val log = LoggerFactory.getLogger(MergeFiles.getClass)
+object MergeFiles extends DebugEnhancedLogging {
 
   def merge(destination: File, files: Seq[File]): Try[Unit] = Try {
-    var output: OutputStream = null
     try {
-      output = createAppendableStream(destination)
-      files.foreach(appendFile(output))
-    } finally {
-      files.foreach(FileUtils.deleteQuietly)
-      IOUtils.closeQuietly(output)
+      for (output <- Using.file(f => new BufferedOutputStream(new FileOutputStream(f, true)))(destination);
+           file <- files;
+           input <- Using.fileInputStream(file))
+        IOUtils.copy(input, output)
     }
-  }
-
-  @throws(classOf[FileNotFoundException])
-  private def createAppendableStream(destination: File): BufferedOutputStream =
-    new BufferedOutputStream(new FileOutputStream(destination, true))
-
-  @throws(classOf[IOException])
-  private def appendFile(output: OutputStream)(file: File) {
-    log.debug(s"Appending file: ${file.getName}")
-    var input: InputStream = null
-    try {
-      input = new BufferedInputStream(new FileInputStream(file))
-      IOUtils.copy(input, output)
-    } finally {
-      IOUtils.closeQuietly(input)
+    finally {
+      files foreach FileUtils.deleteQuietly
     }
   }
 }

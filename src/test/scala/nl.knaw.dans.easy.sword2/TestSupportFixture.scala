@@ -43,9 +43,9 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         None,
         "does.not.exists@dans.knaw.nl",
         9090000L,
-        null,
         Map(),
         90000,
+        serverPort = 12345,
       )
     }
   }

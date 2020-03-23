@@ -19,12 +19,8 @@ import java.io.File
 import java.net.URI
 import java.util.regex.Pattern
 
-import nl.knaw.dans.easy.sword2.DepositHandler.log
 import nl.knaw.dans.easy.sword2.State.State
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
-import org.swordapp.server.DepositReceipt
-
-import scala.util.{ Failure, Success, Try }
 
 package object sword2 {
   val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.dateTime()
@@ -35,11 +31,6 @@ package object sword2 {
   sealed abstract class AuthenticationSettings()
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
-
-  sealed abstract class SampleTestDataSettings
-  case class SampleTestDataEnabled(sampleRootDir: File,
-                                   sampleRates: Map[String, Double]) extends SampleTestDataSettings
-  case object SampleTestDataDisabled extends SampleTestDataSettings
 
   case class Settings(depositRootDir: File,
                       archivedDepositRootDir: Option[File],
@@ -52,9 +43,9 @@ package object sword2 {
                       bagStoreSettings: Option[BagStoreSettings],
                       supportMailAddress: String,
                       marginDiskSpace: Long,
-                      sample: SampleTestDataSettings,
                       cleanup: Map[State, Boolean],
-                      rescheduleDelaySeconds: Int
+                      rescheduleDelaySeconds: Int,
+                      serverPort: Int,
                      )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
@@ -72,19 +63,5 @@ package object sword2 {
   }
 
   def isPartOfDeposit(f: File): Boolean = f.getName != DepositProperties.FILENAME
-
-  implicit class TryDepositResultOps(val thisResult: Try[(String, DepositReceipt)]) extends AnyVal {
-
-    def getOrThrow: DepositReceipt = {
-      thisResult match {
-        case Success((id, depositReceipt)) =>
-          log.info(s"[$id] Sending deposit receipt")
-          depositReceipt
-        case Failure(e) =>
-          log.warn(s"Returning error to client: ${ e.getMessage }")
-          throw e
-      }
-    }
-  }
 }
 

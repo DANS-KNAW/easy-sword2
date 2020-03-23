@@ -15,31 +15,31 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import org.slf4j.LoggerFactory
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
-class ServiceDocumentManagerImpl extends ServiceDocumentManager {
-  val log = LoggerFactory.getLogger(getClass)
+class ServiceDocumentManagerImpl extends ServiceDocumentManager with DebugEnhancedLogging {
   val BAGIT_URI = "http://purl.org/net/sword/package/BagIt"
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def getServiceDocument(s: String, authCredentials: AuthCredentials, config: SwordConfiguration): ServiceDocument = {
-    implicit val settings = config.asInstanceOf[SwordConfig].settings
-    log.info("Service document retrieved by {}",
-      if (authCredentials.getUsername.isEmpty) "Anonymous user"
-      else authCredentials.getUsername)
+    implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
+    val username = if (authCredentials.getUsername.isEmpty) "Anonymous user"
+                   else authCredentials.getUsername
+    logger.info(s"Service document retrieved by $username")
     if (Authentication.checkAuthentication(authCredentials).isFailure) throw new SwordAuthException()
-    val sdoc: ServiceDocument = new ServiceDocument
-    val sw: SwordWorkspace = new SwordWorkspace
-    sw.setTitle("EASY SWORD2 Deposit Service")
-    val sc: SwordCollection = new SwordCollection
-    sc.setTitle("DANS Default Data Collection")
-    sc.addAcceptPackaging(BAGIT_URI)
-    sc.setLocation(settings.serviceBaseUrl + settings.collectionPath)
-    sw.addCollection(sc)
-    sdoc.addWorkspace(sw)
-    sdoc
+
+    new ServiceDocument {
+      addWorkspace(new SwordWorkspace {
+        setTitle("EASY SWORD2 Deposit Service")
+        addCollection(new SwordCollection {
+          setTitle("DANS Default Data Collection")
+          addAcceptPackaging(BAGIT_URI)
+          setLocation(settings.serviceBaseUrl + settings.collectionPath)
+        })
+      })
+    }
   }
 }

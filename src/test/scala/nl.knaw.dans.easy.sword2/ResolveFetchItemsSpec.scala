@@ -37,7 +37,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   val INVALID_URL_BAG = new File(INPUT_BASEDIR, "invalid-url-bag")
   val NOT_ALLOWED_URL_BAG = new File(INPUT_BASEDIR, "not-allowed-url-bag")
   val NO_DATA_BAG = new File(INPUT_BASEDIR, "empty-bag")
-  val urlPattern = Pattern.compile("^https?://.*")
+  val urlPattern: Pattern = Pattern.compile("^https?://.*")
 
   "resolveFetchItems" should "result in a Success with a valid bag without a fetch.txt" in {
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
@@ -151,7 +151,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   }
 
   it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store" in {
-    implicit val bagStoreSettings = Option.empty[BagStoreSettings]
+    implicit val bagStoreSettings: Option[BagStoreSettings] = Option.empty
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
     DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
     DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]

@@ -48,4 +48,5 @@ case class CommandLineOptions(override val args: Seq[String], configuration: Con
   addSubcommand(runService)
 
   footer("")
+  verify()
 }

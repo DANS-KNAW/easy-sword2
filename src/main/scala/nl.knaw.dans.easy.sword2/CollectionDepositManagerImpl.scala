@@ -20,28 +20,35 @@ import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2.State._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.lib.error._
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server._
 
 import scala.util.Try
 
-class CollectionDepositManagerImpl extends CollectionDepositManager {
+class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEnhancedLogging {
+
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    implicit val settings = config.asInstanceOf[SwordConfig].settings
-    (for {
+    implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
+    val result = for {
       _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
       maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
                   else None
       id <- SwordID.generate(maybeSlug, auth.getUsername)
-      _ = log.info(s"[$id] Created new deposit")
+      _ = logger.info(s"[$id] Created new deposit")
       _ <- setDepositStateToDraft(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(settings, id)
-    } yield (id, depositReceipt))
-      .getOrThrow
+      _ = logger.info(s"[$id] Sending deposit receipt")
+    } yield depositReceipt
+    
+    result
+      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
+      .unsafeGetOrThrow
   }
 
   def checkValidCollectionId(iri: String)(implicit settings: Settings): Try[Unit] = Try {

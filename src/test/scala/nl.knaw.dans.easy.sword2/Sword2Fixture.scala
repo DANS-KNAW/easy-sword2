@@ -21,7 +21,7 @@ import org.apache.commons.io.FileUtils
 import org.scalatest.{ FlatSpec, Matchers, OneInstancePerTest }
 
 trait Sword2Fixture extends FlatSpec with Matchers with OneInstancePerTest {
-  implicit val depositId = "test"
+  implicit val depositId: DepositId = "test"
   val targetBagDir = new File(s"target/test/${ getClass.getName }")
   FileUtils.deleteQuietly(targetBagDir)
 
