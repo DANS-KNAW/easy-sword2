@@ -23,6 +23,7 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 import javax.naming.{ AuthenticationException, Context }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
@@ -82,7 +83,7 @@ object Authentication extends DebugEnhancedLogging {
   @throws(classOf[SwordAuthException])
   def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
     for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       depositor <- props.getDepositorId
       _ <- if (depositor == user) Success(())
            else Failure(new SwordAuthException(msg))

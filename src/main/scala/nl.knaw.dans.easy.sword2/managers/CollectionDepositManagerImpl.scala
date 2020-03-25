@@ -19,8 +19,8 @@ import java.net.URI
 import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
-import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, DepositProperties, Settings, SwordConfig, SwordID }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import nl.knaw.dans.easy.sword2.{ Authentication, Settings, SwordConfig, SwordID }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
@@ -42,7 +42,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
                   else None
       id <- SwordID.generate(maybeSlug, auth.getUsername)
       _ = logger.info(s"[$id] Created new deposit")
-      _ <- setDepositStateToDraft(id, auth.getUsername)
+      _ <- DepositPropertiesFile.create(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
@@ -56,13 +56,5 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     val collectionPath = new URI(iri).getPath
     if (Paths.get("/").relativize(Paths.get(collectionPath)).toString != settings.collectionPath)
       throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
-  }
-
-  private def setDepositStateToDraft(id: DepositId, userId: String)(implicit settings: Settings): Try[Unit] = {
-    for {
-      props <- DepositProperties(id, Some(userId))
-      props <- props.setState(DRAFT, "Deposit is open for additional data")
-      _ <- props.save()
-    } yield ()
   }
 }

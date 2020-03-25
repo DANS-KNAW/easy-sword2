@@ -28,6 +28,7 @@ import gov.loc.repository.bagit.verify.CompleteVerifier
 import gov.loc.repository.bagit.writer.impl.FileSystemWriter
 import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import nl.knaw.dans.easy.sword2.State._
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
 import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.abdera.i18n.iri.IRI
@@ -79,18 +80,20 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   }
 
   private def isDepositUploaded(deposit: JFile)(implicit settings: Settings): Boolean = {
-    getDepositState(deposit)
+    getDepositState(deposit.getName)
       .doIfFailure { case _: Throwable => logger.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.") }
       .fold(_ => false, _ == State.UPLOADED)
   }
 
-  private def getDepositState(dir: JFile)(implicit settings: Settings): Try[State] = {
-    DepositProperties(dir.getName)
-      .flatMap(_.getState)
+  private def getDepositState(depositId: DepositId)(implicit settings: Settings): Try[State] = {
+    for {
+      props <- DepositPropertiesFile.load(depositId)
+      (label, _) <- props.getState
+    } yield label
   }
 
   private def getContentType(dir: JFile)(implicit settings: Settings): Try[String] = {
-    DepositProperties(dir.getName)
+    DepositPropertiesFile.load(dir.getName)
       .flatMap(_.getClientMessageContentType)
   }
 
@@ -157,16 +160,16 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
     lazy val storageDir = new JFile(settings.depositRootDir, id)
 
     val result = for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       _ <- props.setState(State.FINALIZING, "Finalizing deposit")
       _ <- props.save()
       _ <- BagExtractor.extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
-      _ <- props.setBagName(bagDir)
+      _ <- props.setBagName(bagDir.getName)
       _ <- props.save()
       _ <- removeZipFiles(depositDir)
       // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
@@ -186,7 +189,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   private def recoverInvalidDeposit(e: InvalidDepositException, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     logger.error(s"[$id] Invalid deposit: ${ e.msg }", e.cause)
     for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       _ <- props.setState(INVALID, e.msg)
       _ <- props.save()
       _ <- cleanupFiles(depositDir, INVALID)
@@ -199,7 +202,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
 
     // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
     for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
       _ <- props.save()
       _ = Observable.timer(settings.rescheduleDelaySeconds seconds)
@@ -210,7 +213,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   private def recoverNonFatalException(e: Throwable, depositDir: JFile)(implicit settings: Settings, id: DepositId) = {
     logger.error(s"[$id] Internal failure in deposit service", e)
     for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFile.load(id)
       _ <- props.setState(FAILED, genericErrorMessage)
       _ <- props.save()
       _ <- cleanupFiles(depositDir, FAILED)
@@ -255,8 +258,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   }
 
   def checkDepositIsInDraft(id: DepositId)(implicit settings: Settings): Try[Unit] = {
-    DepositProperties(id)
-      .flatMap(_.getState)
+    getDepositState(id)
       .flatMap {
         case State.DRAFT => Success(())
         case _ => Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
@@ -274,7 +276,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
     if (!deposit.isInProgress) {
       logger.info(s"[$id] Scheduling deposit to be finalized")
       for {
-        props <- DepositProperties(id)
+        props <- DepositPropertiesFile.load(id)
         _ <- props.setState(UPLOADED, "Deposit upload has been completed.")
         _ <- props.setClientMessageContentType(deposit.getMimeType)
         _ <- props.save()

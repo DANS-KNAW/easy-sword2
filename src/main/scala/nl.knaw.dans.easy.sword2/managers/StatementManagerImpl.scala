@@ -18,7 +18,8 @@ package nl.knaw.dans.easy.sword2.managers
 import java.net.URI
 import java.util
 
-import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, DepositProperties, LdapAuthSettings, Settings, SwordConfig, SwordID }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, LdapAuthSettings, Settings, SwordConfig, SwordID }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
@@ -53,15 +54,14 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def createStatement(id: DepositId, statementIri: String)(implicit settings: Settings): Try[AtomStatement] = {
     for {
-      props <- DepositProperties(id)
-      _ = debug(s"Read ${ DepositProperties.FILENAME }")
-      state <- props.getState
-      _ = debug(s"State = $state")
-      stateDesc <- props.getStateDescription
-      _ = debug(s"State desc = $stateDesc")
-      optDoi = props.getDoi
-    } yield new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString) {
-      addState(state.toString, stateDesc)
+      props <- DepositPropertiesFile.load(id)
+      (label, descr) <- props.getState
+      _ = debug(s"State = $label")
+      _ = debug(s"State desc = $descr")
+      optDoi <- props.getDoi
+      lastModifiedTimestamp <- props.getLastModifiedTimestamp
+    } yield new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", lastModifiedTimestamp.get.toString) {
+      addState(label.toString, descr)
       val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
       archivalResource.setMediaType("multipart/related")
 

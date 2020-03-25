@@ -18,7 +18,8 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
-import nl.knaw.dans.easy.sword2.{ Authentication, DepositHandler, DepositId, DepositProperties, LdapAuthSettings, Settings, SwordConfig, SwordID }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import nl.knaw.dans.easy.sword2.{ Authentication, DepositHandler, DepositId, LdapAuthSettings, Settings, SwordConfig, SwordID }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
@@ -34,7 +35,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        DepositProperties(id) match {
+        DepositPropertiesFile.load(id) match {
           case Success(props) if props.exists => DepositHandler.createDepositReceipt(id)
           case Success(_) => throw new SwordError(404)
           case Failure(_) => throw new SwordError(500)
