@@ -62,39 +62,18 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
         }
       )
 
-    settings
-      .tempDir
-      .listFiles()
-      .withFilter(_.isDirectory)
-      .withFilter(isDepositUploaded)
-      .foreach(getContentTypeOnNext(_))
+    DepositPropertiesFile.getSword2UploadedDeposits
+      .doIfFailure {
+        case e => logger.warn(s"Count not fetch uploaded deposits: ${ e.getMessage }", e)
+      }
+      .unsafeGetOrThrow
+      .foreach {
+        case tuple @ (depositId, _) =>
+          logger.info(s"[$depositId] Scheduling UPLOADED deposit for finalizing.")
+          depositProcessingStream.onNext(tuple)
+      }
 
     subscription
-  }
-
-  private def getContentTypeOnNext(d: JFile)(implicit settings: Settings): Try[Unit] = {
-    getContentType(d)
-      .doIfSuccess(_ => logger.info(s"[${ d.getName }] Scheduling UPLOADED deposit for finalizing."))
-      .doIfFailure { case _: Throwable => logger.warn(s"[${ d.getName }] Could not get deposit Content-Type. Not putting this deposit on the queue.") }
-      .map(mimeType => depositProcessingStream.onNext((d.getName, mimeType)))
-  }
-
-  private def isDepositUploaded(deposit: JFile)(implicit settings: Settings): Boolean = {
-    getDepositState(deposit.getName)
-      .doIfFailure { case _: Throwable => logger.warn(s"[${ deposit.getName }] Could not get deposit state. Not putting this deposit on the queue.") }
-      .fold(_ => false, _ == State.UPLOADED)
-  }
-
-  private def getDepositState(depositId: DepositId)(implicit settings: Settings): Try[State] = {
-    for {
-      props <- DepositPropertiesFile.load(depositId)
-      (label, _) <- props.getState
-    } yield label
-  }
-
-  private def getContentType(dir: JFile)(implicit settings: Settings): Try[String] = {
-    DepositPropertiesFile.load(dir.getName)
-      .flatMap(_.getClientMessageContentType)
   }
 
   def handleDeposit(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
@@ -258,11 +237,12 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   }
 
   def checkDepositIsInDraft(id: DepositId)(implicit settings: Settings): Try[Unit] = {
-    getDepositState(id)
-      .flatMap {
-        case State.DRAFT => Success(())
-        case _ => Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
-      }
+    for {
+      props <- DepositPropertiesFile.load(id)
+      (label, _) <- props.getState
+      _ <- if (label == State.DRAFT) Success(())
+           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
+    } yield ()
   }
 
   def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {

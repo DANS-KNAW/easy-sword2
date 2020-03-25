@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.sword2.properties
 
 import java.nio.file.attribute.FileTime
 
+import nl.knaw.dans.easy.sword2.DepositId
 import nl.knaw.dans.easy.sword2.State.State
 
 import scala.util.Try
@@ -26,6 +27,8 @@ trait DepositProperties {
   def save(): Try[Unit]
 
   def exists: Boolean
+
+  def getDepositId: DepositId
 
   def setState(state: State, descr: String): Try[DepositProperties]
 

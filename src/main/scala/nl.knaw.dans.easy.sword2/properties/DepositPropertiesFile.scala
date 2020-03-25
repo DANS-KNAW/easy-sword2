@@ -20,7 +20,8 @@ import java.nio.file.{ Files, Path }
 
 import nl.knaw.dans.easy.sword2.State.{ DRAFT, State }
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
-import nl.knaw.dans.easy.sword2.{ DepositId, Settings, State, dateTimeFormatter }
+import nl.knaw.dans.easy.sword2.{ DepositId, FileOps, Settings, State, dateTimeFormatter }
+import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.lang.StringUtils
@@ -50,6 +51,10 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 
   override def exists: Boolean = properties.getFile.exists
+
+  def getDepositId: DepositId = {
+    properties.getFile.getParentFile.getName
+  }
 
   override def setState(state: State, descr: String): Try[DepositProperties] = Try {
     properties.setProperty("state.label", state)
@@ -162,5 +167,28 @@ object DepositPropertiesFile extends DepositPropertiesFactory {
       }
       _ <- props.save()
     } yield props
+  }
+
+  override def getSword2UploadedDeposits(implicit settings: Settings): Try[Iterator[(DepositId, String)]] = {
+    def depositHasState(props: DepositProperties): Boolean = {
+      props.getState
+        .map { case (label, _) => label }
+        .doIfFailure { case _: Throwable => logger.warn(s"[${ props.getDepositId }] Could not get deposit state. Not putting this deposit on the queue.") }
+        .fold(_ => false, _ == State.UPLOADED)
+    }
+
+    def getContentType(props: DepositProperties): Try[String] = {
+      props.getClientMessageContentType
+        .doIfFailure { case _: Throwable => logger.warn(s"[${ props.getDepositId }] Could not get deposit Content-Type. Not putting this deposit on the queue.") }
+    }
+
+    Try {
+      settings.tempDir
+        .listFilesSafe
+        .toIterator
+        .collect { case file if file.isDirectory => load(file.getName).unsafeGetOrThrow }
+        .filter(depositHasState)
+        .map(props => getContentType(props).map((props.getDepositId, _)).unsafeGetOrThrow)
+    }
   }
 }
