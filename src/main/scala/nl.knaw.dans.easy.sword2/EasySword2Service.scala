@@ -27,31 +27,34 @@ import scala.util.Try
 class EasySword2Service(configuration: Configuration) extends DebugEnhancedLogging {
 
   private val serverPort: Int = configuration.settings.serverPort
-  private val server = new Server(serverPort)
-  val context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS)
-  // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
-  context.setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, configuration.settings)
-  /*
-   * Map URLs to servlets
-   */
-  context.addServlet(new ServletHolder(new EasySword2Servlet(configuration.version)), "/")
-  context.addServlet(classOf[ServiceDocumentServletImpl], "/servicedocument")
-  context.addServlet(classOf[CollectionServletImpl], "/collection/*")
-  context.addServlet(classOf[ContainerServletImpl], "/container/*")
-  context.addServlet(classOf[MediaResourceServletImpl], "/media/*")
-  context.addServlet(classOf[StatementServletImpl], "/statement/*")
+  private val server = new Server(serverPort) {
+    setHandler {
+      new ServletContextHandler(ServletContextHandler.NO_SESSIONS) {
+        // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
+        setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, configuration.settings)
+        /*
+         * Map URLs to servlets
+         */
+        addServlet(new ServletHolder(new EasySword2Servlet(configuration.version)), "/")
+        addServlet(classOf[ServiceDocumentServletImpl], "/servicedocument")
+        addServlet(classOf[CollectionServletImpl], "/collection/*")
+        addServlet(classOf[ContainerServletImpl], "/container/*")
+        addServlet(classOf[MediaResourceServletImpl], "/media/*")
+        addServlet(classOf[StatementServletImpl], "/statement/*")
 
-  /*
-   * Specify classes that implement the SWORD 2.0 behavior.
-   */
-  context.setInitParameter("config-impl", classOf[SwordConfig].getName)
-  context.setInitParameter("service-document-impl", classOf[ServiceDocumentManagerImpl].getName)
-  context.setInitParameter("collection-deposit-impl", classOf[CollectionDepositManagerImpl].getName)
-  context.setInitParameter("collection-list-impl", classOf[CollectionListManagerImpl].getName)
-  context.setInitParameter("container-impl", classOf[ContainerManagerImpl].getName)
-  context.setInitParameter("media-resource-impl", classOf[MediaResourceManagerImpl].getName)
-  context.setInitParameter("statement-impl", classOf[StatementManagerImpl].getName)
-  server.setHandler(context)
+        /*
+         * Specify classes that implement the SWORD 2.0 behavior.
+         */
+        setInitParameter("config-impl", classOf[SwordConfig].getName)
+        setInitParameter("service-document-impl", classOf[ServiceDocumentManagerImpl].getName)
+        setInitParameter("collection-deposit-impl", classOf[CollectionDepositManagerImpl].getName)
+        setInitParameter("collection-list-impl", classOf[CollectionListManagerImpl].getName)
+        setInitParameter("container-impl", classOf[ContainerManagerImpl].getName)
+        setInitParameter("media-resource-impl", classOf[MediaResourceManagerImpl].getName)
+        setInitParameter("statement-impl", classOf[StatementManagerImpl].getName)
+      }
+    }
+  }
   logger.info(s"HTTP port is $serverPort")
 
   private var depositProcessingSubscription: Subscription = _
