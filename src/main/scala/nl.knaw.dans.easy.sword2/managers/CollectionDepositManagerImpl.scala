@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.managers
 
 import java.net.URI
 import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, DepositProperties, Settings, SwordConfig, SwordID }
 import nl.knaw.dans.lib.error._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server._
 

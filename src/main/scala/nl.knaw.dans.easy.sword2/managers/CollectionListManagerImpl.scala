@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.managers
 
+import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, Settings, SwordConfig, SwordID }
 import org.apache.abdera.Abdera
 import org.apache.abdera.i18n.iri.IRI
 import org.apache.abdera.model.{ Entry, Feed }

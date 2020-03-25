@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.sword2
 
+import nl.knaw.dans.easy.sword2.managers._
 import nl.knaw.dans.easy.sword2.servlets._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.server.Server
