@@ -36,7 +36,7 @@ import org.apache.commons.io.FileUtils._
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.swordapp.server.{ Deposit, DepositReceipt, SwordError, UriRegistry }
 import resource.Using
-import rx.lang.scala.Observable
+import rx.lang.scala.{ Observable, Subscription }
 import rx.lang.scala.schedulers.NewThreadScheduler
 import rx.lang.scala.subjects.PublishSubject
 
@@ -51,19 +51,24 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
 
   private val depositProcessingStream = PublishSubject[(DepositId, MimeType)]()
 
-  def startDepositProcessingStream(implicit settings: Settings): Unit = {
-    depositProcessingStream
+  def startDepositProcessingStream(implicit settings: Settings): Subscription = {
+    val subscription = depositProcessingStream
       .onBackpressureBuffer
       .observeOn(NewThreadScheduler())
-      .foreach { case (id, mimetype) =>
-        finalizeDeposit(mimetype)(settings, id)
-      }
+      .subscribe(
+        onNext = {
+          case (id, mimeType) => finalizeDeposit(mimeType)(settings, id)
+        }
+      )
+
     settings
       .tempDir
       .listFiles()
       .withFilter(_.isDirectory)
       .withFilter(isDepositUploaded)
       .foreach(getContentTypeOnNext(_))
+
+    subscription
   }
 
   private def getContentTypeOnNext(d: JFile)(implicit settings: Settings): Try[Unit] = {

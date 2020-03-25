@@ -20,6 +20,7 @@ import nl.knaw.dans.easy.sword2.servlets._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.servlet.{ ServletContextHandler, ServletHolder }
+import rx.lang.scala.Subscription
 
 import scala.util.Try
 
@@ -53,9 +54,11 @@ class EasySword2Service(configuration: Configuration) extends DebugEnhancedLoggi
   server.setHandler(context)
   logger.info(s"HTTP port is $serverPort")
 
+  private var depositProcessingSubscription: Subscription = _
+
   def start(): Try[Unit] = Try {
     debug("Starting deposit processing thread...")
-    DepositHandler.startDepositProcessingStream(configuration.settings)
+    depositProcessingSubscription = DepositHandler.startDepositProcessingStream(configuration.settings)
     logger.info("Starting HTTP service...")
     server.start()
   }
@@ -63,7 +66,7 @@ class EasySword2Service(configuration: Configuration) extends DebugEnhancedLoggi
   def stop(): Try[Unit] = Try {
     logger.info("Stopping HTTP service...")
     server.stop()
-    // TODO: stop the deposit processing thread before closing
+    depositProcessingSubscription.unsubscribe()
   }
 
   def destroy(): Try[Unit] = Try {
