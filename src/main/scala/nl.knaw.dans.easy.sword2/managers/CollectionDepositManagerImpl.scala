@@ -19,8 +19,7 @@ import java.net.URI
 import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2.DepositHandler._
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
-import nl.knaw.dans.easy.sword2.{ Authentication, Settings, SwordConfig, SwordID }
+import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
@@ -42,7 +41,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
                   else None
       id <- SwordID.generate(maybeSlug, auth.getUsername)
       _ = logger.info(s"[$id] Created new deposit")
-      _ <- DepositPropertiesFile.create(id, auth.getUsername)
+      _ <- DepositPropertiesFactory.create(id, auth.getUsername)
       depositReceipt <- handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt

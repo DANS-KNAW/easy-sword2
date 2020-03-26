@@ -23,6 +23,7 @@ import javax.naming.AuthenticationException
 import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
 import nl.knaw.dans.easy.sword2.Authentication._
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{ FlatSpec, Matchers, _ }
 import org.swordapp.server.{ AuthCredentials, SwordAuthException }
@@ -46,6 +47,7 @@ class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with On
     cleanup = Map.empty,
     rescheduleDelaySeconds = 0,
     serverPort = 12345,
+    depositPropertiesFactory = DepositPropertiesFile,
   )
 
   private val ldapContext = mock[LdapContext]

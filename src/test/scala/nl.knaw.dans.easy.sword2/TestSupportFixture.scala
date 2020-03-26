@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import better.files.File
 import better.files.File.currentWorkingDirectory
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
 import org.scalatest.enablers.Existence
 import org.scalatest.{ FlatSpec, Matchers, OptionValues }
 
@@ -46,6 +47,7 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         Map(),
         90000,
         serverPort = 12345,
+        depositPropertiesFactory = DepositPropertiesFile,
       )
     }
   }

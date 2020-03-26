@@ -18,8 +18,7 @@ package nl.knaw.dans.easy.sword2.managers
 import java.net.URI
 import java.util
 
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
-import nl.knaw.dans.easy.sword2.{ Authentication, DepositId, LdapAuthSettings, Settings, SwordConfig, SwordID }
+import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
@@ -54,7 +53,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def createStatement(id: DepositId, statementIri: String)(implicit settings: Settings): Try[AtomStatement] = {
     for {
-      props <- DepositPropertiesFile.load(id)
+      props <- DepositPropertiesFactory.load(id)
       (label, descr) <- props.getState
       _ = debug(s"State = $label")
       _ = debug(s"State desc = $descr")

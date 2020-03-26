@@ -21,6 +21,7 @@ import java.nio.file.{ Files, Path, Paths }
 import java.util.regex.Pattern
 
 import javax.servlet.ServletException
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
 import resource.managed
@@ -67,6 +68,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
       .toMap,
     rescheduleDelaySeconds = properties.getInt("reschedule-delay-seconds"),
     serverPort = properties.getInt("daemon.http.port"),
+    depositPropertiesFactory = DepositPropertiesFile,
   )
 
   if (!settings.depositRootDir.canRead) throw new ServletException("Cannot read deposits dir")
