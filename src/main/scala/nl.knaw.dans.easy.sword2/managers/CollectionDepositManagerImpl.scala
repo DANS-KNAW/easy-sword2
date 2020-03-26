@@ -18,11 +18,10 @@ package nl.knaw.dans.easy.sword2.managers
 import java.net.URI
 import java.nio.file.Paths
 
-import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.apache.commons.lang.StringUtils._
+import nl.knaw.dans.lib.string._
 import org.swordapp.server._
 
 import scala.util.Try
@@ -37,15 +36,13 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     val result = for {
       _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
-      maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
-                  else None
-      id <- SwordID.generate(maybeSlug, auth.getUsername)
+      id <- SwordID.generate(deposit.getSlug.toOption, auth.getUsername)
       _ = logger.info(s"[$id] Created new deposit")
       _ <- DepositPropertiesFactory.create(id, auth.getUsername)
-      depositReceipt <- handleDeposit(deposit)(settings, id)
+      depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
-    
+
     result
       .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
       .unsafeGetOrThrow
