@@ -26,12 +26,13 @@ import scala.util.Try
 
 class EasySword2Service(configuration: Configuration) extends DebugEnhancedLogging {
 
-  private val serverPort: Int = configuration.settings.serverPort
+  private implicit val settings: Settings = configuration.settings
+  private val serverPort: Int = settings.serverPort
   private val server = new Server(serverPort) {
     setHandler {
       new ServletContextHandler(ServletContextHandler.NO_SESSIONS) {
         // TODO: Refactor this so that we do not need access to the application's wiring from outside the object.
-        setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, configuration.settings)
+        setAttribute(servlets.EASY_SWORD2_SETTINGS_ATTRIBUTE_KEY, settings)
         /*
          * Map URLs to servlets
          */
@@ -61,7 +62,8 @@ class EasySword2Service(configuration: Configuration) extends DebugEnhancedLoggi
 
   def start(): Try[Unit] = Try {
     debug("Starting deposit processing thread...")
-    depositProcessingSubscription = DepositHandler.startDepositProcessingStream(configuration.settings)
+    depositProcessingSubscription = DepositProcessor.startDepositProcessingStream
+    DepositProcessor.startUploadedDeposits
     logger.info("Starting HTTP service...")
     server.start()
   }

@@ -38,32 +38,32 @@ class PruneFetchTxtSpec extends Sword2Fixture {
 
   "pruneFetchTxt" should "remove fetch items listed in second argument" in {
     copyToTargetBagDir(TEST_BAG)
-    DepositHandler.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1))
+    BagInteractor.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1))
     getFetchTxtSrc should not include "data/file/in/bag"
   }
 
   it should "leave fetch items that are not listed in second argument" in {
     copyToTargetBagDir(TEST_BAG)
-    DepositHandler.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1))
+    BagInteractor.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1))
     getFetchTxtSrc should include(FETCH_ITEM_2.getFilename)
   }
 
   it should "remove fetch.txt if it is left empty after pruning" in {
     copyToTargetBagDir(TEST_BAG)
-    DepositHandler.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1, FETCH_ITEM_2))
+    BagInteractor.pruneFetchTxt(targetBagDir, Seq(FETCH_ITEM_1, FETCH_ITEM_2))
     FETCH_TXT shouldNot exist
   }
 
   it should "update checksum for fetch.txt in tagmanifest if fetch.txt is changed" in {
     copyToTargetBagDir(TEST_BAG)
     getTagManifestSrc should include regex s"""$CHECKSUM_FETCH_TXT_WITH_BOTH_FETCH_ITEMS\\s+fetch.txt""" // Double-check preconditions
-    DepositHandler.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url")))
+    BagInteractor.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url")))
     getTagManifestSrc should include regex s"""$CHECKSUM_FETCH_TXT_WITH_ONLY_FETCH_ITEM_2\\s+fetch.txt""" // Checksum of fetch.txt has changed because one item was deleted
   }
 
   it should "remove fetch.txt from tagmanifest if fetch.txt is removed" in {
     copyToTargetBagDir(TEST_BAG)
-    DepositHandler.pruneFetchTxt(targetBagDir,
+    BagInteractor.pruneFetchTxt(targetBagDir,
       Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
         new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url")))
     getTagManifestSrc should not include "fetch.txt"
@@ -72,7 +72,7 @@ class PruneFetchTxtSpec extends Sword2Fixture {
   it should "succeed if no fetch.txt is present" in {
     copyToTargetBagDir(TEST_BAG)
     FETCH_TXT.delete()
-    DepositHandler.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
+    BagInteractor.pruneFetchTxt(targetBagDir, Seq(new FilenameSizeUrl("data/file/in/bag", 0L, "http://some/url"),
       new FilenameSizeUrl("data/other/file/in/bag", 0L, "http://some/other/url"))) shouldBe a[Success[_]]
   }
 }

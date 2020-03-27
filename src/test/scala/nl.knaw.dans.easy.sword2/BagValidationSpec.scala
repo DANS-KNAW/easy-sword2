@@ -22,10 +22,9 @@ import org.scalatest.{ BeforeAndAfterEach, Matchers }
 
 import scala.util.{ Failure, Success }
 
-class BagValidationExtensionSpec extends TestSupportFixture
+class BagValidationSpec extends TestSupportFixture
   with Matchers
-  with BeforeAndAfterEach
-  with BagValidationExtension {
+  with BeforeAndAfterEach {
 
   lazy private val inputDir = {
     val path = testDir / "input/"
@@ -48,8 +47,8 @@ class BagValidationExtensionSpec extends TestSupportFixture
 
     val testBag = bagFactory.createBag(shaDir.toJava)
     implicit val depositId: DepositId = "1234566"
-    verifyBagIsValid(testBag) should matchPattern {
-      case Failure(e: InvalidDepositException)  if e.getMessage.contains(s"Unrecognized algorithm for manifest: manifest-sha384.txt. Supported algorithms are: ${ BagValidationExtension.acceptedValues }.") =>
+    BagValidation.verifyBagIsValid(testBag) should matchPattern {
+      case Failure(e: InvalidDepositException)  if e.getMessage.contains(s"Unrecognized algorithm for manifest: manifest-sha384.txt. Supported algorithms are: ${ BagValidation.acceptedValues }.") =>
     }
   }
 
@@ -58,7 +57,7 @@ class BagValidationExtensionSpec extends TestSupportFixture
 
     val testBag = bagFactory.createBag(seqADir.toJava)
     implicit val depositId: DepositId = "1234566"
-    verifyBagIsValid(testBag) should matchPattern {
+    BagValidation.verifyBagIsValid(testBag) should matchPattern {
       case Success(s: SimpleResult) if s.isSuccess =>
     }
   }

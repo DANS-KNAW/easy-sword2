@@ -17,7 +17,6 @@ package nl.knaw.dans.easy.sword2.managers
 
 import java.util
 
-import nl.knaw.dans.easy.sword2.DepositHandler._
 import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -81,7 +80,10 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
       id <- SwordID.extract(editIRI)
       _ <- authenticate(id, auth)
       _ = debug(s"[$id] Continued deposit")
-      _ <- checkDepositIsInDraft(id)
+      props <- DepositPropertiesFactory.load(id)
+      (label, _) <- props.getState
+      _ <- if (label == State.DRAFT) Success(())
+           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
       depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
