@@ -18,8 +18,8 @@ package nl.knaw.dans.easy.sword2
 import java.io.{ IOException, File => JFile }
 import java.net.{ MalformedURLException, URL, UnknownHostException }
 import java.nio.file._
+import java.util.NoSuchElementException
 import java.util.regex.Pattern
-import java.util.{ Collections, NoSuchElementException }
 
 import gov.loc.repository.bagit.FetchTxt.FilenameSizeUrl
 import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
@@ -30,7 +30,6 @@ import gov.loc.repository.bagit.{ Bag, BagFactory, FetchTxt }
 import nl.knaw.dans.easy.sword2.State._
 import nl.knaw.dans.lib.error.{ CompositeException, TraversableTryExtensions, _ }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.apache.abdera.i18n.iri.IRI
 import org.apache.commons.codec.digest.DigestUtils
 import org.apache.commons.io.FileUtils._
 import org.joda.time.{ DateTime, DateTimeZone }
@@ -92,7 +91,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       _ <- handleDepositAsync(deposit)
       // Attention: do not access the deposit after this call. handleDepositAsync will finalize the deposit on a different thread than this one and so we cannot know if the
       // deposit is still in the easy-sword2 temp directory.
-      dr = createDepositReceipt(id)
+      dr = SwordDocument.createDepositReceipt(id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
   }
@@ -496,19 +495,6 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
             _ <- Failure(e)
           } yield ()
       }
-  }
-
-  def createDepositReceipt(id: DepositId)(implicit settings: Settings): DepositReceipt = {
-    new DepositReceipt {
-      val editIRI = new IRI(settings.serviceBaseUrl + "container/" + id)
-      setEditIRI(editIRI)
-      setLocation(editIRI)
-      setEditMediaIRI(new IRI(settings.serviceBaseUrl + "media/" + id))
-      setSwordEditIRI(editIRI)
-      setAtomStatementURI(settings.serviceBaseUrl + "statement/" + id)
-      setPackaging(Collections.singletonList("http://purl.org/net/sword/package/BagIt"))
-      setTreatment("[1] unpacking [2] verifying integrity [3] storing persistently")
-    }
   }
 
   // TODO: RETRIEVE VIA AN INTERFACE

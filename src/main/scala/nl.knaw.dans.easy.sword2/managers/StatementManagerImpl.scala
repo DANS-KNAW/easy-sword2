@@ -15,8 +15,7 @@
  */
 package nl.knaw.dans.easy.sword2.managers
 
-import java.net.URI
-import java.util
+import java.util.{ Map => JMap }
 
 import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -29,7 +28,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
+  override def getStatement(iri: String, accept: JMap[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
     trace(iri, accept, auth, config)
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
@@ -59,16 +58,6 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       _ = debug(s"State desc = $descr")
       optDoi <- props.getDoi
       lastModifiedTimestamp <- props.getLastModifiedTimestamp
-    } yield new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", lastModifiedTimestamp.get.toString) {
-      addState(label.toString, descr)
-      val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
-      archivalResource.setMediaType("multipart/related")
-
-      optDoi.foreach(doi => {
-        archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
-      })
-
-      addResource(archivalResource)
-    }
+    } yield SwordDocument.createStatement(id, statementIri, label, descr, optDoi, lastModifiedTimestamp)
   }
 }

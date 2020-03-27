@@ -15,12 +15,11 @@
  */
 package nl.knaw.dans.easy.sword2.managers
 
-import nl.knaw.dans.easy.sword2.{ Authentication, Settings, SwordConfig }
+import nl.knaw.dans.easy.sword2.{ Authentication, Settings, SwordConfig, SwordDocument }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
 class ServiceDocumentManagerImpl extends ServiceDocumentManager with DebugEnhancedLogging {
-  val BAGIT_URI = "http://purl.org/net/sword/package/BagIt"
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
@@ -32,15 +31,6 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager with DebugEnhanc
     logger.info(s"Service document retrieved by $username")
     if (Authentication.checkAuthentication(authCredentials).isFailure) throw new SwordAuthException()
 
-    new ServiceDocument {
-      addWorkspace(new SwordWorkspace {
-        setTitle("EASY SWORD2 Deposit Service")
-        addCollection(new SwordCollection {
-          setTitle("DANS Default Data Collection")
-          addAcceptPackaging(BAGIT_URI)
-          setLocation(settings.serviceBaseUrl + settings.collectionPath)
-        })
-      })
-    }
+    SwordDocument.serviceDocument
   }
 }

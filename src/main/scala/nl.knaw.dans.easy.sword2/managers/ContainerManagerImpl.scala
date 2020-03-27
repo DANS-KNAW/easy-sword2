@@ -35,7 +35,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     SwordID.extract(editIRI) match {
       case Success(id) =>
         DepositPropertiesFactory.load(id) match {
-          case Success(props) if props.exists => DepositHandler.createDepositReceipt(id)
+          case Success(props) if props.exists => SwordDocument.createDepositReceipt(id)
           case Success(_) => throw new SwordError(404)
           case Failure(_) => throw new SwordError(500)
         }
@@ -82,7 +82,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
       _ <- authenticate(id, auth)
       _ = debug(s"[$id] Continued deposit")
       _ <- checkDepositIsInDraft(id)
-      depositReceipt <- handleDeposit(deposit)(settings, id)
+      depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
 
