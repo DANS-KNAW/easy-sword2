@@ -83,13 +83,6 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
 
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     val depositDir = Paths.get(settings.tempDir.toString, id).toFile
-    // to ensure all files in deposit are accessible for the deposit group, the method setFilePermissions is always
-    // executed (regardless of whether extractAndValidatePayloadAndGetDepositReceipt was successful or not).
-    // Otherwise operators don't have the proper permissions to clean or fix the invalid zip files or bags that might stay behind
-    extractAndValidatePayloadAndGetDepositReceipt(deposit, contentLength, payload, depositDir)
-  }
-
-  private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     for {
       _ <- verifyDiskspace(contentLength, depositDir)
       _ <- copyPayloadToFile(deposit, payload, depositDir)
