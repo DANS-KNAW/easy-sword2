@@ -91,17 +91,24 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
 
   private def extractAndValidatePayloadAndGetDepositReceipt(deposit: Deposit, contentLength: Long, payload: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[DepositReceipt] = {
     for {
-      _ <- if (contentLength > -1) assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
-           else Success(())
-      _ <- copyPayloadToFile(deposit, payload)
-      _ <- doesHashMatch(payload, deposit.getMd5)(id)
+      _ <- verifyDiskspace(contentLength, depositDir)
+      _ <- copyPayloadToFile(deposit, payload, depositDir)
+      _ <- doesHashMatch(payload, deposit.getMd5, depositDir)
       _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+        .recoverWith { case e => recoverDepositSetState(e, depositDir, State.FAILED, "Failed to change file permissions").flatMap(_ => Failure(e)) }
       _ <- handleDepositAsync(deposit)
       // Attention: do not access the deposit after this call. handleDepositAsync will finalize the deposit on a different thread than this one and so we cannot know if the
       // deposit is still in the easy-sword2 temp directory.
       dr = createDepositReceipt(id)
       _ = dr.setVerboseDescription("received successfully: " + deposit.getFilename + "; MD5: " + deposit.getMd5)
     } yield dr
+  }
+
+  private def verifyDiskspace(contentLength: Long, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    if (contentLength > -1)
+      assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
+        .recoverWith { case e => recoverDepositSetState(e, depositDir, State.FAILED, "Not enough disk space available to store payload").flatMap(_ => Failure(e)) }
+    else Success(())
   }
 
   def genericErrorMessage(implicit settings: Settings, id: DepositId): String = {
@@ -164,13 +171,23 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       }
   }
 
-  private def recoverInvalidDeposit(e: InvalidDepositException, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
-    logger.error(s"[$id] Invalid deposit: ${ e.msg }", e.cause)
+  private def recoverInvalidDeposit(e: Throwable, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    recoverInvalidDeposit(e, depositDir, e.getMessage)
+  }
+
+  private def recoverInvalidDeposit(e: Throwable, depositDir: JFile, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    for {
+      _ <- recoverDepositSetState(e, depositDir, State.INVALID, errorMsg)
+      _ <- cleanupFiles(depositDir, State.INVALID)
+    } yield ()
+  }
+
+  private def recoverDepositSetState(e: Throwable, depositDir: JFile, errorState: State, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    logger.error(s"[$id] ${ errorState.toString.toLowerCase.capitalize } deposit: ${ errorMsg }", e)
     for {
       props <- DepositPropertiesFactory.load(id)
-      _ <- props.setState(INVALID, e.msg)
+      _ <- props.setState(errorState, errorMsg)
       _ <- props.save()
-      _ <- cleanupFiles(depositDir, INVALID)
     } yield ()
   }
 
@@ -244,14 +261,18 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
     } yield ()
   }
 
-  def copyPayloadToFile(deposit: Deposit, zipFile: JFile)(implicit id: DepositId): Try[Unit] = Try {
+  def copyPayloadToFile(deposit: Deposit, zipFile: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
     debug(s"[$id] Copying payload to: $zipFile")
     copyInputStreamToFile(deposit.getInputStream, zipFile)
-  } recoverWith {
-    case t: Throwable => Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
+  }.recoverWith {
+    case t: Throwable =>
+      for {
+        _ <- recoverInvalidDeposit(t, depositDir, "Failed to copy payload to file system")
+        _ <- Failure(new SwordError(UriRegistry.ERROR_BAD_REQUEST, t))
+      } yield ()
   }
 
-  def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def handleDepositAsync(deposit: Deposit)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     if (!deposit.isInProgress) {
       logger.info(s"[$id] Scheduling deposit to be finalized")
       for {
@@ -458,7 +479,7 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }
 
-  def doesHashMatch(zipFile: JFile, MD5: String)(implicit id: DepositId): Try[Unit] = {
+  private def doesHashMatch(zipFile: JFile, MD5: String, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     debug(s"[$id] Checking Content-MD5 (Received: $MD5)")
 
     Using.fileInputStream(zipFile)
@@ -468,6 +489,20 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       }
       .tried
       .flatten
+      .recoverWith {
+        case e =>
+          for {
+            _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+              .recoverWith {
+                case e2 =>
+                  // if the permission change fails, return the original exception, as that one is more important
+                  logger.error(s"Content hash doesn't match, but also changing the file permissions failed in recovery: ${ e2.getMessage }", e2)
+                  Failure(e)
+              }
+            _ <- recoverInvalidDeposit(e, depositDir, "Checksum mismatch between expected MD5 checksum (provided in request) and received content")
+            _ <- Failure(e)
+          } yield ()
+      }
   }
 
   def createDepositReceipt(id: DepositId)(implicit settings: Settings): DepositReceipt = {
