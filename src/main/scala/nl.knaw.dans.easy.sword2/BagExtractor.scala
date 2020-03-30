@@ -58,7 +58,9 @@ object BagExtractor extends DebugEnhancedLogging {
       _ <- checkDiskspaceForMerging(files)
       _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
       _ <- checkAvailableDiskspace(mergedZip)
-    } yield extract(mergedZip, depositDir.getPath)
+      _ = extract(mergedZip, depositDir.getPath)
+      _ <- FilesPermission.changePermissionsRecursively(mergedZip, settings.depositPermissions, id)
+    } yield ()
   }
 
   private def checkDiskspaceForMerging(files: Seq[JFile])(implicit settings: Settings, id: DepositId): Try[Unit] = {
