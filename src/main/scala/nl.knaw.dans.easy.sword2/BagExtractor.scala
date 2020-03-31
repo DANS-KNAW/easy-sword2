@@ -47,7 +47,7 @@ object BagExtractor extends DebugEnhancedLogging {
       if (!file.isFile)
         throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
       checkAvailableDiskspace(file)
-        .map(_ => extract(file, depositDir.getPath))
+        .flatMap(_ => extract(file, depositDir))
         .unsafeGetOrThrow
     }
   }
@@ -58,7 +58,8 @@ object BagExtractor extends DebugEnhancedLogging {
       _ <- checkDiskspaceForMerging(files)
       _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
       _ <- checkAvailableDiskspace(mergedZip)
-    } yield extract(mergedZip, depositDir.getPath)
+      _ <- extract(mergedZip, depositDir)
+    } yield ()
   }
 
   private def checkDiskspaceForMerging(files: Seq[JFile])(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -108,9 +109,12 @@ object BagExtractor extends DebugEnhancedLogging {
     }
   }
 
-  private def extract(file: JFile, outputPath: String): Unit = {
+  private def extract(file: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     implicit val charset: Charset = StandardCharsets.UTF_8
     import better.files._
-    file.toScala unzipTo outputPath.toFile
+    for {
+      _ <- Try { file.toScala unzipTo depositDir.toScala }
+      _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
+    } yield ()
   }
 }
