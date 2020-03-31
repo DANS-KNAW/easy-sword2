@@ -73,8 +73,7 @@ object DepositFinalizer extends DebugEnhancedLogging {
 
   private def moveBagToStorage(depositDir: JFile, storageDir: JFile)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     debug(s"[$id] Moving bag to permanent storage")
-    FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-      .map(_ => Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile)
+    Try { Files.move(depositDir.toPath.toAbsolutePath, storageDir.toPath.toAbsolutePath).toFile }
       .recoverWith { case e => Failure(new SwordError("Failed to move dataset to storage", e)) }
   }
 
