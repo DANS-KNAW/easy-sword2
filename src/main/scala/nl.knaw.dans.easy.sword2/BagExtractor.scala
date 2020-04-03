@@ -112,7 +112,7 @@ object BagExtractor extends DebugEnhancedLogging {
   private def extract(file: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     implicit val charset: Charset = StandardCharsets.UTF_8
     import better.files._
-    
+
     for {
       _ <- Try { file.toScala unzipTo depositDir.toScala }
       _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
