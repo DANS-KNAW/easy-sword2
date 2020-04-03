@@ -18,9 +18,11 @@ package nl.knaw.dans.easy.sword2
 import java.io.File
 
 import org.apache.commons.io.FileUtils
-import org.scalatest.{ FlatSpec, Matchers, OneInstancePerTest }
+import org.scalatest.OneInstancePerTest
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-trait Sword2Fixture extends FlatSpec with Matchers with OneInstancePerTest {
+trait Sword2Fixture extends AnyFlatSpec with Matchers with OneInstancePerTest {
   implicit val depositId: DepositId = "test"
   val targetBagDir = new File(s"target/test/${ getClass.getName }")
   FileUtils.deleteQuietly(targetBagDir)

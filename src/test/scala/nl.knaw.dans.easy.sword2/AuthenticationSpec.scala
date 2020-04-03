@@ -24,13 +24,15 @@ import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
 import nl.knaw.dans.easy.sword2.Authentication._
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.{ FlatSpec, Matchers, _ }
+import org.scalatest.OneInstancePerTest
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import org.swordapp.server.{ AuthCredentials, SwordAuthException }
 import resource.{ ManagedResource, managed }
 
 import scala.util.{ Failure, Success, Try }
 
-class AuthenticationSpec extends FlatSpec with Matchers with MockFactory with OneInstancePerTest {
+class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with OneInstancePerTest {
   implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
     archivedDepositRootDir = Option(new File("dummy")),

@@ -18,7 +18,8 @@ package nl.knaw.dans.easy.sword2
 import better.files.File
 import gov.loc.repository.bagit.BagFactory
 import gov.loc.repository.bagit.utilities.SimpleResult
-import org.scalatest.{ BeforeAndAfterEach, Matchers }
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.{ Failure, Success }
 
