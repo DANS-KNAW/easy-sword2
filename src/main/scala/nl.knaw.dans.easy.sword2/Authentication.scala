@@ -82,7 +82,7 @@ object Authentication extends DebugEnhancedLogging {
   @throws(classOf[SwordAuthException])
   def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
     for {
-      props <- DepositProperties(id)
+      props <- DepositPropertiesFactory.load(id)
       depositor <- props.getDepositorId
       _ <- if (depositor == user) Success(())
            else Failure(new SwordAuthException(msg))

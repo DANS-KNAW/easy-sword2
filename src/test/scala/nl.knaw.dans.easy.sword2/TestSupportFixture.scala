@@ -17,10 +17,13 @@ package nl.knaw.dans.easy.sword2
 
 import better.files.File
 import better.files.File.currentWorkingDirectory
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import org.scalatest.OptionValues
 import org.scalatest.enablers.Existence
-import org.scalatest.{ FlatSpec, Matchers, OptionValues }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
+trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
   implicit def existenceOfFile[FILE <: better.files.File]: Existence[FILE] = _.exists
 
   lazy val testDir: File = {
@@ -46,6 +49,7 @@ trait TestSupportFixture extends FlatSpec with Matchers with OptionValues {
         Map(),
         90000,
         serverPort = 12345,
+        depositPropertiesFactory = DepositPropertiesFile,
       )
     }
   }

@@ -13,19 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.properties
 
-import java.io.File
+import nl.knaw.dans.easy.sword2.{ DepositId, Settings }
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
-import org.apache.commons.io.FileUtils
-import org.scalatest.OneInstancePerTest
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import scala.util.Try
 
-trait Sword2Fixture extends AnyFlatSpec with Matchers with OneInstancePerTest {
-  implicit val depositId: DepositId = "test"
-  val targetBagDir = new File(s"target/test/${ getClass.getName }")
-  FileUtils.deleteQuietly(targetBagDir)
+trait DepositPropertiesFactory extends DebugEnhancedLogging {
 
-  protected def copyToTargetBagDir(sourceDir: File): Unit = FileUtils.copyDirectory(sourceDir, targetBagDir)
+  def load(depositId: DepositId)(implicit settings: Settings): Try[DepositProperties]
+
+  def create(depositId: DepositId, depositorId: String)(implicit settings: Settings): Try[DepositProperties]
+
+  def getSword2UploadedDeposits(implicit settings: Settings): Try[Iterator[(DepositId, String)]]
 }

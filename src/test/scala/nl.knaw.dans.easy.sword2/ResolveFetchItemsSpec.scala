@@ -41,26 +41,26 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   "resolveFetchItems" should "result in a Success with a valid bag without a fetch.txt" in {
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    BagValidation.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Success with a valid bag with a fetch.txt" in {
     copyToTargetBagDir(SIMPLE_SEQUENCE_B)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    BagValidation.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Success with another valid bag with a fetch.txt" in {
     copyToTargetBagDir(SIMPLE_SEQUENCE_C)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    BagValidation.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 
   it should "result in a Failure when a required file is missing" in {
     copyToTargetBagDir(REQUIRED_FILE_MISSING)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -70,8 +70,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure when a file is missing in the fetch.txt" in {
     copyToTargetBagDir(FETCH_ITEM_FILE_MISSING)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -81,8 +81,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure when a file checksum is incorrect" in {
     copyToTargetBagDir(INCORRECT_CHECKSUM)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -92,8 +92,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure when there is a nonexistent path in the fetch.txt" in {
     copyToTargetBagDir(NONEXISTENT_FETCH_ITEM_PATH)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -103,8 +103,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure when a file in the fetch.txt is already in the bag" in {
     copyToTargetBagDir(FETCH_ITEM_ALREADY_IN_BAG)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -121,7 +121,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure with a syntactically invalid url in the fetch.txt" in {
     copyToTargetBagDir(INVALID_URL_BAG)
-    val fetchItemsCheck = DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern)
+    val fetchItemsCheck = BagValidation.checkFetchItemUrls(targetBagDir, urlPattern)
     inside(fetchItemsCheck) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -131,7 +131,7 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure with a not allowed url in the fetch.txt" in {
     copyToTargetBagDir(NOT_ALLOWED_URL_BAG)
-    val fetchItemsCheck = DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern)
+    val fetchItemsCheck = BagValidation.checkFetchItemUrls(targetBagDir, urlPattern)
     inside(fetchItemsCheck) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -141,8 +141,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
 
   it should "result in a Failure with an empty bag" in {
     copyToTargetBagDir(NO_DATA_BAG)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    val validity = DepositHandler.checkBagVirtualValidity(targetBagDir)
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    val validity = BagValidation.checkBagVirtualValidity(targetBagDir)
     inside(validity) {
       case Failure(e) =>
         e shouldBe a[InvalidDepositException]
@@ -153,8 +153,8 @@ class ResolveFetchItemsSpec extends Sword2Fixture with BagStoreFixture {
   it should "result in a Success when both bag-store base-dir and base-uri are not given, and there are no fetch.txt references to the bag-store" in {
     implicit val bagStoreSettings: Option[BagStoreSettings] = Option.empty
     copyToTargetBagDir(SIMPLE_SEQUENCE_A)
-    DepositHandler.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
-    DepositHandler.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
+    BagValidation.checkFetchItemUrls(targetBagDir, urlPattern) shouldBe a[Success[_]]
+    BagValidation.checkBagVirtualValidity(targetBagDir) shouldBe a[Success[_]]
   }
 }
 

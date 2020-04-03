@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.managers
 
 import java.util
 
-import nl.knaw.dans.easy.sword2.DepositHandler._
+import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
@@ -33,8 +33,8 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        DepositProperties(id) match {
-          case Success(props) if props.exists => DepositHandler.createDepositReceipt(id)
+        DepositPropertiesFactory.load(id) match {
+          case Success(props) if props.exists => SwordDocument.createDepositReceipt(id)
           case Success(_) => throw new SwordError(404)
           case Failure(_) => throw new SwordError(500)
         }
@@ -80,8 +80,11 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
       id <- SwordID.extract(editIRI)
       _ <- authenticate(id, auth)
       _ = debug(s"[$id] Continued deposit")
-      _ <- checkDepositIsInDraft(id)
-      depositReceipt <- handleDeposit(deposit)(settings, id)
+      props <- DepositPropertiesFactory.load(id)
+      (label, _) <- props.getState
+      _ <- if (label == State.DRAFT) Success(())
+           else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
+      depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
 

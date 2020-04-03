@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.easy.sword2.State.State
+import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFactory, DepositPropertiesFile }
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 
 package object sword2 {
@@ -46,6 +47,7 @@ package object sword2 {
                       cleanup: Map[State, Boolean],
                       rescheduleDelaySeconds: Int,
                       serverPort: Int,
+                      depositPropertiesFactory: DepositPropertiesFactory,
                      )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)
@@ -62,6 +64,10 @@ package object sword2 {
       }
   }
 
-  def isPartOfDeposit(f: File): Boolean = f.getName != DepositProperties.FILENAME
+  def DepositPropertiesFactory(implicit settings: Settings): DepositPropertiesFactory = {
+    settings.depositPropertiesFactory
+  }
+
+  def isPartOfDeposit(f: File): Boolean = f.getName != DepositPropertiesFile.FILENAME
 }
 

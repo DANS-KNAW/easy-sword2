@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.managers
 
-import java.net.URI
-import java.util
+import java.util.{ Map => JMap }
 
+import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
@@ -28,7 +28,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  override def getStatement(iri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
+  override def getStatement(iri: String, accept: JMap[String, String], auth: AuthCredentials, config: SwordConfiguration): Statement = {
     trace(iri, accept, auth, config)
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
@@ -52,23 +52,12 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def createStatement(id: DepositId, statementIri: String)(implicit settings: Settings): Try[AtomStatement] = {
     for {
-      props <- DepositProperties(id)
-      _ = debug(s"Read ${ DepositProperties.FILENAME }")
-      state <- props.getState
-      _ = debug(s"State = $state")
-      stateDesc <- props.getStateDescription
-      _ = debug(s"State desc = $stateDesc")
-      optDoi = props.getDoi
-    } yield new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString) {
-      addState(state.toString, stateDesc)
-      val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
-      archivalResource.setMediaType("multipart/related")
-
-      optDoi.foreach(doi => {
-        archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
-      })
-
-      addResource(archivalResource)
-    }
+      props <- DepositPropertiesFactory.load(id)
+      (label, descr) <- props.getState
+      _ = debug(s"State = $label")
+      _ = debug(s"State desc = $descr")
+      optDoi <- props.getDoi
+      lastModifiedTimestamp <- props.getLastModifiedTimestamp
+    } yield SwordDocument.createStatement(id, statementIri, label, descr, optDoi, lastModifiedTimestamp)
   }
 }

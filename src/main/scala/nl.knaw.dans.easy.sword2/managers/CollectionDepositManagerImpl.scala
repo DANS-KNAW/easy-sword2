@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.managers
 
 import java.net.URI
 import java.nio.file.Paths
 
-import nl.knaw.dans.easy.sword2.DepositHandler._
-import nl.knaw.dans.easy.sword2.State._
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.easy.sword2._
 import nl.knaw.dans.lib.error._
-import org.apache.commons.lang.StringUtils._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.lib.string._
 import org.swordapp.server._
 
 import scala.util.Try
@@ -37,15 +36,13 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     val result = for {
       _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
-      maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
-                  else None
-      id <- SwordID.generate(maybeSlug, auth.getUsername)
+      id <- SwordID.generate(deposit.getSlug.toOption, auth.getUsername)
       _ = logger.info(s"[$id] Created new deposit")
-      _ <- setDepositStateToDraft(id, auth.getUsername)
-      depositReceipt <- handleDeposit(deposit)(settings, id)
+      _ <- DepositPropertiesFactory.create(id, auth.getUsername)
+      depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt
-    
+
     result
       .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
       .unsafeGetOrThrow
@@ -55,13 +52,5 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     val collectionPath = new URI(iri).getPath
     if (Paths.get("/").relativize(Paths.get(collectionPath)).toString != settings.collectionPath)
       throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Not a valid collection: $collectionPath (valid collection is ${ settings.collectionPath }")
-  }
-
-  private def setDepositStateToDraft(id: DepositId, userId: String)(implicit settings: Settings): Try[Unit] = {
-    for {
-      props <- DepositProperties(id, Some(userId))
-      props <- props.setState(DRAFT, "Deposit is open for additional data")
-      _ <- props.save()
-    } yield ()
   }
 }
