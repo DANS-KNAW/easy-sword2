@@ -32,7 +32,7 @@
     <inceptionYear>2015</inceptionYear>
     <properties>
         <main-class>nl.knaw.dans.easy.sword2.Command</main-class>
-        <easy.sword2-lib.version>1.1.2</easy.sword2-lib.version>
+        <easy.sword2-lib.version>1.1.4</easy.sword2-lib.version>
         <bagit.version>4.12.3</bagit.version>
     </properties>
     <scm>
