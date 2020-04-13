@@ -17,13 +17,13 @@ package nl.knaw.dans.easy.sword2
 
 import better.files.File
 import better.files.File.currentWorkingDirectory
-import org.scalatest.OptionValues
 import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFile, DepositPropertiesFileFactory }
+import org.scalatest.{ Inside, OptionValues }
 import org.scalatest.enablers.Existence
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
+trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues with Inside {
   implicit def existenceOfFile[FILE <: better.files.File]: Existence[FILE] = _.exists
 
   lazy val testDir: File = {
@@ -35,8 +35,8 @@ trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
 
   def createMinimalSettings(bag: File): SwordConfig = {
     new SwordConfig {
-      settings = Settings(depositRootDir = bag.toJava,
-        archivedDepositRootDir = Option.empty,
+      settings = Settings(
+        depositRootDir = bag.toJava,
         "rwxrwxrwx",
         new java.io.File("dummy"),
         "",
