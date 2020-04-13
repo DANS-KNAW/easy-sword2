@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 package nl.knaw.dans.easy.sword2.properties
+
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.Try
 
 class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
                                        service: DepositPropertiesServiceFactory,
@@ -38,11 +39,9 @@ class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {
     for {
-      uploadedFile <- file.getSword2UploadedDeposits.map(_.toList)
-      uploadedService <- service.getSword2UploadedDeposits.map(_.toList)
-      _ <- if (uploadedFile == uploadedService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $uploadedFile. Result for 'service': $uploadedService."))
-    } yield uploadedFile.toIterator
+      uploadedFile <- file.getSword2UploadedDeposits
+      _ <- service.getSword2UploadedDeposits
+    } yield uploadedFile
   }
 
   override def toString: DepositId = s"a combination of $file and $service"

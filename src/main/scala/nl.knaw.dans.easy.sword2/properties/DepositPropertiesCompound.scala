@@ -20,7 +20,7 @@ import java.nio.file.attribute.FileTime
 import nl.knaw.dans.easy.sword2.DepositId
 import nl.knaw.dans.easy.sword2.State.State
 
-import scala.util.{ Failure, Success, Try }
+import scala.util.Try
 
 class DepositPropertiesCompound(file: DepositProperties,
                                 service: DepositProperties,
@@ -36,19 +36,14 @@ class DepositPropertiesCompound(file: DepositProperties,
   override def exists: Try[Boolean] = {
     for {
       existsFile <- file.exists
-      existsService <- service.exists
-      _ <- if (existsFile == existsService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $existsFile. Result for 'service': $existsService."))
+      _ <- service.exists
     } yield existsFile
   }
 
   override def getDepositId: DepositId = {
     val depositIdFile = file.getDepositId
-    val depositIdService = file.getDepositId
-    if (depositIdFile == depositIdService)
-      depositIdFile
-    else
-      throw new Exception(s"file and service are not in sync. Result for 'file': $depositIdFile. Result for 'service': $depositIdService.")
+    val _ = file.getDepositId
+    depositIdFile
   }
 
   override def setState(state: State, descr: String): Try[DepositProperties] = {
@@ -61,9 +56,7 @@ class DepositPropertiesCompound(file: DepositProperties,
   override def getState: Try[(State, String)] = {
     for {
       stateFile <- file.getState
-      stateService <- service.getState
-      _ <- if (stateFile == stateService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $stateFile. Result for 'service': $stateService."))
+      _ <- service.getState
     } yield stateFile
   }
 
@@ -91,36 +84,28 @@ class DepositPropertiesCompound(file: DepositProperties,
   override def getClientMessageContentType: Try[String] = {
     for {
       contentTypeFile <- file.getClientMessageContentType
-      contentTypeService <- service.getClientMessageContentType
-      _ <- if (contentTypeFile == contentTypeService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $contentTypeFile. Result for 'service': $contentTypeService."))
+      _ <- service.getClientMessageContentType
     } yield contentTypeFile
   }
 
   override def getDepositorId: Try[String] = {
     for {
       depositorIdFile <- file.getDepositorId
-      depositorIdService <- service.getDepositorId
-      _ <- if (depositorIdFile == depositorIdService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $depositorIdFile. Result for 'service': $depositorIdService."))
+      _ <- service.getDepositorId
     } yield depositorIdFile
   }
 
   override def getDoi: Try[Option[String]] = {
     for {
       doiFile <- file.getDoi
-      doiService <- service.getDoi
-      _ <- if (doiFile == doiService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $doiFile. Result for 'service': $doiService."))
+      _ <- service.getDoi
     } yield doiFile
   }
 
   override def getLastModifiedTimestamp: Try[Option[FileTime]] = {
     for {
       lastModifiedFile <- file.getLastModifiedTimestamp
-      lastModifiedService <- service.getLastModifiedTimestamp
-      _ <- if (lastModifiedFile == lastModifiedService) Success(())
-           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $lastModifiedFile. Result for 'service': $lastModifiedService."))
+      _ <- service.getLastModifiedTimestamp
     } yield lastModifiedFile
   }
 }
