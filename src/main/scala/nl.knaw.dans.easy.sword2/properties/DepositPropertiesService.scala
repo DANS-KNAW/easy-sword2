@@ -26,7 +26,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
 
   override def save(): Try[Unit] = ???
 
-  override def exists: Boolean = ???
+  override def exists: Try[Boolean] = ???
 
   override def getDepositId: DepositId = depositId
 

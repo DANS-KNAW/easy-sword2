@@ -26,7 +26,7 @@ trait DepositProperties {
 
   def save(): Try[Unit]
 
-  def exists: Boolean
+  def exists: Try[Boolean]
 
   def getDepositId: DepositId
 

@@ -33,9 +33,9 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        DepositProperties.load(id) match {
-          case Success(props) if props.exists => SwordDocument.createDepositReceipt(id)
-          case Success(_) => throw new SwordError(404)
+        DepositProperties.load(id).flatMap(_.exists) match {
+          case Success(true) => SwordDocument.createDepositReceipt(id)
+          case Success(false) => throw new SwordError(404)
           case Failure(_) => throw new SwordError(500)
         }
       case _ => throw new SwordError(500)

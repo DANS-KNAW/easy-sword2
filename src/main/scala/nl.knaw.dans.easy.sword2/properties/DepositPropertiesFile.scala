@@ -48,7 +48,9 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
     properties.save()
   }
 
-  override def exists: Boolean = properties.getFile.exists
+  override def exists: Try[Boolean] = Try {
+    properties.getFile.exists
+  }
 
   def getDepositId: DepositId = {
     properties.getFile.getParentFile.getName
