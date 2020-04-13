@@ -95,6 +95,8 @@ class DepositPropertiesFileFactory(tempDir: File,
         .map(props => getContentType(props).map((props.getDepositId, _)).unsafeGetOrThrow)
     }
   }
+
+  override def toString: String = "DepositPropertiesFileFactory"
 }
 object DepositPropertiesFileFactory {
   val FILENAME = "deposit.properties"

@@ -68,6 +68,8 @@ class DepositPropertiesServiceFactory(client: GraphQLClient) extends DepositProp
       }
     }.flatMap(_.toIterator)
   }
+
+  override def toString: String = "DepositPropertiesServiceFactory"
 }
 
 object DepositPropertiesServiceFactory {

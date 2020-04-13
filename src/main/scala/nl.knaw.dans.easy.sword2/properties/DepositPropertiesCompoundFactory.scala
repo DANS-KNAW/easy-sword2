@@ -44,4 +44,6 @@ class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
            else Failure(new Exception(s"file and service are not in sync. Result for 'file': $uploadedFile. Result for 'service': $uploadedService."))
     } yield uploadedFile.toIterator
   }
+
+  override def toString: DepositId = s"a combination of $file and $service"
 }
