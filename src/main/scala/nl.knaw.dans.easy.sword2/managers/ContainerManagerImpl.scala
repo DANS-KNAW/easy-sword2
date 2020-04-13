@@ -36,7 +36,9 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
         DepositProperties.load(id).flatMap(_.exists) match {
           case Success(true) => SwordDocument.createDepositReceipt(id)
           case Success(false) => throw new SwordError(404)
-          case Failure(_) => throw new SwordError(500)
+          case Failure(e) =>
+            logger.error(s"Failed to retrieve the entry for $editIRI: ${ e.getMessage }", e)
+            throw new SwordError(500)
         }
       case _ => throw new SwordError(500)
     }
@@ -89,7 +91,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     } yield depositReceipt
 
     result
-      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
+      .doIfFailure { case e => logger.error(s"Failed to add resources to $editIRI: ${ e.getMessage }") }
       .unsafeGetOrThrow
   }
 

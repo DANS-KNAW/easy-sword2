@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util.{ Map => JMap }
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
@@ -40,7 +41,9 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       statement <- createStatement(id, statementIri)
     } yield statement
 
-    result.getOrElse { throw new SwordError(404) }
+    result
+      .doIfFailure { case e => logger.error(s"Failed to retrieve statement for $iri: ${ e.getMessage }", e) }
+      .getOrElse { throw new SwordError(404) }
   }
 
   private def authenticate(id: DepositId, auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
