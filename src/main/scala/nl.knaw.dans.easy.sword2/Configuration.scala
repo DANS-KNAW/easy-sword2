@@ -38,21 +38,25 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   private val depositRootDir = new File(properties.getString("deposits.rootdir"))
   private val archivedDepositRootDir = properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead)
   implicit private val http: BaseHttp = HttpContext(version).Http
+
+  private lazy val depositPropertiesFileFactory = new DepositPropertiesFileFactory(tempDir, depositRootDir, archivedDepositRootDir)
+  private lazy val depositPropertiesServiceFactory = new DepositPropertiesServiceFactory(
+    new GraphQLClient(
+      url = new URL(properties.getString("easy-deposit-properties.url")),
+      credentials = for {
+        username <- Option(properties.getString("easy-deposit-properties.username"))
+        password <- Option(properties.getString("easy-deposit-properties.password"))
+      } yield (username, password),
+      timeout = for {
+        conn <- Option(properties.getInt("easy-deposit-properties.conn-timeout-ms"))
+        read <- Option(properties.getInt("easy-deposit-properties.read-timeout-ms"))
+      } yield (conn, read),
+    ))
+
   private val propertiesFactory = DepositMode.withName(properties.getString("easy-deposit-properties.mode")) match {
-    case DepositMode.FILE => new DepositPropertiesFileFactory(tempDir, depositRootDir, archivedDepositRootDir)
-    case DepositMode.SERVICE => new DepositPropertiesServiceFactory(
-      new GraphQLClient(
-        url = new URL(properties.getString("easy-deposit-properties.url")),
-        credentials = for {
-          username <- Option(properties.getString("easy-deposit-properties.username"))
-          password <- Option(properties.getString("easy-deposit-properties.password"))
-        } yield (username, password),
-        timeout = for {
-          conn <- Option(properties.getInt("easy-deposit-properties.conn-timeout-ms"))
-          read <- Option(properties.getInt("easy-deposit-properties.read-timeout-ms"))
-        } yield (conn, read),
-      ))
-    case DepositMode.BOTH => new DepositPropertiesCompoundFactory
+    case DepositMode.FILE => depositPropertiesFileFactory
+    case DepositMode.SERVICE => depositPropertiesServiceFactory
+    case DepositMode.BOTH => new DepositPropertiesCompoundFactory(depositPropertiesFileFactory, depositPropertiesServiceFactory)
   }
 
   val settings: Settings = Settings(

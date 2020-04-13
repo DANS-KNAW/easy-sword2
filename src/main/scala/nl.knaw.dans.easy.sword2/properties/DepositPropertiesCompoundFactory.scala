@@ -16,13 +16,32 @@
 package nl.knaw.dans.easy.sword2.properties
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
-class DepositPropertiesCompoundFactory extends DepositPropertiesFactory {
+class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
+                                       service: DepositPropertiesServiceFactory,
+                                      ) extends DepositPropertiesFactory {
 
-  override def load(depositId: DepositId): Try[DepositProperties] = ???
+  override def load(depositId: DepositId): Try[DepositProperties] = {
+    for {
+      propsFile <- file.load(depositId)
+      propsService <- service.load(depositId)
+    } yield new DepositPropertiesCompound(propsFile, propsService)
+  }
 
-  override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = ???
+  override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
+    for {
+      propsFile <- file.create(depositId, depositorId)
+      propsService <- service.create(depositId, depositorId)
+    } yield new DepositPropertiesCompound(propsFile, propsService)
+  }
 
-  override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = ???
+  override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {
+    for {
+      uploadedFile <- file.getSword2UploadedDeposits.map(_.toList)
+      uploadedService <- service.getSword2UploadedDeposits.map(_.toList)
+      _ <- if (uploadedFile == uploadedService) Success(())
+           else Failure(new Exception(s"file and service are not in sync. Result for 'file': $uploadedFile. Result for 'service': $uploadedService."))
+    } yield uploadedFile.toIterator
+  }
 }
