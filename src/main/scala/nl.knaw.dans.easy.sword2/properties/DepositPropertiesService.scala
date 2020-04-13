@@ -17,34 +17,236 @@ package nl.knaw.dans.easy.sword2.properties
 
 import java.nio.file.attribute.FileTime
 
-import nl.knaw.dans.easy.sword2.DepositId
 import nl.knaw.dans.easy.sword2.State.State
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesService._
+import nl.knaw.dans.easy.sword2.{ DepositId, State }
+import org.joda.time.DateTime
+import org.json4s.JsonDSL.string2jvalue
+import org.json4s.{ DefaultFormats, Formats }
 
-import scala.util.Try
+import scala.util.{ Failure, Success, Try }
 
 class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) extends DepositProperties {
+  implicit val formats: Formats = DefaultFormats
 
-  override def save(): Try[Unit] = ???
+  override def save(): Try[Unit] = Success(())
 
-  override def exists: Try[Boolean] = ???
+  override def exists: Try[Boolean] = {
+    client.doQuery(DepositExists.query, Map("depositId" -> depositId))
+      .map(_.extract[DepositExists.Data].deposit.isDefined)
+      .toTry
+  }
 
   override def getDepositId: DepositId = depositId
 
-  override def setState(state: State, descr: String): Try[DepositProperties] = ???
+  override def setState(state: State, descr: String): Try[DepositProperties] = {
+    val updateStateVariables = Map(
+      "depositId" -> depositId,
+      "stateLabel" -> state.toString,
+      "stateDescription" -> descr,
+    )
 
-  override def getState: Try[(State, String)] = ???
+    client.doQuery(UpdateState.query, updateStateVariables)
+      .map(_ => this)
+      .toTry
+  }
 
-  override def setBagName(bagName: String): Try[DepositProperties] = ???
+  override def getState: Try[(State, String)] = {
+    for {
+      json <- client.doQuery(GetState.query, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetState.Data].deposit
+      state <- deposit.map(_.state
+        .map(state => Try { State.withName(state.label) -> state.description })
+        .getOrElse(Failure(NoStateForDeposit(depositId))))
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield state
+  }
 
-  override def setClientMessageContentType(contentType: String): Try[DepositProperties] = ???
+  override def setBagName(bagName: String): Try[DepositProperties] = {
+    val setBagNameVariables = Map(
+      "depositId" -> depositId,
+      "bagName" -> bagName,
+    )
 
-  override def removeClientMessageContentType(): Try[DepositProperties] = ???
+    client.doQuery(SetBagName.query, setBagNameVariables)
+      .map(_ => this)
+      .toTry
+  }
 
-  override def getClientMessageContentType: Try[String] = ???
+  override def setClientMessageContentType(contentType: String): Try[DepositProperties] = {
+    val setContentTypeVariables = Map(
+      "depositId" -> depositId,
+      "contentType" -> contentType,
+    )
 
-  override def getDepositorId: Try[String] = ???
+    client.doQuery(SetContentType.query, setContentTypeVariables)
+      .map(_ => this)
+      .toTry
+  }
 
-  override def getDoi: Try[Option[String]] = ???
+  override def removeClientMessageContentType(): Try[DepositProperties] = Success(this)
 
-  override def getLastModifiedTimestamp: Try[Option[FileTime]] = ???
+  override def getClientMessageContentType: Try[String] = {
+    for {
+      json <- client.doQuery(GetContentType.query, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetContentType.Data].deposit
+      contentType <- deposit.map(_.contentType
+        .map(contentType => Success(contentType.value))
+        .getOrElse(Failure(NoContentTypeForDeposit(depositId))))
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield contentType
+  }
+
+  override def getDepositorId: Try[String] = {
+    for {
+      json <- client.doQuery(GetDepositorId.query, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetDepositorId.Data].deposit
+      depositorId <- deposit.map(deposit => Success(deposit.depositor.depositorId))
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield depositorId
+  }
+
+  override def getDoi: Try[Option[String]] = {
+    for {
+      json <- client.doQuery(GetDoi.query, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetDoi.Data].deposit
+      doi <- deposit.map(d => Success(d.identifier.map(_.value)))
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield doi
+  }
+
+  override def getLastModifiedTimestamp: Try[Option[FileTime]] = {
+    for {
+      json <- client.doQuery(GetLastModifiedTimestamp.query, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetLastModifiedTimestamp.Data].deposit
+      lastModified <- deposit.map(lastModified => Try {
+        lastModified.lastModified.map(l => FileTime.fromMillis(DateTime.parse(l).getMillis))
+      })
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield lastModified
+  }
+}
+
+object DepositPropertiesService {
+
+  object DepositExists {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(depositId: DepositId)
+
+    val query: String =
+      """query DepositExists($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    depositId
+        |  }
+        |}""".stripMargin
+  }
+
+  object UpdateState {
+    val query: String =
+      """mutation SetDepositState($depositId: UUID!, $stateLabel: StateLabel!, $stateDescription: String!) {
+        |  updateState(input: { depositId: $depositId, label: $stateLabel, description: $stateDescription }) {
+        |    state {
+        |      label
+        |      description
+        |      timestamp
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetState {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(state: Option[State])
+    case class State(label: String, description: String)
+
+    val query: String =
+      """query GetDepositState($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    state {
+        |      label
+        |      description
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object SetBagName {
+    val query: String =
+      """mutation SetBagName($depositId: UUID!, $bagName: String!) {
+        |  addBagName(input: { depositId: $depositId, bagName: $bagName }) {
+        |    deposit {
+        |      depositId
+        |      bagName
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object SetContentType {
+    val query: String =
+      """mutation SetContentType($depositId: UUID!, $contentType: String!) {
+        |  setContentType(input: { depositId: $depositId, value: $contentType }) {
+        |    contentType {
+        |      value
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetContentType {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(contentType: Option[ContentType])
+    case class ContentType(value: String)
+
+    val query: String =
+      """query GetContentType($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    contentType {
+        |      value
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetDepositorId {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(depositor: Depositor)
+    case class Depositor(depositorId: String)
+
+    val query: String =
+      """query GetDepositorId($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    depositor {
+        |      depositorId
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetDoi {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(identifier: Option[Identifier])
+    case class Identifier(value: String)
+
+    val query: String =
+      """query GetDoi($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    identifier(type: DOI) {
+        |      value
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetLastModifiedTimestamp {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(lastModified: Option[String])
+
+    val query: String =
+      """query GetLastModifiedTimestamp($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    lastModified
+        |  }
+        |}""".stripMargin
+  }
 }
