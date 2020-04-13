@@ -44,6 +44,12 @@ class ReadmeSpec extends TestSupportFixture with CustomMatchers {
     setProperty("cleanup.INVALID", "no")
     setProperty("cleanup.REJECTED", "no")
     setProperty("cleanup.FAILED", "no")
+    setProperty("easy-deposit-properties.url", "http://localhost:20200/")
+    setProperty("easy-deposit-properties.username", "easy-deposit-properties")
+    setProperty("easy-deposit-properties.password", "changeme")
+    setProperty("easy-deposit-properties.conn-timeout-ms", 5000)
+    setProperty("easy-deposit-properties.read-timeout-ms", 5000)
+    setProperty("easy-deposit-properties.mode", "FILE")
   }
   private val clo = new CommandLineOptions(Array[String](), Configuration("1.0.0-SNAPSHOT", properties)) {
     // avoids System.exit() in case of invalid arguments or "--help"
