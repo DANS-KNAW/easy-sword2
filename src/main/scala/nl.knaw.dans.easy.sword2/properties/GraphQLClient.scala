@@ -70,11 +70,17 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
     val body2 = timeout.fold(body1) {
       case (connTimeout, readTimeout) => body1.timeout(connTimeout, readTimeout)
     }
-    val json = JsonMethods.parse(body2.asString.body)
+    
+    val response = body2.asString
+    if (response.is2xx) {
+      val json = JsonMethods.parse(response.body)
 
-    parseErrors(json \ "errors")
-      .map(GraphQLError(_).asLeft)
-      .getOrElse((json \ "data").asRight)
+      parseErrors(json \ "errors")
+        .map(GraphQLError(_).asLeft)
+        .getOrElse((json \ "data").asRight)
+    }
+    else
+      GraphQLError(List(response.body)).asLeft
   }
 
   // following https://graphql.github.io/graphql-spec/June2018/#sec-Response-Format
