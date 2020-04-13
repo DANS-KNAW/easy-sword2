@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.properties
 
-import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesServiceFactory, GraphQLClient }
+import nl.knaw.dans.easy.sword2.TestSupportFixture
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.scalatest.BeforeAndAfterAll
