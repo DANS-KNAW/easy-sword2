@@ -80,8 +80,8 @@ object DepositPropertiesServiceFactory {
     case class ContentType(value: String)
 
     def query(after: Option[String] = Option.empty): String = {
-      s"""query {
-         |  deposits(state: {label: UPLOADED, filter:LATEST}, first: 10${ after.fold("")(s => s""", after: "$s"""") }) {
+      s"""query GetContentTypeForUploadedDatasets {
+         |  deposits(state: { label: UPLOADED, filter: LATEST }, first: 10${ after.fold("")(s => s""", after: "$s"""") }) {
          |    pageInfo {
          |      hasNextPage
          |      startCursor

@@ -18,6 +18,9 @@ package nl.knaw.dans.easy.sword2.properties
 import nl.knaw.dans.easy.sword2.TestSupportFixture
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
+import org.json4s.{ DefaultFormats, Formats }
+import org.json4s.native.Serialization
+import org.json4s.JsonDSL._
 import org.scalatest.BeforeAndAfterAll
 import scalaj.http.{ BaseHttp, Http }
 
@@ -32,6 +35,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
   private val baseUrl: HttpUrl = server.url(test_server)
 
   implicit val http: BaseHttp = Http
+  implicit val formats: Formats = DefaultFormats
   private val client = new GraphQLClient(baseUrl.url())
   private val factory = new DepositPropertiesServiceFactory(client)
 
@@ -41,6 +45,8 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
   }
 
   "create" should "create a new deposit by registering it through the GraphQL interface" in {
+    val depositId = "00000000-0000-0000-0000-000000000006"
+    val depositorId = "user001"
     val response1 =
       """{
         |  "data": {
@@ -78,7 +84,20 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     server.enqueue(new MockResponse().setBody(response2))
     server.enqueue(new MockResponse().setBody(response3))
 
-    factory.create("00000000-0000-0000-0000-000000000006", "user001") shouldBe a[Success[_]]
+    factory.create(depositId, depositorId) shouldBe a[Success[_]]
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.addDepositQuery) ~
+        ("variables" -> Map("depositId" -> depositId, "depositorId" -> depositorId))
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.addDepositBagIdQuery) ~
+        ("variables" -> Map("depositId" -> depositId, "bagId" -> depositId))
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.setDraftStateQuery) ~
+        ("variables" -> Map("depositId" -> depositId))
+    }
   }
 
   "getSword2UploadedDeposits" should "fetch all data at once if their aren't many records" in {
@@ -129,6 +148,10 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         ("00000000-0000-0000-0000-000000000002", "application/zip") ::
         Nil
       ) =>
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      "query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query()
     }
   }
   
@@ -208,6 +231,16 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         ("00000000-0000-0000-0000-000000000002", "application/zip") ::
         Nil
       ) =>
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      "query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query()
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      "query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query(Some("YXJyYXljb25uZWN0aW9uOjA="))
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      "query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query(Some("YXJyYXljb25uZWN0aW9uOjE="))
     }
   }
 }
