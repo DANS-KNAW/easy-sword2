@@ -15,17 +15,15 @@
  */
 package nl.knaw.dans.easy.sword2.properties
 
+import java.nio.file.Files
 import java.nio.file.attribute.FileTime
-import java.nio.file.{ Files, Path }
 
-import nl.knaw.dans.easy.sword2.State.{ DRAFT, State }
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
-import nl.knaw.dans.easy.sword2.{ DepositId, FileOps, Settings, State, dateTimeFormatter }
-import nl.knaw.dans.lib.error._
+import nl.knaw.dans.easy.sword2.State.State
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile.{ CLIENT_MESSAGE_CONTENT_TYPE_KEY, CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD }
+import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.lang.StringUtils
-import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.util.{ Failure, Success, Try }
 
@@ -123,72 +121,7 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 }
 
-object DepositPropertiesFile extends DepositPropertiesFactory {
-  val FILENAME = "deposit.properties"
+object DepositPropertiesFile {
   private val CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD = "contentType" // for backwards compatibility
   private val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
-
-  private def fileLocation(depositId: DepositId)(implicit settings: Settings): Path = {
-    (settings.tempDir #:: settings.depositRootDir #:: settings.archivedDepositRootDir.toStream)
-      .map(_.toPath.resolve(depositId))
-      .collectFirst { case path if Files.exists(path) => path.resolve(FILENAME) }
-      .getOrElse { settings.tempDir.toPath.resolve(depositId).resolve(FILENAME) }
-  }
-
-  private def from(depositId: DepositId)(fillProps: (PropertiesConfiguration, Path) => Unit)(implicit settings: Settings): Try[DepositPropertiesFile] = Try {
-    val file = fileLocation(depositId)
-    val props = new PropertiesConfiguration() {
-      setDelimiterParsingDisabled(true)
-      setFile(file.toFile)
-    }
-    fillProps(props, file)
-
-    new DepositPropertiesFile(props)
-  }
-
-  override def load(depositId: DepositId)(implicit settings: Settings): Try[DepositProperties] = {
-    from(depositId) {
-      case (props, file) if Files.exists(file) => props.load(file.toFile)
-      case (_, file) => throw new Exception(s"deposit $file does not exist")
-    }
-  }
-
-  override def create(depositId: DepositId, depositorId: String)(implicit settings: Settings): Try[DepositProperties] = {
-    for {
-      props <- from(depositId) {
-        case (_, file) if Files.exists(file) => throw new Exception(s"deposit $file already exists")
-        case (props, _) =>
-          props.setProperty("bag-store.bag-id", depositId)
-          props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
-          props.setProperty("deposit.origin", "SWORD2")
-          props.setProperty("state.label", DRAFT)
-          props.setProperty("state.description", "Deposit is open for additional data")
-          props.setProperty("depositor.userId", depositorId)
-      }
-      _ <- props.save()
-    } yield props
-  }
-
-  override def getSword2UploadedDeposits(implicit settings: Settings): Try[Iterator[(DepositId, String)]] = {
-    def depositHasState(props: DepositProperties): Boolean = {
-      props.getState
-        .map { case (label, _) => label }
-        .doIfFailure { case _: Throwable => logger.warn(s"[${ props.getDepositId }] Could not get deposit state. Not putting this deposit on the queue.") }
-        .fold(_ => false, _ == State.UPLOADED)
-    }
-
-    def getContentType(props: DepositProperties): Try[String] = {
-      props.getClientMessageContentType
-        .doIfFailure { case _: Throwable => logger.warn(s"[${ props.getDepositId }] Could not get deposit Content-Type. Not putting this deposit on the queue.") }
-    }
-
-    Try {
-      settings.tempDir
-        .listFilesSafe
-        .toIterator
-        .collect { case file if file.isDirectory => load(file.getName).unsafeGetOrThrow }
-        .filter(depositHasState)
-        .map(props => getContentType(props).map((props.getDepositId, _)).unsafeGetOrThrow)
-    }
-  }
 }

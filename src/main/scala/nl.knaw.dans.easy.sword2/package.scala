@@ -20,7 +20,7 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.easy.sword2.State.State
-import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFactory, DepositPropertiesFile }
+import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFactory, DepositPropertiesFileFactory }
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 
 package object sword2 {
@@ -34,7 +34,6 @@ package object sword2 {
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
 
   case class Settings(depositRootDir: File,
-                      archivedDepositRootDir: Option[File],
                       depositPermissions: String,
                       tempDir: File,
                       serviceBaseUrl: String, // TODO: refactor to URL?
@@ -64,10 +63,10 @@ package object sword2 {
       }
   }
 
-  def DepositPropertiesFactory(implicit settings: Settings): DepositPropertiesFactory = {
+  def DepositProperties(implicit settings: Settings): DepositPropertiesFactory = {
     settings.depositPropertiesFactory
   }
 
-  def isPartOfDeposit(f: File): Boolean = f.getName != DepositPropertiesFile.FILENAME
+  def isPartOfDeposit(f: File): Boolean = f.getName != DepositPropertiesFileFactory.FILENAME
 }
 

@@ -38,7 +38,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
       _ <- checkValidCollectionId(collectionURI)
       id <- SwordID.generate(deposit.getSlug.toOption, auth.getUsername)
       _ = logger.info(s"[$id] Created new deposit")
-      _ <- DepositPropertiesFactory.create(id, auth.getUsername)
+      _ <- DepositProperties.create(id, auth.getUsername)
       depositReceipt <- DepositHandler.handleDeposit(deposit)(settings, id)
       _ = logger.info(s"[$id] Sending deposit receipt")
     } yield depositReceipt

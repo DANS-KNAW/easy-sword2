@@ -15,16 +15,16 @@
  */
 package nl.knaw.dans.easy.sword2.properties
 
-import nl.knaw.dans.easy.sword2.{ DepositId, Settings }
+import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.util.Try
 
 trait DepositPropertiesFactory extends DebugEnhancedLogging {
 
-  def load(depositId: DepositId)(implicit settings: Settings): Try[DepositProperties]
+  def load(depositId: DepositId): Try[DepositProperties]
 
-  def create(depositId: DepositId, depositorId: String)(implicit settings: Settings): Try[DepositProperties]
+  def create(depositId: DepositId, depositorId: String): Try[DepositProperties]
 
-  def getSword2UploadedDeposits(implicit settings: Settings): Try[Iterator[(DepositId, String)]]
+  def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]]
 }

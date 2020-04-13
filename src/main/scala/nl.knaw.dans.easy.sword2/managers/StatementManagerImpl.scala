@@ -52,7 +52,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def createStatement(id: DepositId, statementIri: String)(implicit settings: Settings): Try[AtomStatement] = {
     for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       (label, descr) <- props.getState
       _ = debug(s"State = $label")
       _ = debug(s"State desc = $descr")

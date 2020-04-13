@@ -23,7 +23,7 @@ import javax.naming.AuthenticationException
 import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
 import nl.knaw.dans.easy.sword2.Authentication._
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFile, DepositPropertiesFileFactory }
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
@@ -36,7 +36,6 @@ import scala.util.{ Failure, Success, Try }
 class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with OneInstancePerTest {
   implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
-    archivedDepositRootDir = Option(new File("dummy")),
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
     serviceBaseUrl = "dummy",
@@ -49,7 +48,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     cleanup = Map.empty,
     rescheduleDelaySeconds = 0,
     serverPort = 12345,
-    depositPropertiesFactory = DepositPropertiesFile,
+    depositPropertiesFactory = new DepositPropertiesFileFactory(new File("dummy"), new File("dummy"), Option(new File("dummy"))),
   )
 
   private val ldapContext = mock[LdapContext]

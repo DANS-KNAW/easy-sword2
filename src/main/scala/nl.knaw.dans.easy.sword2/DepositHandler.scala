@@ -99,7 +99,7 @@ object DepositHandler extends DebugEnhancedLogging {
   private def recoverDepositSetState(e: Throwable, depositDir: JFile, errorState: State, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     logger.error(s"[$id] ${ errorState.toString.toLowerCase.capitalize } deposit: ${ errorMsg }", e)
     for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       _ <- props.setState(errorState, errorMsg)
       _ <- props.save()
     } yield ()
@@ -135,7 +135,7 @@ object DepositHandler extends DebugEnhancedLogging {
     if (!deposit.isInProgress) {
       logger.info(s"[$id] Scheduling deposit to be finalized")
       for {
-        props <- DepositPropertiesFactory.load(id)
+        props <- DepositProperties.load(id)
         _ <- props.setState(State.UPLOADED, "Deposit upload has been completed.")
         _ <- props.setClientMessageContentType(deposit.getMimeType)
         _ <- props.save()
