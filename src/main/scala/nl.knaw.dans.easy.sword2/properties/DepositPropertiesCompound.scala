@@ -28,84 +28,84 @@ class DepositPropertiesCompound(file: DepositProperties,
 
   override def save(): Try[Unit] = {
     for {
-      _ <- file.save()
       _ <- service.save()
+      _ <- file.save()
     } yield ()
   }
 
   override def exists: Try[Boolean] = {
     for {
-      existsFile <- file.exists
       _ <- service.exists
+      existsFile <- file.exists
     } yield existsFile
   }
 
   override def getDepositId: DepositId = {
+    val _ = service.getDepositId
     val depositIdFile = file.getDepositId
-    val _ = file.getDepositId
     depositIdFile
   }
 
   override def setState(state: State, descr: String): Try[DepositProperties] = {
     for {
-      _ <- file.setState(state, descr)
       _ <- service.setState(state, descr)
+      _ <- file.setState(state, descr)
     } yield this
   }
 
   override def getState: Try[(State, String)] = {
     for {
-      stateFile <- file.getState
       _ <- service.getState
+      stateFile <- file.getState
     } yield stateFile
   }
 
   override def setBagName(bagName: String): Try[DepositProperties] = {
     for {
-      _ <- file.setBagName(bagName)
       _ <- service.setBagName(bagName)
+      _ <- file.setBagName(bagName)
     } yield this
   }
 
   override def setClientMessageContentType(contentType: String): Try[DepositProperties] = {
     for {
-      _ <- file.setClientMessageContentType(contentType)
       _ <- service.setClientMessageContentType(contentType)
+      _ <- file.setClientMessageContentType(contentType)
     } yield this
   }
 
   override def removeClientMessageContentType(): Try[DepositProperties] = {
     for {
-      _ <- file.removeClientMessageContentType()
       _ <- service.removeClientMessageContentType()
+      _ <- file.removeClientMessageContentType()
     } yield this
   }
 
   override def getClientMessageContentType: Try[String] = {
     for {
-      contentTypeFile <- file.getClientMessageContentType
       _ <- service.getClientMessageContentType
+      contentTypeFile <- file.getClientMessageContentType
     } yield contentTypeFile
   }
 
   override def getDepositorId: Try[String] = {
     for {
-      depositorIdFile <- file.getDepositorId
       _ <- service.getDepositorId
+      depositorIdFile <- file.getDepositorId
     } yield depositorIdFile
   }
 
   override def getDoi: Try[Option[String]] = {
     for {
-      doiFile <- file.getDoi
       _ <- service.getDoi
+      doiFile <- file.getDoi
     } yield doiFile
   }
 
   override def getLastModifiedTimestamp: Try[Option[FileTime]] = {
     for {
-      lastModifiedFile <- file.getLastModifiedTimestamp
       _ <- service.getLastModifiedTimestamp
+      lastModifiedFile <- file.getLastModifiedTimestamp
     } yield lastModifiedFile
   }
 }

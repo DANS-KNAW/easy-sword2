@@ -25,22 +25,22 @@ class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
 
   override def load(depositId: DepositId): Try[DepositProperties] = {
     for {
-      propsFile <- file.load(depositId)
       propsService <- service.load(depositId)
+      propsFile <- file.load(depositId)
     } yield new DepositPropertiesCompound(propsFile, propsService)
   }
 
   override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
     for {
-      propsFile <- file.create(depositId, depositorId)
       propsService <- service.create(depositId, depositorId)
+      propsFile <- file.create(depositId, depositorId)
     } yield new DepositPropertiesCompound(propsFile, propsService)
   }
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {
     for {
-      uploadedFile <- file.getSword2UploadedDeposits
       _ <- service.getSword2UploadedDeposits
+      uploadedFile <- file.getSword2UploadedDeposits
     } yield uploadedFile
   }
 
