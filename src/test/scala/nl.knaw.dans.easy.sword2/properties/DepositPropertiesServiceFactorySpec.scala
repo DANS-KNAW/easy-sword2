@@ -47,30 +47,20 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
   "create" should "create a new deposit by registering it through the GraphQL interface" in {
     val depositId = "00000000-0000-0000-0000-000000000006"
     val depositorId = "user001"
-    val response1 =
+    val response =
       """{
         |  "data": {
         |    "addDeposit": {
         |      "deposit": {
         |        "depositId": "00000000-0000-0000-0000-000000000006"
         |      }
-        |    }
-        |  }
-        |}""".stripMargin
-    val response2 =
-      """{
-        |  "data": {
+        |    },
         |    "addIdentifier": {
         |      "identifier": {
         |        "type": "BAG_STORE",
         |        "value": "00000000-0000-0000-0000-000000000006"
         |      }
-        |    }
-        |  }
-        |}""".stripMargin
-    val response3 =
-      """{
-        |  "data": {
+        |    },
         |    "updateState": {
         |      "state": {
         |        "label": "DRAFT",
@@ -79,24 +69,14 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         |    }
         |  }
         |}""".stripMargin
-    
-    server.enqueue(new MockResponse().setBody(response1))
-    server.enqueue(new MockResponse().setBody(response2))
-    server.enqueue(new MockResponse().setBody(response3))
+
+    server.enqueue(new MockResponse().setBody(response))
 
     factory.create(depositId, depositorId) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.addDepositQuery) ~
-        ("variables" -> Map("depositId" -> depositId, "depositorId" -> depositorId))
-    }
-    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.addDepositBagIdQuery) ~
-        ("variables" -> Map("depositId" -> depositId, "bagId" -> depositId))
-    }
-    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.setDraftStateQuery) ~
-        ("variables" -> Map("depositId" -> depositId))
+      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.query) ~
+        ("variables" -> Map("depositId" -> depositId, "depositorId" -> depositorId, "bagId" -> depositId))
     }
   }
 

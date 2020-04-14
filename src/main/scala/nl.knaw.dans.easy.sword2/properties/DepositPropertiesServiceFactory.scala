@@ -31,22 +31,14 @@ class DepositPropertiesServiceFactory(client: GraphQLClient) extends DepositProp
   }
 
   override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
-    val addDepositVariables = Map(
+    val registerDepositVariables = Map(
       "depositId" -> depositId,
       "depositorId" -> depositorId,
-    )
-    val addDepositBagIdVariables = Map(
-      "depositId" -> depositId,
       "bagId" -> depositId,
-    )
-    val setDraftStateVariables = Map(
-      "depositId" -> depositId,
     )
 
     for {
-      _ <- client.doQuery(CreateDeposit.addDepositQuery, addDepositVariables).toTry
-      _ <- client.doQuery(CreateDeposit.addDepositBagIdQuery, addDepositBagIdVariables).toTry
-      _ <- client.doQuery(CreateDeposit.setDraftStateQuery, setDraftStateVariables).toTry
+      _ <- client.doQuery(CreateDeposit.query, registerDepositVariables).toTry
       properties <- load(depositId)
     } yield properties
   }
@@ -102,25 +94,19 @@ object DepositPropertiesServiceFactory {
   }
 
   object CreateDeposit {
-    val addDepositQuery: String =
-      """mutation AddDeposit($depositId: UUID!, $depositorId: String!) {
+    val query: String =
+      """mutation RegisterDeposit($depositId: UUID!, $depositorId: String!, $bagId: String!) {
         |  addDeposit(input: { depositId: $depositId, depositorId: $depositorId, origin: SWORD2 }) {
         |    deposit {
         |      depositId
         |    }
         |  }
-        |}""".stripMargin
-    val addDepositBagIdQuery: String =
-      """mutation AddDepositBagId($depositId: UUID!, $bagId: String!) {
         |  addIdentifier(input: { depositId: $depositId, type: BAG_STORE, value: $bagId }) {
         |    identifier {
         |      type
         |      value
         |    }
         |  }
-        |}""".stripMargin
-    val setDraftStateQuery: String =
-      """mutation SetDraftState($depositId: UUID!) {
         |  updateState(input: { depositId: $depositId, label: DRAFT, description: "Deposit is open for additional data" }) {
         |    state {
         |      label
