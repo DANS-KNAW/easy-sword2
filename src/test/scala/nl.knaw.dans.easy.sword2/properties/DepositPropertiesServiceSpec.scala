@@ -64,6 +64,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.DepositExists.query) ~
+        ("operationName" -> DepositPropertiesService.DepositExists.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -81,6 +82,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.DepositExists.query) ~
+        ("operationName" -> DepositPropertiesService.DepositExists.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -110,6 +112,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.UpdateState.query) ~
+        ("operationName" -> DepositPropertiesService.UpdateState.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "stateLabel" -> label.toString,
@@ -136,6 +139,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetState.query) ~
+        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -153,6 +157,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetState.query) ~
+        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -172,6 +177,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetState.query) ~
+        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -195,6 +201,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.SetBagName.query) ~
+        ("operationName" -> DepositPropertiesService.SetBagName.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "bagName" -> bagName,
@@ -220,6 +227,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.SetContentType.query) ~
+        ("operationName" -> DepositPropertiesService.SetContentType.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "contentType" -> contentType,
@@ -244,6 +252,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetContentType.query) ~
+        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -263,6 +272,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetContentType.query) ~
+        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -280,6 +290,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetContentType.query) ~
+        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -301,6 +312,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetDepositorId.query) ~
+        ("operationName" -> DepositPropertiesService.GetDepositorId.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -318,6 +330,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetDepositorId.query) ~
+        ("operationName" -> DepositPropertiesService.GetDepositorId.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -339,6 +352,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetDoi.query) ~
+        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -358,6 +372,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetDoi.query) ~
+        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -375,6 +390,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetDoi.query) ~
+        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -395,6 +411,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -414,6 +431,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -431,6 +449,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }

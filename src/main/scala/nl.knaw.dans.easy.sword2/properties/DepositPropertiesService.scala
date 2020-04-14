@@ -32,7 +32,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
   override def save(): Try[Unit] = Success(())
 
   override def exists: Try[Boolean] = {
-    client.doQuery(DepositExists.query, Map("depositId" -> depositId))
+    client.doQuery(DepositExists.query, Map("depositId" -> depositId), DepositExists.operationName)
       .map(_.extract[DepositExists.Data].deposit.isDefined)
       .toTry
   }
@@ -46,14 +46,14 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
       "stateDescription" -> descr,
     )
 
-    client.doQuery(UpdateState.query, updateStateVariables)
+    client.doQuery(UpdateState.query, updateStateVariables, UpdateState.operationName)
       .map(_ => this)
       .toTry
   }
 
   override def getState: Try[(State, String)] = {
     for {
-      json <- client.doQuery(GetState.query, Map("depositId" -> depositId)).toTry
+      json <- client.doQuery(GetState.query, Map("depositId" -> depositId), GetState.operationName).toTry
       deposit = json.extract[GetState.Data].deposit
       state <- deposit.map(_.state
         .map(state => Try { State.withName(state.label) -> state.description })
@@ -68,7 +68,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
       "bagName" -> bagName,
     )
 
-    client.doQuery(SetBagName.query, setBagNameVariables)
+    client.doQuery(SetBagName.query, setBagNameVariables, SetBagName.operationName)
       .map(_ => this)
       .toTry
   }
@@ -79,7 +79,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
       "contentType" -> contentType,
     )
 
-    client.doQuery(SetContentType.query, setContentTypeVariables)
+    client.doQuery(SetContentType.query, setContentTypeVariables, SetContentType.operationName)
       .map(_ => this)
       .toTry
   }
@@ -88,7 +88,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
 
   override def getClientMessageContentType: Try[String] = {
     for {
-      json <- client.doQuery(GetContentType.query, Map("depositId" -> depositId)).toTry
+      json <- client.doQuery(GetContentType.query, Map("depositId" -> depositId), GetContentType.operationName).toTry
       deposit = json.extract[GetContentType.Data].deposit
       contentType <- deposit.map(_.contentType
         .map(contentType => Success(contentType.value))
@@ -99,7 +99,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
 
   override def getDepositorId: Try[String] = {
     for {
-      json <- client.doQuery(GetDepositorId.query, Map("depositId" -> depositId)).toTry
+      json <- client.doQuery(GetDepositorId.query, Map("depositId" -> depositId), GetDepositorId.operationName).toTry
       deposit = json.extract[GetDepositorId.Data].deposit
       depositorId <- deposit.map(deposit => Success(deposit.depositor.depositorId))
         .getOrElse(Failure(DepositDoesNotExist(depositId)))
@@ -108,7 +108,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
 
   override def getDoi: Try[Option[String]] = {
     for {
-      json <- client.doQuery(GetDoi.query, Map("depositId" -> depositId)).toTry
+      json <- client.doQuery(GetDoi.query, Map("depositId" -> depositId), GetDoi.operationName).toTry
       deposit = json.extract[GetDoi.Data].deposit
       doi <- deposit.map(d => Success(d.identifier.map(_.value)))
         .getOrElse(Failure(DepositDoesNotExist(depositId)))
@@ -117,7 +117,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) exte
 
   override def getLastModifiedTimestamp: Try[Option[FileTime]] = {
     for {
-      json <- client.doQuery(GetLastModifiedTimestamp.query, Map("depositId" -> depositId)).toTry
+      json <- client.doQuery(GetLastModifiedTimestamp.query, Map("depositId" -> depositId), GetLastModifiedTimestamp.operationName).toTry
       deposit = json.extract[GetLastModifiedTimestamp.Data].deposit
       lastModified <- deposit.map(lastModified => Try {
         lastModified.lastModified.map(l => FileTime.fromMillis(DateTime.parse(l).getMillis))
@@ -133,6 +133,7 @@ object DepositPropertiesService {
     case class Data(deposit: Option[Deposit])
     case class Deposit(depositId: DepositId)
 
+    val operationName = "DepositExists"
     val query: String =
       """query DepositExists($depositId: UUID!) {
         |  deposit(id: $depositId) {
@@ -142,6 +143,7 @@ object DepositPropertiesService {
   }
 
   object UpdateState {
+    val operationName = "SetDepositState"
     val query: String =
       """mutation SetDepositState($depositId: UUID!, $stateLabel: StateLabel!, $stateDescription: String!) {
         |  updateState(input: { depositId: $depositId, label: $stateLabel, description: $stateDescription }) {
@@ -159,6 +161,7 @@ object DepositPropertiesService {
     case class Deposit(state: Option[State])
     case class State(label: String, description: String)
 
+    val operationName = "GetDepositState"
     val query: String =
       """query GetDepositState($depositId: UUID!) {
         |  deposit(id: $depositId) {
@@ -171,6 +174,7 @@ object DepositPropertiesService {
   }
 
   object SetBagName {
+    val operationName = "SetBagName"
     val query: String =
       """mutation SetBagName($depositId: UUID!, $bagName: String!) {
         |  addBagName(input: { depositId: $depositId, bagName: $bagName }) {
@@ -183,6 +187,7 @@ object DepositPropertiesService {
   }
 
   object SetContentType {
+    val operationName = "SetContentType"
     val query: String =
       """mutation SetContentType($depositId: UUID!, $contentType: String!) {
         |  setContentType(input: { depositId: $depositId, value: $contentType }) {
@@ -198,6 +203,7 @@ object DepositPropertiesService {
     case class Deposit(contentType: Option[ContentType])
     case class ContentType(value: String)
 
+    val operationName = "GetContentType"
     val query: String =
       """query GetContentType($depositId: UUID!) {
         |  deposit(id: $depositId) {
@@ -213,6 +219,7 @@ object DepositPropertiesService {
     case class Deposit(depositor: Depositor)
     case class Depositor(depositorId: String)
 
+    val operationName = "GetDepositorId"
     val query: String =
       """query GetDepositorId($depositId: UUID!) {
         |  deposit(id: $depositId) {
@@ -228,6 +235,7 @@ object DepositPropertiesService {
     case class Deposit(identifier: Option[Identifier])
     case class Identifier(value: String)
 
+    val operationName = "GetDoi"
     val query: String =
       """query GetDoi($depositId: UUID!) {
         |  deposit(id: $depositId) {
@@ -242,6 +250,7 @@ object DepositPropertiesService {
     case class Data(deposit: Option[Deposit])
     case class Deposit(lastModified: Option[String])
 
+    val operationName = "GetLastModifiedTimestamp"
     val query: String =
       """query GetLastModifiedTimestamp($depositId: UUID!) {
         |  deposit(id: $depositId) {

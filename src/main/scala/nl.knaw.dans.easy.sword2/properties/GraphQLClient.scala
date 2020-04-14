@@ -37,7 +37,9 @@ import scalaj.http.BaseHttp
 class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, credentials: Option[(String, String)] = Option.empty)
                    (implicit http: BaseHttp, jsonFormats: Formats = new DefaultFormats {}) {
 
-  def doQuery(query: String): Either[GraphQLError, JValue] = doQuery[String](query, Map.empty)
+  def doQuery(query: String, operationName: String): Either[GraphQLError, JValue] = {
+    doQuery[String](query, Map.empty, operationName)
+  }
 
   /**
    * Execute a GraphQL query, if provided sent together with the variables. The response is parsed
@@ -51,14 +53,14 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
    * @return the JSON object inside ''data'' if the query was successful;
    *         a list of error messages otherwise
    */
-  def doQuery[A](query: String, variables: Map[String, A])(implicit ev: A => JValue): Either[GraphQLError, JValue] = {
+  def doQuery[A](query: String, variables: Map[String, A], operationName: String)(implicit ev: A => JValue): Either[GraphQLError, JValue] = {
     val baseHttp = http(url.toString)
       .headers(
         "Accept" -> "application/json",
         "Content-Type" -> "application/json",
       )
       .postData(Serialization.write {
-        val q = "query" -> query
+        val q = ("query" -> query) ~ ("operationName" -> operationName)
 
         if (variables.nonEmpty) q ~ ("variables" -> variables)
         else q
@@ -70,7 +72,7 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
     val body2 = timeout.fold(body1) {
       case (connTimeout, readTimeout) => body1.timeout(connTimeout, readTimeout)
     }
-    
+
     val response = body2.asString
     if (response.is2xx) {
       val json = JsonMethods.parse(response.body)

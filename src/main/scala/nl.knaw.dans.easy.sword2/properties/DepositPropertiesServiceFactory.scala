@@ -38,7 +38,7 @@ class DepositPropertiesServiceFactory(client: GraphQLClient) extends DepositProp
     )
 
     for {
-      _ <- client.doQuery(CreateDeposit.query, registerDepositVariables).toTry
+      _ <- client.doQuery(CreateDeposit.query, registerDepositVariables, CreateDeposit.operationName).toTry
       properties <- load(depositId)
     } yield properties
   }
@@ -50,7 +50,7 @@ class DepositPropertiesServiceFactory(client: GraphQLClient) extends DepositProp
       override def hasNext: Boolean = nextPageInfo.hasNextPage
 
       override def next(): Seq[(DepositId, MimeType)] = {
-        val json = client.doQuery(Sword2UploadedDeposits.query(Option(nextPageInfo.startCursor))).toTry.unsafeGetOrThrow
+        val json = client.doQuery(Sword2UploadedDeposits.query(Option(nextPageInfo.startCursor)), Sword2UploadedDeposits.operationName).toTry.unsafeGetOrThrow
         val data = json.extract[Sword2UploadedDeposits.Data]
         val newPageInfo = data.deposits.pageInfo
         val nextValues = data.deposits.edges.map(_.node).map(node => node.depositId -> node.contentType.value)
@@ -73,6 +73,7 @@ object DepositPropertiesServiceFactory {
     case class Node(depositId: String, contentType: ContentType)
     case class ContentType(value: String)
 
+    val operationName = "GetContentTypeForUploadedDatasets"
     def query(after: Option[String] = Option.empty): String = {
       s"""query GetContentTypeForUploadedDatasets {
          |  deposits(state: { label: UPLOADED, filter: LATEST }, first: 10${ after.fold("")(s => s""", after: "$s"""") }) {
@@ -94,6 +95,7 @@ object DepositPropertiesServiceFactory {
   }
 
   object CreateDeposit {
+    val operationName = "RegisterDeposit"
     val query: String =
       """mutation RegisterDeposit($depositId: UUID!, $depositorId: String!, $bagId: String!) {
         |  addDeposit(input: { depositId: $depositId, depositorId: $depositorId, origin: SWORD2 }) {
