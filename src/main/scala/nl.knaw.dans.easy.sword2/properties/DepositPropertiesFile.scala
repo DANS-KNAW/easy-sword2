@@ -126,4 +126,5 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
 object DepositPropertiesFile {
   private val CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD = "contentType" // for backwards compatibility
   private val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
+  val FILENAME = "deposit.properties"
 }

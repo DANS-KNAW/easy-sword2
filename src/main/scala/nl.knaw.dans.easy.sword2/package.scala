@@ -20,7 +20,7 @@ import java.net.URI
 import java.util.regex.Pattern
 
 import nl.knaw.dans.easy.sword2.State.State
-import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFactory, DepositPropertiesFileFactory }
+import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFactory, DepositPropertiesFile }
 import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 
 package object sword2 {
@@ -67,6 +67,6 @@ package object sword2 {
     settings.depositPropertiesFactory
   }
 
-  def isPartOfDeposit(f: File): Boolean = f.getName != DepositPropertiesFileFactory.FILENAME
+  def isPartOfDeposit(f: File): Boolean = f.getName != DepositPropertiesFile.FILENAME
 }
 

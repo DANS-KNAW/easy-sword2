@@ -30,8 +30,6 @@ object Command extends App with DebugEnhancedLogging {
   private val configuration = Configuration(Paths.get(System.getProperty("app.home")))
   private val commandLine = CommandLineOptions(args, configuration)
 
-  logger.info(s"Using ${ configuration.settings.depositPropertiesFactory } for storing deposit properties")
-
   runSubcommand()
     .doIfSuccess(msg => println(s"OK: $msg"))
     .doIfFailure { case e => logger.error(e.getMessage, e) }

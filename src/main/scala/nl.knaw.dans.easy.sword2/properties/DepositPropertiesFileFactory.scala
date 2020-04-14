@@ -19,7 +19,6 @@ import java.io.File
 import java.nio.file.{ Files, Path }
 
 import nl.knaw.dans.easy.sword2.State.DRAFT
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFileFactory.FILENAME
 import nl.knaw.dans.easy.sword2.{ DepositId, FileOps, MimeType, State, dateTimeFormatter }
 import nl.knaw.dans.lib.error._
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -35,8 +34,8 @@ class DepositPropertiesFileFactory(tempDir: File,
   private def fileLocation(depositId: DepositId): Path = {
     (tempDir #:: depositRootDir #:: archivedDepositRootDir.toStream)
       .map(_.toPath.resolve(depositId))
-      .collectFirst { case path if Files.exists(path) => path.resolve(FILENAME) }
-      .getOrElse { tempDir.toPath.resolve(depositId).resolve(FILENAME) }
+      .collectFirst { case path if Files.exists(path) => path.resolve(DepositPropertiesFile.FILENAME) }
+      .getOrElse { tempDir.toPath.resolve(depositId).resolve(DepositPropertiesFile.FILENAME) }
   }
 
   private def from(depositId: DepositId)(fillProps: (PropertiesConfiguration, Path) => Unit): Try[DepositPropertiesFile] = Try {
@@ -97,7 +96,4 @@ class DepositPropertiesFileFactory(tempDir: File,
   }
 
   override def toString: String = "DepositPropertiesFileFactory"
-}
-object DepositPropertiesFileFactory {
-  val FILENAME = "deposit.properties"
 }

@@ -21,7 +21,7 @@ import java.nio.file.{ Files, Path, Paths }
 import java.util.regex.Pattern
 
 import javax.servlet.ServletException
-import nl.knaw.dans.easy.sword2.properties.{ DepositMode, DepositPropertiesCompoundFactory, DepositPropertiesFileFactory, DepositPropertiesServiceFactory, GraphQLClient, HttpContext }
+import nl.knaw.dans.easy.sword2.properties._
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
 import resource.managed
