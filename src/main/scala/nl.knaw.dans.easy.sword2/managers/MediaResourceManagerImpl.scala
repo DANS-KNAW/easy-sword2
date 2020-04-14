@@ -24,28 +24,27 @@ class MediaResourceManagerImpl extends MediaResourceManager {
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   override def getMediaResourceRepresentation(uri: String, accept: util.Map[String, String], auth: AuthCredentials, config: SwordConfiguration): MediaResource = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def replaceMediaResource(uri: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def deleteMediaResource(uri: String, auth: AuthCredentials, config: SwordConfiguration) {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordServerException])
   @throws(classOf[SwordAuthException])
   def addResource(uri: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
-    throw new SwordError("http://purl.org/net/sword/error/MethodNotAllowed")
+    throw new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED)
   }
-
 }
