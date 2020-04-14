@@ -18,11 +18,12 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util.{ Map => JMap }
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.GraphQLError
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
-import scala.util.{ Success, Try }
+import scala.util.{ Failure, Success, Try }
 
 class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
@@ -43,6 +44,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
     result
       .doIfFailure { case e => logger.error(s"Failed to retrieve statement for $iri: ${ e.getMessage }", e) }
+      .recoverWith { case e: GraphQLError => Failure(e.toSwordError) }
       .getOrElse { throw new SwordError(404) }
   }
 

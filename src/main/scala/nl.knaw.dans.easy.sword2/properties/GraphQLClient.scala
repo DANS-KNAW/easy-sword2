@@ -15,14 +15,15 @@
  */
 package nl.knaw.dans.easy.sword2.properties
 
-import java.net.URL
+import java.net.{ ConnectException, URL }
 
 import cats.syntax.either._
-import nl.knaw.dans.easy.sword2.properties.GraphQLClient.GraphQLError
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.{ GraphQLError, GraphQLQueryError, GraphQLServiceUnavailable }
 import org.json4s.JsonAST.{ JArray, JString }
 import org.json4s.JsonDSL._
 import org.json4s.native.{ JsonMethods, Serialization }
 import org.json4s.{ DefaultFormats, Formats, JValue }
+import org.swordapp.server.SwordError
 import scalaj.http.BaseHttp
 
 /**
@@ -73,16 +74,17 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
       case (connTimeout, readTimeout) => body1.timeout(connTimeout, readTimeout)
     }
 
-    val response = body2.asString
-    if (response.is2xx) {
-      val json = JsonMethods.parse(response.body)
+    Either.catchOnly[ConnectException] { body2.asString }
+      .leftMap(_ => GraphQLServiceUnavailable)
+      .flatMap {
+        case response if response.is2xx =>
+          val json = JsonMethods.parse(response.body)
 
-      parseErrors(json \ "errors")
-        .map(GraphQLError(_).asLeft)
-        .getOrElse((json \ "data").asRight)
-    }
-    else
-      GraphQLError(List(response.body)).asLeft
+          parseErrors(json \ "errors")
+            .map(GraphQLQueryError(_).asLeft)
+            .getOrElse((json \ "data").asRight)
+        case response => GraphQLQueryError(List(response.body)).asLeft
+      }
   }
 
   // following https://graphql.github.io/graphql-spec/June2018/#sec-Response-Format
@@ -101,5 +103,18 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
 }
 
 object GraphQLClient {
-  case class GraphQLError(errors: List[String]) extends Exception(s"Error in GraphQL query: ${ errors.mkString("[", ", ", "]") }")
+  abstract class GraphQLError(val msg: String) extends Exception(msg) {
+    def toSwordError: SwordError
+  }
+  case class UnexpectedResponseCode(code: Int, body: String) extends GraphQLError(s"GraphQL service returned code $code with message: $body") {
+    override def toSwordError: SwordError = new SwordError(500)
+  }
+  case class GraphQLQueryError(errors: List[String]) extends GraphQLError(s"Error in GraphQL query: ${ errors.mkString("[", ", ", "]") }") {
+    override def toSwordError: SwordError = new SwordError(500)
+  }
+  case object GraphQLServiceUnavailable extends GraphQLError("GraphQL service is unavailable") {
+    override def toSwordError: SwordError = new SwordError(503) {
+      override def getMessage: String = "503 Service temporarily unavailable"
+    }
+  }
 }

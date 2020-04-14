@@ -19,12 +19,13 @@ import java.net.URI
 import java.nio.file.Paths
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.GraphQLError
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import nl.knaw.dans.lib.string._
 import org.swordapp.server._
 
-import scala.util.Try
+import scala.util.{ Failure, Try }
 
 class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEnhancedLogging {
 
@@ -44,7 +45,8 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     } yield depositReceipt
 
     result
-      .doIfFailure { case e => logger.error(s"Failed to create a new deposit: ${ e.getMessage }") }
+      .doIfFailure { case e => logger.error(s"Failed to create a new deposit: ${ e.getMessage }", e) }
+      .recoverWith { case e: GraphQLError => Failure(e.toSwordError) }
       .unsafeGetOrThrow
   }
 

@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.GraphQLError
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
@@ -36,6 +37,9 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
         DepositProperties.load(id).flatMap(_.exists) match {
           case Success(true) => SwordDocument.createDepositReceipt(id)
           case Success(false) => throw new SwordError(404)
+          case Failure(e: GraphQLError) =>
+            logger.error(s"Failed to retrieve the entry for $editIRI: ${ e.getMessage }", e)
+            throw e.toSwordError
           case Failure(e) =>
             logger.error(s"Failed to retrieve the entry for $editIRI: ${ e.getMessage }", e)
             throw new SwordError(500)
@@ -91,7 +95,8 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     } yield depositReceipt
 
     result
-      .doIfFailure { case e => logger.error(s"Failed to add resources to $editIRI: ${ e.getMessage }") }
+      .doIfFailure { case e => logger.error(s"Failed to add resources to $editIRI: ${ e.getMessage }", e) }
+      .recoverWith { case e: GraphQLError => Failure(e.toSwordError) }
       .unsafeGetOrThrow
   }
 
