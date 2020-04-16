@@ -18,13 +18,12 @@ package nl.knaw.dans.easy.sword2.properties
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesServiceFactory.{ CreateDeposit, Sword2UploadedDeposits }
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 import nl.knaw.dans.lib.error._
+import org.json4s.Formats
 import org.json4s.JsonDSL.string2jvalue
-import org.json4s.{ DefaultFormats, Formats }
 
 import scala.util.Try
 
-class DepositPropertiesServiceFactory(client: GraphQLClient) extends DepositPropertiesFactory {
-  implicit val formats: Formats = DefaultFormats
+class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: Formats) extends DepositPropertiesFactory {
 
   override def load(depositId: DepositId): Try[DepositProperties] = Try {
     new DepositPropertiesService(depositId, client)
@@ -74,6 +73,7 @@ object DepositPropertiesServiceFactory {
     case class ContentType(value: String)
 
     val operationName = "GetContentTypeForUploadedDatasets"
+
     def query(after: Option[String] = Option.empty): String = {
       s"""query GetContentTypeForUploadedDatasets {
          |  deposits(state: { label: UPLOADED, filter: LATEST }, first: 10${ after.fold("")(s => s""", after: "$s"""") }) {

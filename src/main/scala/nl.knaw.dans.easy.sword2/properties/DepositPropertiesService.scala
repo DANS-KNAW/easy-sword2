@@ -21,13 +21,12 @@ import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesService._
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import org.joda.time.DateTime
+import org.json4s.Formats
 import org.json4s.JsonDSL.string2jvalue
-import org.json4s.{ DefaultFormats, Formats }
 
 import scala.util.{ Failure, Success, Try }
 
-class DepositPropertiesService(depositId: DepositId, client: GraphQLClient) extends DepositProperties {
-  implicit val formats: Formats = DefaultFormats
+class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties {
 
   override def save(): Try[Unit] = Success(())
 

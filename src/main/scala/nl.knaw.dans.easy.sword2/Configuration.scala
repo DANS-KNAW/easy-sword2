@@ -24,6 +24,7 @@ import javax.servlet.ServletException
 import nl.knaw.dans.easy.sword2.properties._
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
+import org.json4s.{ DefaultFormats, Formats }
 import resource.managed
 import scalaj.http.BaseHttp
 
@@ -38,6 +39,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   private val depositRootDir = new File(properties.getString("deposits.rootdir"))
   private val archivedDepositRootDir = properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead)
   implicit private val http: BaseHttp = HttpContext(version).Http
+  implicit private val jsonFormats: Formats = new DefaultFormats {}
 
   private lazy val depositPropertiesFileFactory = new DepositPropertiesFileFactory(tempDir, depositRootDir, archivedDepositRootDir)
   private lazy val depositPropertiesServiceFactory = new DepositPropertiesServiceFactory(
