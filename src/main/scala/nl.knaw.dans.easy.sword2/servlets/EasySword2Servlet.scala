@@ -16,8 +16,8 @@
 package nl.knaw.dans.easy.sword2.servlets
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
-import org.scalatra.{ Ok, ScalatraServlet }
 import nl.knaw.dans.lib.logging.servlet._
+import org.scalatra.{ Ok, ScalatraServlet }
 
 class EasySword2Servlet(version: String) extends ScalatraServlet
   with ServletLogger

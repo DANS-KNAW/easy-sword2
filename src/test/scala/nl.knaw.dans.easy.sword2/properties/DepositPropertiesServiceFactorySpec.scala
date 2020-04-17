@@ -18,9 +18,9 @@ package nl.knaw.dans.easy.sword2.properties
 import nl.knaw.dans.easy.sword2.TestSupportFixture
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
-import org.json4s.{ DefaultFormats, Formats }
-import org.json4s.native.Serialization
 import org.json4s.JsonDSL._
+import org.json4s.native.Serialization
+import org.json4s.{ DefaultFormats, Formats }
 import org.scalatest.BeforeAndAfterAll
 import scalaj.http.{ BaseHttp, Http }
 
@@ -136,7 +136,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName)
     }
   }
-  
+
   it should "fetch data in a paginated way" in {
     val response1 =
       """{

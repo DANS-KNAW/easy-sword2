@@ -23,7 +23,7 @@ import javax.naming.AuthenticationException
 import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
 import nl.knaw.dans.easy.sword2.Authentication._
-import nl.knaw.dans.easy.sword2.properties.{ DepositPropertiesFile, DepositPropertiesFileFactory }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFileFactory
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
