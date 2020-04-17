@@ -19,7 +19,7 @@ import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
 import nl.knaw.dans.easy.sword2.State.State
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile.{ CLIENT_MESSAGE_CONTENT_TYPE_KEY, CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD }
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -57,8 +57,8 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 
   override def setState(state: State, descr: String): Try[DepositProperties] = Try {
-    properties.setProperty("state.label", state)
-    properties.setProperty("state.description", descr)
+    properties.setProperty(STATE_LABEL_KEY, state)
+    properties.setProperty(STATE_DESCRIPTION_KEY, descr)
     this
   }
 
@@ -69,8 +69,8 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
    */
   override def getState: Try[(State, String)] = {
     for {
-      label <- Try { Option(properties.getString("state.label")).map(State.withName) }
-      descr <- Try { Option(properties.getString("state.description")) }
+      label <- Try { Option(properties.getString(STATE_LABEL_KEY)).map(State.withName) }
+      descr <- Try { Option(properties.getString(STATE_DESCRIPTION_KEY)) }
       result <- label.flatMap(state => descr.map((state, _)))
         .map(Success(_))
         .getOrElse(Failure(new IllegalStateException("Deposit without state")))
@@ -78,7 +78,7 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 
   override def setBagName(bagName: String): Try[DepositProperties] = Try {
-    properties.setProperty("bag-store.bag-name", bagName)
+    properties.setProperty(BAGSTORE_BAGNAME_KEY, bagName)
     this
   }
 
@@ -102,13 +102,13 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 
   override def getDepositorId: Try[String] = {
-    Option(properties.getString("depositor.userId"))
+    Option(properties.getString(DEPOSITOR_USERID_KEY))
       .map(Success(_))
       .getOrElse(Failure(new IllegalStateException("Deposit without depositor")))
   }
 
   override def getDoi: Try[Option[String]] = Try {
-    Option(properties.getString("identifier.doi"))
+    Option(properties.getString(IDENTIFIER_DOI_KEY))
   }
 
   /**
@@ -124,7 +124,16 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
 }
 
 object DepositPropertiesFile {
-  private val CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD = "contentType" // for backwards compatibility
-  private val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
+  val STATE_LABEL_KEY = "state.label"
+  val STATE_DESCRIPTION_KEY = "state.description"
+  val BAGSTORE_BAGID_KEY = "bag-store.bag-id"
+  val BAGSTORE_BAGNAME_KEY = "bag-store.bag-name"
+  val CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD = "contentType" // for backwards compatibility
+  val CLIENT_MESSAGE_CONTENT_TYPE_KEY = "easy-sword2.client-message.content-type"
+  val DEPOSITOR_USERID_KEY = "depositor.userId"
+  val IDENTIFIER_DOI_KEY = "identifier.doi"
+  val CREATION_TIMESTAMP_KEY = "creation.timestamp"
+  val DEPOSIT_ORIGIN_KEY = "deposit.origin"
+
   val FILENAME = "deposit.properties"
 }

@@ -19,6 +19,7 @@ import java.io.File
 import java.nio.file.{ Files, Path }
 
 import nl.knaw.dans.easy.sword2.State.DRAFT
+import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
 import nl.knaw.dans.easy.sword2.{ DepositId, FileOps, MimeType, State, dateTimeFormatter }
 import nl.knaw.dans.lib.error._
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -34,8 +35,8 @@ class DepositPropertiesFileFactory(tempDir: File,
   private def fileLocation(depositId: DepositId): Path = {
     (tempDir #:: depositRootDir #:: archivedDepositRootDir.toStream)
       .map(_.toPath.resolve(depositId))
-      .collectFirst { case path if Files.exists(path) => path.resolve(DepositPropertiesFile.FILENAME) }
-      .getOrElse { tempDir.toPath.resolve(depositId).resolve(DepositPropertiesFile.FILENAME) }
+      .collectFirst { case path if Files.exists(path) => path.resolve(FILENAME) }
+      .getOrElse { tempDir.toPath.resolve(depositId).resolve(FILENAME) }
   }
 
   private def from(depositId: DepositId)(fillProps: (PropertiesConfiguration, Path) => Unit): Try[DepositPropertiesFile] = Try {
@@ -61,12 +62,12 @@ class DepositPropertiesFileFactory(tempDir: File,
       props <- from(depositId) {
         case (_, file) if Files.exists(file) => throw new Exception(s"deposit $file already exists")
         case (props, _) =>
-          props.setProperty("bag-store.bag-id", depositId)
-          props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
-          props.setProperty("deposit.origin", "SWORD2")
-          props.setProperty("state.label", DRAFT)
-          props.setProperty("state.description", "Deposit is open for additional data")
-          props.setProperty("depositor.userId", depositorId)
+          props.setProperty(BAGSTORE_BAGID_KEY, depositId)
+          props.setProperty(CREATION_TIMESTAMP_KEY, DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
+          props.setProperty(DEPOSIT_ORIGIN_KEY, "SWORD2")
+          props.setProperty(STATE_LABEL_KEY, DRAFT)
+          props.setProperty(STATE_DESCRIPTION_KEY, "Deposit is open for additional data")
+          props.setProperty(DEPOSITOR_USERID_KEY, depositorId)
       }
       _ <- props.save()
     } yield props
