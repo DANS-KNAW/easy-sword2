@@ -31,7 +31,7 @@ import scalaj.http.{ BaseHttp, Http }
 
 import scala.util.{ Failure, Success }
 
-class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfterAll {
+class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfterAll {
 
   // configure the mock server
   private val server = new MockWebServer
@@ -43,7 +43,7 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
   implicit val formats: Formats = DefaultFormats
   private val client = new GraphQLClient(baseUrl.url())
   private val depositId = UUID.randomUUID().toString
-  private val properties = new DepositPropertiesService(depositId, client)
+  private val properties = new ServiceDepositProperties(depositId, client)
 
   override protected def afterAll(): Unit = {
     server.shutdown()
@@ -64,8 +64,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.exists shouldBe Success(true)
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.DepositExists.query) ~
-        ("operationName" -> DepositPropertiesService.DepositExists.operationName) ~
+      ("query" -> ServiceDepositProperties.DepositExists.query) ~
+        ("operationName" -> ServiceDepositProperties.DepositExists.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -82,8 +82,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.exists shouldBe Success(false)
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.DepositExists.query) ~
-        ("operationName" -> DepositPropertiesService.DepositExists.operationName) ~
+      ("query" -> ServiceDepositProperties.DepositExists.query) ~
+        ("operationName" -> ServiceDepositProperties.DepositExists.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -112,8 +112,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.setState(label, description) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.UpdateState.query) ~
-        ("operationName" -> DepositPropertiesService.UpdateState.operationName) ~
+      ("query" -> ServiceDepositProperties.UpdateState.query) ~
+        ("operationName" -> ServiceDepositProperties.UpdateState.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "stateLabel" -> label.toString,
@@ -139,8 +139,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getState should matchPattern { case Success((State.REJECTED, "my message")) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetState.query) ~
-        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
+      ("query" -> ServiceDepositProperties.GetState.query) ~
+        ("operationName" -> ServiceDepositProperties.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -157,8 +157,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getState should matchPattern { case Failure(DepositDoesNotExist(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetState.query) ~
-        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
+      ("query" -> ServiceDepositProperties.GetState.query) ~
+        ("operationName" -> ServiceDepositProperties.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -177,8 +177,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getState should matchPattern { case Failure(NoStateForDeposit(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetState.query) ~
-        ("operationName" -> DepositPropertiesService.GetState.operationName) ~
+      ("query" -> ServiceDepositProperties.GetState.query) ~
+        ("operationName" -> ServiceDepositProperties.GetState.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -201,8 +201,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.setBagName(bagName) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.SetBagName.query) ~
-        ("operationName" -> DepositPropertiesService.SetBagName.operationName) ~
+      ("query" -> ServiceDepositProperties.SetBagName.query) ~
+        ("operationName" -> ServiceDepositProperties.SetBagName.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "bagName" -> bagName,
@@ -227,8 +227,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.setClientMessageContentType(contentType) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.SetContentType.query) ~
-        ("operationName" -> DepositPropertiesService.SetContentType.operationName) ~
+      ("query" -> ServiceDepositProperties.SetContentType.query) ~
+        ("operationName" -> ServiceDepositProperties.SetContentType.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
           "contentType" -> contentType,
@@ -252,8 +252,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getClientMessageContentType should matchPattern { case Success("application/zip") => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetContentType.query) ~
-        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
+      ("query" -> ServiceDepositProperties.GetContentType.query) ~
+        ("operationName" -> ServiceDepositProperties.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -272,8 +272,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getClientMessageContentType should matchPattern { case Failure(NoContentTypeForDeposit(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetContentType.query) ~
-        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
+      ("query" -> ServiceDepositProperties.GetContentType.query) ~
+        ("operationName" -> ServiceDepositProperties.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -290,8 +290,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getClientMessageContentType should matchPattern { case Failure(DepositDoesNotExist(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetContentType.query) ~
-        ("operationName" -> DepositPropertiesService.GetContentType.operationName) ~
+      ("query" -> ServiceDepositProperties.GetContentType.query) ~
+        ("operationName" -> ServiceDepositProperties.GetContentType.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -312,8 +312,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getDepositorId should matchPattern { case Success("user001") => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetDepositorId.query) ~
-        ("operationName" -> DepositPropertiesService.GetDepositorId.operationName) ~
+      ("query" -> ServiceDepositProperties.GetDepositorId.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDepositorId.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -330,8 +330,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getDepositorId should matchPattern { case Failure(DepositDoesNotExist(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetDepositorId.query) ~
-        ("operationName" -> DepositPropertiesService.GetDepositorId.operationName) ~
+      ("query" -> ServiceDepositProperties.GetDepositorId.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDepositorId.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -352,8 +352,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getDoi should matchPattern { case Success(Some("10.5072/dans-p7q-rst8")) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetDoi.query) ~
-        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
+      ("query" -> ServiceDepositProperties.GetDoi.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -372,8 +372,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getDoi should matchPattern { case Success(None) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetDoi.query) ~
-        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
+      ("query" -> ServiceDepositProperties.GetDoi.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -390,8 +390,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getDoi should matchPattern { case Failure(DepositDoesNotExist(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetDoi.query) ~
-        ("operationName" -> DepositPropertiesService.GetDoi.operationName) ~
+      ("query" -> ServiceDepositProperties.GetDoi.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDoi.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -411,8 +411,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getLastModifiedTimestamp should matchPattern { case Success(Some(`expectedFileTime`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
-        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
+      ("query" -> ServiceDepositProperties.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> ServiceDepositProperties.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -431,8 +431,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getLastModifiedTimestamp should matchPattern { case Success(None) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
-        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
+      ("query" -> ServiceDepositProperties.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> ServiceDepositProperties.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }
@@ -449,8 +449,8 @@ class DepositPropertiesServiceSpec extends TestSupportFixture with BeforeAndAfte
     properties.getLastModifiedTimestamp should matchPattern { case Failure(DepositDoesNotExist(`depositId`)) => }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesService.GetLastModifiedTimestamp.query) ~
-        ("operationName" -> DepositPropertiesService.GetLastModifiedTimestamp.operationName) ~
+      ("query" -> ServiceDepositProperties.GetLastModifiedTimestamp.query) ~
+        ("operationName" -> ServiceDepositProperties.GetLastModifiedTimestamp.operationName) ~
         ("variables" -> Map("depositId" -> depositId))
     }
   }

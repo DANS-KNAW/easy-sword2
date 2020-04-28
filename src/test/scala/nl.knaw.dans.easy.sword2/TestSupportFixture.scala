@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.sword2
 
 import better.files.File
 import better.files.File.currentWorkingDirectory
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFileFactory
+import nl.knaw.dans.easy.sword2.properties.FileDepositPropertiesRepository
 import org.scalatest.enablers.Existence
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -49,7 +49,7 @@ trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues wit
         cleanup = Map(),
         rescheduleDelaySeconds = 90000,
         serverPort = 12345,
-        depositPropertiesFactory = new DepositPropertiesFileFactory(new java.io.File("dummy"), bag.toJava, Option.empty),
+        depositPropertiesFactory = new FileDepositPropertiesRepository(new java.io.File("dummy"), bag.toJava, Option.empty),
       )
     }
   }

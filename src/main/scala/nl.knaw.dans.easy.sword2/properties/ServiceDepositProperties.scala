@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.sword2.properties
 import java.nio.file.attribute.FileTime
 
 import nl.knaw.dans.easy.sword2.State.State
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesService._
+import nl.knaw.dans.easy.sword2.properties.ServiceDepositProperties._
 import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import org.joda.time.DateTime
@@ -27,7 +27,7 @@ import org.json4s.JsonDSL.string2jvalue
 
 import scala.util.{ Failure, Success, Try }
 
-class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties {
+class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties {
 
   override def save(): Try[Unit] = Success(())
 
@@ -127,7 +127,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
   }
 }
 
-object DepositPropertiesService {
+object ServiceDepositProperties {
 
   object DepositExists {
     case class Data(deposit: Option[Deposit])

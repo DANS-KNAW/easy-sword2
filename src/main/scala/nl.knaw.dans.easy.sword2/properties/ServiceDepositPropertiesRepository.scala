@@ -15,7 +15,7 @@
  */
 package nl.knaw.dans.easy.sword2.properties
 
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesServiceFactory.{ CreateDeposit, Sword2UploadedDeposits }
+import nl.knaw.dans.easy.sword2.properties.ServiceDepositPropertiesRepository.{ CreateDeposit, Sword2UploadedDeposits }
 import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.properties.graphql.direction.Forwards
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
@@ -25,10 +25,10 @@ import org.json4s.{ Formats, JValue }
 
 import scala.util.Try
 
-class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: Formats) extends DepositPropertiesFactory {
+class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats: Formats) extends DepositPropertiesRepository {
 
   override def load(depositId: DepositId): Try[DepositProperties] = Try {
-    new DepositPropertiesService(depositId, client)
+    new ServiceDepositProperties(depositId, client)
   }
 
   override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
@@ -61,7 +61,7 @@ class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: F
   override def toString: String = "DepositPropertiesServiceFactory"
 }
 
-object DepositPropertiesServiceFactory {
+object ServiceDepositPropertiesRepository {
   object Sword2UploadedDeposits {
     case class Data(deposits: Deposits)
     case class Deposits(pageInfo: Forwards, edges: Seq[Edge])

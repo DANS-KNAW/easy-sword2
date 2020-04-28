@@ -27,7 +27,7 @@ import scalaj.http.{ BaseHttp, Http }
 
 import scala.util.Success
 
-class DepositPropertiesServiceFactorySpec extends TestSupportFixture with BeforeAndAfterAll {
+class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture with BeforeAndAfterAll {
 
   // configure the mock server
   private val server = new MockWebServer
@@ -38,7 +38,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
   implicit val http: BaseHttp = Http
   implicit val formats: Formats = DefaultFormats
   private val client = new GraphQLClient(baseUrl.url())
-  private val factory = new DepositPropertiesServiceFactory(client)
+  private val factory = new ServiceDepositPropertiesRepository(client)
 
   override protected def afterAll(): Unit = {
     server.shutdown()
@@ -76,8 +76,8 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     factory.create(depositId, depositorId) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.CreateDeposit.query) ~
-        ("operationName" -> DepositPropertiesServiceFactory.CreateDeposit.operationName) ~
+      ("query" -> ServiceDepositPropertiesRepository.CreateDeposit.query) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.CreateDeposit.operationName) ~
         ("variables" -> Map("depositId" -> depositId, "depositorId" -> depositorId, "bagId" -> depositId))
     }
   }
@@ -133,8 +133,8 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+      ("query" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.query) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.operationName) ~
         ("variables" -> ("count" -> 10))
     }
   }
@@ -218,18 +218,18 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+      ("query" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.query) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.operationName) ~
         ("variables" -> ("count" -> 10))
     }
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+      ("query" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.query) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.operationName) ~
         ("variables" -> (("count" -> 10) ~ ("after" -> "YXJyYXljb25uZWN0aW9uOjA=")))
     }
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+      ("query" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.query) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.Sword2UploadedDeposits.operationName) ~
         ("variables" -> (("count" -> 10) ~ ("after" -> "YXJyYXljb25uZWN0aW9uOjE=")))
     }
   }

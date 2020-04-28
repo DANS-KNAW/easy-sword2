@@ -42,8 +42,8 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   implicit private val http: BaseHttp = HttpContext(version).Http
   implicit private val jsonFormats: Formats = new DefaultFormats {}
 
-  private lazy val depositPropertiesFileFactory = new DepositPropertiesFileFactory(tempDir, depositRootDir, archivedDepositRootDir)
-  private lazy val depositPropertiesServiceFactory = new DepositPropertiesServiceFactory(
+  private lazy val depositPropertiesFileFactory = new FileDepositPropertiesRepository(tempDir, depositRootDir, archivedDepositRootDir)
+  private lazy val depositPropertiesServiceFactory = new ServiceDepositPropertiesRepository(
     new GraphQLClient(
       url = new URL(properties.getString("easy-deposit-properties.url")),
       credentials = for {
@@ -59,7 +59,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   private val propertiesFactory = DepositMode.withName(properties.getString("easy-deposit-properties.mode")) match {
     case DepositMode.FILE => depositPropertiesFileFactory
     case DepositMode.SERVICE => depositPropertiesServiceFactory
-    case DepositMode.BOTH => new DepositPropertiesCompoundFactory(depositPropertiesFileFactory, depositPropertiesServiceFactory)
+    case DepositMode.BOTH => new CompoundDepositPropertiesRepository(depositPropertiesFileFactory, depositPropertiesServiceFactory)
   }
 
   val settings: Settings = Settings(

@@ -19,7 +19,7 @@ import java.nio.file.Files
 import java.nio.file.attribute.FileTime
 
 import nl.knaw.dans.easy.sword2.State.State
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
+import nl.knaw.dans.easy.sword2.properties.FileDepositProperties._
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -34,7 +34,7 @@ import scala.util.{ Failure, Success, Try }
  *
  * @param properties the deposit's properties
  */
-class DepositPropertiesFile(properties: PropertiesConfiguration) extends DepositProperties with DebugEnhancedLogging {
+class FileDepositProperties(properties: PropertiesConfiguration) extends DepositProperties with DebugEnhancedLogging {
 
   debug(s"Using deposit.properties at ${ properties.getFile }")
 
@@ -123,7 +123,7 @@ class DepositPropertiesFile(properties: PropertiesConfiguration) extends Deposit
   }
 }
 
-object DepositPropertiesFile {
+object FileDepositProperties {
   val STATE_LABEL_KEY = "state.label"
   val STATE_DESCRIPTION_KEY = "state.description"
   val BAGSTORE_BAGID_KEY = "bag-store.bag-id"

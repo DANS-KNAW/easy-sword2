@@ -19,22 +19,22 @@ import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 
 import scala.util.Try
 
-class DepositPropertiesCompoundFactory(file: DepositPropertiesFileFactory,
-                                       service: DepositPropertiesServiceFactory,
-                                      ) extends DepositPropertiesFactory {
+class CompoundDepositPropertiesRepository(file: FileDepositPropertiesRepository,
+                                          service: ServiceDepositPropertiesRepository,
+                                      ) extends DepositPropertiesRepository {
 
   override def load(depositId: DepositId): Try[DepositProperties] = {
     for {
       propsService <- service.load(depositId)
       propsFile <- file.load(depositId)
-    } yield new DepositPropertiesCompound(propsFile, propsService)
+    } yield new CompoundDepositProperties(propsFile, propsService)
   }
 
   override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
     for {
       propsService <- service.create(depositId, depositorId)
       propsFile <- file.create(depositId, depositorId)
-    } yield new DepositPropertiesCompound(propsFile, propsService)
+    } yield new CompoundDepositProperties(propsFile, propsService)
   }
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {

@@ -22,7 +22,7 @@ import nl.knaw.dans.easy.sword2.State.State
 
 import scala.util.Try
 
-class DepositPropertiesCompound(file: DepositProperties,
+class CompoundDepositProperties(file: DepositProperties,
                                 service: DepositProperties,
                                ) extends DepositProperties {
 

@@ -19,7 +19,7 @@ import java.io.File
 import java.nio.file.{ Files, Path }
 
 import nl.knaw.dans.easy.sword2.State.DRAFT
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile._
+import nl.knaw.dans.easy.sword2.properties.FileDepositProperties._
 import nl.knaw.dans.easy.sword2.{ DepositId, FileOps, MimeType, State, dateTimeFormatter }
 import nl.knaw.dans.lib.error._
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -27,10 +27,10 @@ import org.joda.time.{ DateTime, DateTimeZone }
 
 import scala.util.Try
 
-class DepositPropertiesFileFactory(tempDir: File,
-                                   depositRootDir: File,
-                                   archivedDepositRootDir: Option[File],
-                                  ) extends DepositPropertiesFactory {
+class FileDepositPropertiesRepository(tempDir: File,
+                                      depositRootDir: File,
+                                      archivedDepositRootDir: Option[File],
+                                  ) extends DepositPropertiesRepository {
 
   private def fileLocation(depositId: DepositId): Path = {
     (tempDir #:: depositRootDir #:: archivedDepositRootDir.toStream)
@@ -39,7 +39,7 @@ class DepositPropertiesFileFactory(tempDir: File,
       .getOrElse { tempDir.toPath.resolve(depositId).resolve(FILENAME) }
   }
 
-  private def from(depositId: DepositId)(fillProps: (PropertiesConfiguration, Path) => Unit): Try[DepositPropertiesFile] = Try {
+  private def from(depositId: DepositId)(fillProps: (PropertiesConfiguration, Path) => Unit): Try[FileDepositProperties] = Try {
     val file = fileLocation(depositId)
     val props = new PropertiesConfiguration() {
       setDelimiterParsingDisabled(true)
@@ -47,7 +47,7 @@ class DepositPropertiesFileFactory(tempDir: File,
     }
     fillProps(props, file)
 
-    new DepositPropertiesFile(props)
+    new FileDepositProperties(props)
   }
 
   override def load(depositId: DepositId): Try[DepositProperties] = {

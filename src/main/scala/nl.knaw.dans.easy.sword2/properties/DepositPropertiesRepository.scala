@@ -20,7 +20,7 @@ import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.util.Try
 
-trait DepositPropertiesFactory extends DebugEnhancedLogging {
+trait DepositPropertiesRepository extends DebugEnhancedLogging {
 
   def load(depositId: DepositId): Try[DepositProperties]
 
