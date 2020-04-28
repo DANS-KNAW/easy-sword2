@@ -19,6 +19,7 @@ import java.nio.file.attribute.FileTime
 
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesService._
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
 import org.joda.time.DateTime
 import org.json4s.Formats
@@ -31,7 +32,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
   override def save(): Try[Unit] = Success(())
 
   override def exists: Try[Boolean] = {
-    client.doQuery(DepositExists.query, Map("depositId" -> depositId), DepositExists.operationName)
+    client.doQuery(DepositExists.query, DepositExists.operationName, Map("depositId" -> depositId))
       .map(_.extract[DepositExists.Data].deposit.isDefined)
       .toTry
   }
@@ -45,14 +46,14 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
       "stateDescription" -> descr,
     )
 
-    client.doQuery(UpdateState.query, updateStateVariables, UpdateState.operationName)
+    client.doQuery(UpdateState.query, UpdateState.operationName, updateStateVariables)
       .map(_ => this)
       .toTry
   }
 
   override def getState: Try[(State, String)] = {
     for {
-      json <- client.doQuery(GetState.query, Map("depositId" -> depositId), GetState.operationName).toTry
+      json <- client.doQuery(GetState.query, GetState.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetState.Data].deposit
       state <- deposit.map(_.state
         .map(state => Try { State.withName(state.label) -> state.description })
@@ -67,7 +68,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
       "bagName" -> bagName,
     )
 
-    client.doQuery(SetBagName.query, setBagNameVariables, SetBagName.operationName)
+    client.doQuery(SetBagName.query, SetBagName.operationName, setBagNameVariables)
       .map(_ => this)
       .toTry
   }
@@ -78,7 +79,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
       "contentType" -> contentType,
     )
 
-    client.doQuery(SetContentType.query, setContentTypeVariables, SetContentType.operationName)
+    client.doQuery(SetContentType.query, SetContentType.operationName, setContentTypeVariables)
       .map(_ => this)
       .toTry
   }
@@ -87,7 +88,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
 
   override def getClientMessageContentType: Try[String] = {
     for {
-      json <- client.doQuery(GetContentType.query, Map("depositId" -> depositId), GetContentType.operationName).toTry
+      json <- client.doQuery(GetContentType.query, GetContentType.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetContentType.Data].deposit
       contentType <- deposit.map(_.contentType
         .map(contentType => Success(contentType.value))
@@ -98,7 +99,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
 
   override def getDepositorId: Try[String] = {
     for {
-      json <- client.doQuery(GetDepositorId.query, Map("depositId" -> depositId), GetDepositorId.operationName).toTry
+      json <- client.doQuery(GetDepositorId.query, GetDepositorId.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetDepositorId.Data].deposit
       depositorId <- deposit.map(deposit => Success(deposit.depositor.depositorId))
         .getOrElse(Failure(DepositDoesNotExist(depositId)))
@@ -107,7 +108,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
 
   override def getDoi: Try[Option[String]] = {
     for {
-      json <- client.doQuery(GetDoi.query, Map("depositId" -> depositId), GetDoi.operationName).toTry
+      json <- client.doQuery(GetDoi.query, GetDoi.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetDoi.Data].deposit
       doi <- deposit.map(d => Success(d.identifier.map(_.value)))
         .getOrElse(Failure(DepositDoesNotExist(depositId)))
@@ -116,7 +117,7 @@ class DepositPropertiesService(depositId: DepositId, client: GraphQLClient)(impl
 
   override def getLastModifiedTimestamp: Try[Option[FileTime]] = {
     for {
-      json <- client.doQuery(GetLastModifiedTimestamp.query, Map("depositId" -> depositId), GetLastModifiedTimestamp.operationName).toTry
+      json <- client.doQuery(GetLastModifiedTimestamp.query, GetLastModifiedTimestamp.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetLastModifiedTimestamp.Data].deposit
       lastModified <- deposit.map(lastModified => Try {
         lastModified.lastModified.map(l => FileTime.fromMillis(DateTime.parse(l).getMillis))

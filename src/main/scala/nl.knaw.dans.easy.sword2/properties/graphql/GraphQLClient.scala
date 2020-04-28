@@ -13,18 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2.properties
+package nl.knaw.dans.easy.sword2.properties.graphql
 
 import java.net.{ ConnectException, URL }
 
 import cats.syntax.either._
-import nl.knaw.dans.easy.sword2.properties.GraphQLClient.{ GraphQLError, GraphQLQueryError, GraphQLServiceUnavailable, PageInfo }
+import nl.knaw.dans.easy.sword2.properties.graphql.direction.PaginationDirection
+import nl.knaw.dans.easy.sword2.properties.graphql.error.{ GraphQLError, GraphQLQueryError, GraphQLServiceUnavailable }
 import nl.knaw.dans.lib.error._
 import org.json4s.JsonAST.{ JArray, JString }
 import org.json4s.JsonDSL._
 import org.json4s.native.{ JsonMethods, Serialization }
 import org.json4s.{ DefaultFormats, Formats, JValue }
-import org.swordapp.server.SwordError
 import scalaj.http.BaseHttp
 
 import scala.util.Try
@@ -41,23 +41,20 @@ import scala.util.Try
 class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, credentials: Option[(String, String)] = Option.empty)
                    (implicit http: BaseHttp, jsonFormats: Formats = new DefaultFormats {}) {
 
-  def doQuery(query: String, operationName: String): Either[GraphQLError, JValue] = {
-    doQuery[String](query, Map.empty, operationName)
-  }
-
   /**
    * Execute a GraphQL query, if provided sent together with the variables. The response is parsed
    * into either a sequence of errors (if ''errors'' is present in the response) or the JSON inside
    * the ''data'' object.
    *
-   * @param query     the query to be executed
-   * @param variables values for the placeholders in the query
-   * @param ev        evidence that the values in the variables mapping can be converted to JSON
+   * @param query         the query to be executed
+   * @param operationName the name of the operation
+   * @param variables     values for the placeholders in the query
+   * @param ev            evidence that the values in the variables mapping can be converted to JSON
    * @tparam A the values in the variables mapping
    * @return the JSON object inside ''data'' if the query was successful;
    *         a list of error messages otherwise
    */
-  def doQuery[A](query: String, variables: Map[String, A], operationName: String)(implicit ev: A => JValue): Either[GraphQLError, JValue] = {
+  def doQuery[A](query: String, operationName: String, variables: Map[String, A] = Map.empty)(implicit ev: A => JValue): Either[GraphQLError, JValue] = {
     val baseHttp = http(url.toString)
       .headers(
         "Accept" -> "application/json",
@@ -91,22 +88,22 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
   }
 
   def doPaginatedQuery[A: Manifest](query: String,
-                                    variables: Map[String, Any],
                                     operationName: String,
-                                    getPageInfo: A => PageInfo,
-                                   )(implicit ev: Any => JValue): Try[Iterator[A]] = Try {
+                                    variables: Map[String, Any],
+                                    direction: PaginationDirection,
+                                   )(getPageInfo: A => direction.ObjectType)
+                                   (implicit ev: Any => JValue): Try[Iterator[A]] = Try {
     new Iterator[A] {
-      private var nextPageInfo = PageInfo(hasNextPage = true, startCursor = None)
+      private var nextPageInfo: direction.ObjectType = direction.empty
 
-      override def hasNext: Boolean = nextPageInfo.hasNextPage
+      override def hasNext: Boolean = nextPageInfo.hasAnotherPage
 
       override def next(): A = {
-        val allVariables = nextPageInfo.startCursor.map(cursor => variables + ("after" -> cursor)).getOrElse(variables)
-        val json = doQuery(query, allVariables, operationName).toTry.unsafeGetOrThrow
+        val allVariables = nextPageInfo.cursor.map(cursor => variables + (direction.cursorName -> cursor)).getOrElse(variables)
+        val json = doQuery(query, operationName, allVariables).toTry.unsafeGetOrThrow
         val data = json.extract[A]
-        val newPageInfo = getPageInfo(data)
 
-        nextPageInfo = newPageInfo
+        nextPageInfo = getPageInfo(data)
         data
       }
     }
@@ -125,23 +122,4 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
       case _ => Option.empty
     }
   }
-}
-
-object GraphQLClient {
-  abstract class GraphQLError(val msg: String) extends Exception(msg) {
-    def toSwordError: SwordError
-  }
-  case class UnexpectedResponseCode(code: Int, body: String) extends GraphQLError(s"GraphQL service returned code $code with message: $body") {
-    override def toSwordError: SwordError = new SwordError(500)
-  }
-  case class GraphQLQueryError(errors: List[String]) extends GraphQLError(s"Error in GraphQL query: ${ errors.mkString("[", ", ", "]") }") {
-    override def toSwordError: SwordError = new SwordError(500)
-  }
-  case object GraphQLServiceUnavailable extends GraphQLError("GraphQL service is unavailable") {
-    override def toSwordError: SwordError = new SwordError(503) {
-      override def getMessage: String = "503 Service temporarily unavailable"
-    }
-  }
-
-  case class PageInfo(hasNextPage: Boolean, startCursor: Option[String])
 }

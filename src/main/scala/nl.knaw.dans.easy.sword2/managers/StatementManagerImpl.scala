@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util.{ Map => JMap }
 
 import nl.knaw.dans.easy.sword2._
-import nl.knaw.dans.easy.sword2.properties.GraphQLClient.GraphQLError
+import nl.knaw.dans.easy.sword2.properties.graphql.error.GraphQLError
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._

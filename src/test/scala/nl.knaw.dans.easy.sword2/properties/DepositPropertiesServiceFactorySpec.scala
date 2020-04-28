@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.sword2.properties
 
 import nl.knaw.dans.easy.sword2.TestSupportFixture
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.json4s.JsonDSL._
@@ -88,7 +89,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         |    "deposits": {
         |      "pageInfo": {
         |        "hasNextPage": false,
-        |        "startCursor": "YXJyYXljb25uZWN0aW9uOjI="
+        |        "endCursor": "YXJyYXljb25uZWN0aW9uOjI="
         |      },
         |      "edges": [
         |        {
@@ -145,7 +146,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         |    "deposits": {
         |      "pageInfo": {
         |        "hasNextPage": true,
-        |        "startCursor": "YXJyYXljb25uZWN0aW9uOjA="
+        |        "endCursor": "YXJyYXljb25uZWN0aW9uOjA="
         |      },
         |      "edges": [
         |        {
@@ -166,7 +167,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         |    "deposits": {
         |      "pageInfo": {
         |        "hasNextPage": true,
-        |        "startCursor": "YXJyYXljb25uZWN0aW9uOjE="
+        |        "endCursor": "YXJyYXljb25uZWN0aW9uOjE="
         |      },
         |      "edges": [
         |        {
@@ -187,7 +188,7 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
         |    "deposits": {
         |      "pageInfo": {
         |        "hasNextPage": false,
-        |        "startCursor": "YXJyYXljb25uZWN0aW9uOjI="
+        |        "endCursor": "YXJyYXljb25uZWN0aW9uOjI="
         |      },
         |      "edges": [
         |        {

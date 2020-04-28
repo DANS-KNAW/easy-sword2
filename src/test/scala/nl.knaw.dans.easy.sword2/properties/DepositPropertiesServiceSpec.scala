@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.sword2.properties
 import java.nio.file.attribute.FileTime
 import java.util.UUID
 
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.{ State, TestSupportFixture }
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }

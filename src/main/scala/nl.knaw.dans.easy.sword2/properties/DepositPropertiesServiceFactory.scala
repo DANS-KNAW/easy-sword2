@@ -16,7 +16,8 @@
 package nl.knaw.dans.easy.sword2.properties
 
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesServiceFactory.{ CreateDeposit, Sword2UploadedDeposits }
-import nl.knaw.dans.easy.sword2.properties.GraphQLClient.PageInfo
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
+import nl.knaw.dans.easy.sword2.properties.graphql.direction.Forwards
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
 import org.json4s.JsonAST.{ JInt, JString }
 import org.json4s.JsonDSL.string2jvalue
@@ -38,7 +39,7 @@ class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: F
     )
 
     for {
-      _ <- client.doQuery(CreateDeposit.query, registerDepositVariables, CreateDeposit.operationName).toTry
+      _ <- client.doQuery(CreateDeposit.query, CreateDeposit.operationName, registerDepositVariables).toTry
       properties <- load(depositId)
     } yield properties
   }
@@ -49,11 +50,12 @@ class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: F
       case i: Int => JInt(i)
     }
     client.doPaginatedQuery[Sword2UploadedDeposits.Data](
-      Sword2UploadedDeposits.query,
-      Map("count" -> 10),
-      Sword2UploadedDeposits.operationName,
-      _.deposits.pageInfo,
-    ).map(_.flatMap(_.deposits.edges.map(_.node).map(node => node.depositId -> node.contentType.value)))
+      query = Sword2UploadedDeposits.query,
+      operationName = Sword2UploadedDeposits.operationName,
+      variables = Map("count" -> 10),
+      direction = Forwards,
+    )(_.deposits.pageInfo)
+      .map(_.flatMap(_.deposits.edges.map(_.node).map(node => node.depositId -> node.contentType.value)))
   }
 
   override def toString: String = "DepositPropertiesServiceFactory"
@@ -62,7 +64,7 @@ class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: F
 object DepositPropertiesServiceFactory {
   object Sword2UploadedDeposits {
     case class Data(deposits: Deposits)
-    case class Deposits(pageInfo: PageInfo, edges: Seq[Edge])
+    case class Deposits(pageInfo: Forwards, edges: Seq[Edge])
     case class Edge(node: Node)
     case class Node(depositId: String, contentType: ContentType)
     case class ContentType(value: String)
@@ -74,7 +76,7 @@ object DepositPropertiesServiceFactory {
         |  deposits(state: { label: UPLOADED, filter: LATEST }, first: $count, after: $after) {
         |    pageInfo {
         |      hasNextPage
-        |      startCursor
+        |      endCursor
         |    }
         |    edges {
         |      node {

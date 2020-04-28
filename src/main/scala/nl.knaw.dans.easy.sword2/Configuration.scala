@@ -22,6 +22,7 @@ import java.util.regex.Pattern
 
 import javax.servlet.ServletException
 import nl.knaw.dans.easy.sword2.properties._
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
 import org.json4s.{ DefaultFormats, Formats }
