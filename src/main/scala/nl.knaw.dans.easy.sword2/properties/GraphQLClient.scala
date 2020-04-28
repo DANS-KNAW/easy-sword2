@@ -18,13 +18,16 @@ package nl.knaw.dans.easy.sword2.properties
 import java.net.{ ConnectException, URL }
 
 import cats.syntax.either._
-import nl.knaw.dans.easy.sword2.properties.GraphQLClient.{ GraphQLError, GraphQLQueryError, GraphQLServiceUnavailable }
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.{ GraphQLError, GraphQLQueryError, GraphQLServiceUnavailable, PageInfo }
+import nl.knaw.dans.lib.error._
 import org.json4s.JsonAST.{ JArray, JString }
 import org.json4s.JsonDSL._
 import org.json4s.native.{ JsonMethods, Serialization }
 import org.json4s.{ DefaultFormats, Formats, JValue }
 import org.swordapp.server.SwordError
 import scalaj.http.BaseHttp
+
+import scala.util.Try
 
 /**
  * A client wrapping both the logic of executing a GraphQL query on a particular URL and
@@ -87,6 +90,28 @@ class GraphQLClient(url: URL, timeout: Option[(Int, Int)] = Option.empty, creden
       }
   }
 
+  def doPaginatedQuery[A: Manifest](query: String,
+                                    variables: Map[String, Any],
+                                    operationName: String,
+                                    getPageInfo: A => PageInfo,
+                                   )(implicit ev: Any => JValue): Try[Iterator[A]] = Try {
+    new Iterator[A] {
+      private var nextPageInfo = PageInfo(hasNextPage = true, startCursor = None)
+
+      override def hasNext: Boolean = nextPageInfo.hasNextPage
+
+      override def next(): A = {
+        val allVariables = nextPageInfo.startCursor.map(cursor => variables + ("after" -> cursor)).getOrElse(variables)
+        val json = doQuery(query, allVariables, operationName).toTry.unsafeGetOrThrow
+        val data = json.extract[A]
+        val newPageInfo = getPageInfo(data)
+
+        nextPageInfo = newPageInfo
+        data
+      }
+    }
+  }
+
   // following https://graphql.github.io/graphql-spec/June2018/#sec-Response-Format
   private def parseErrors(errors: JValue): Option[List[String]] = {
     errors match {
@@ -117,4 +142,6 @@ object GraphQLClient {
       override def getMessage: String = "503 Service temporarily unavailable"
     }
   }
+
+  case class PageInfo(hasNextPage: Boolean, startCursor: Option[String])
 }

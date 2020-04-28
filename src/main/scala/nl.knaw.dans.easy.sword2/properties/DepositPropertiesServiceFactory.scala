@@ -16,10 +16,11 @@
 package nl.knaw.dans.easy.sword2.properties
 
 import nl.knaw.dans.easy.sword2.properties.DepositPropertiesServiceFactory.{ CreateDeposit, Sword2UploadedDeposits }
+import nl.knaw.dans.easy.sword2.properties.GraphQLClient.PageInfo
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
-import nl.knaw.dans.lib.error._
-import org.json4s.Formats
+import org.json4s.JsonAST.{ JInt, JString }
 import org.json4s.JsonDSL.string2jvalue
+import org.json4s.{ Formats, JValue }
 
 import scala.util.Try
 
@@ -42,22 +43,17 @@ class DepositPropertiesServiceFactory(client: GraphQLClient)(implicit formats: F
     } yield properties
   }
 
-  override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = Try {
-    new Iterator[Seq[(DepositId, MimeType)]] {
-      private var nextPageInfo = Sword2UploadedDeposits.PageInfo(hasNextPage = true, null)
-
-      override def hasNext: Boolean = nextPageInfo.hasNextPage
-
-      override def next(): Seq[(DepositId, MimeType)] = {
-        val json = client.doQuery(Sword2UploadedDeposits.query(Option(nextPageInfo.startCursor)), Sword2UploadedDeposits.operationName).toTry.unsafeGetOrThrow
-        val data = json.extract[Sword2UploadedDeposits.Data]
-        val newPageInfo = data.deposits.pageInfo
-        val nextValues = data.deposits.edges.map(_.node).map(node => node.depositId -> node.contentType.value)
-
-        nextPageInfo = newPageInfo
-        nextValues
-      }
-    }.flatMap(_.toIterator)
+  override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {
+    implicit val convertJson: Any => JValue = {
+      case s: String => JString(s)
+      case i: Int => JInt(i)
+    }
+    client.doPaginatedQuery[Sword2UploadedDeposits.Data](
+      Sword2UploadedDeposits.query,
+      Map("count" -> 10),
+      Sword2UploadedDeposits.operationName,
+      _.deposits.pageInfo,
+    ).map(_.flatMap(_.deposits.edges.map(_.node).map(node => node.depositId -> node.contentType.value)))
   }
 
   override def toString: String = "DepositPropertiesServiceFactory"
@@ -67,30 +63,29 @@ object DepositPropertiesServiceFactory {
   object Sword2UploadedDeposits {
     case class Data(deposits: Deposits)
     case class Deposits(pageInfo: PageInfo, edges: Seq[Edge])
-    case class PageInfo(hasNextPage: Boolean, startCursor: String)
     case class Edge(node: Node)
     case class Node(depositId: String, contentType: ContentType)
     case class ContentType(value: String)
 
     val operationName = "GetContentTypeForUploadedDatasets"
 
-    def query(after: Option[String] = Option.empty): String = {
-      s"""query GetContentTypeForUploadedDatasets {
-         |  deposits(state: { label: UPLOADED, filter: LATEST }, first: 10${ after.fold("")(s => s""", after: "$s"""") }) {
-         |    pageInfo {
-         |      hasNextPage
-         |      startCursor
-         |    }
-         |    edges {
-         |      node {
-         |        depositId
-         |        contentType {
-         |          value
-         |        }
-         |      }
-         |    }
-         |  }
-         |}""".stripMargin
+    val query: String = {
+      """query GetContentTypeForUploadedDatasets($count: Int!, $after: String) {
+        |  deposits(state: { label: UPLOADED, filter: LATEST }, first: $count, after: $after) {
+        |    pageInfo {
+        |      hasNextPage
+        |      startCursor
+        |    }
+        |    edges {
+        |      node {
+        |        depositId
+        |        contentType {
+        |          value
+        |        }
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
     }
   }
 

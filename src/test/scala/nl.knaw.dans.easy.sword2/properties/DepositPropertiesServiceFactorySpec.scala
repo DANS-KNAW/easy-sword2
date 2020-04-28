@@ -132,8 +132,9 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query()) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName)
+      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
+        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+        ("variables" -> ("count" -> 10))
     }
   }
 
@@ -216,16 +217,19 @@ class DepositPropertiesServiceFactorySpec extends TestSupportFixture with Before
     }
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query()) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName)
+      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
+        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+        ("variables" -> ("count" -> 10))
     }
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query(Some("YXJyYXljb25uZWN0aW9uOjA="))) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName)
+      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
+        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+        ("variables" -> (("count" -> 10) ~ ("after" -> "YXJyYXljb25uZWN0aW9uOjA=")))
     }
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
-      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query(Some("YXJyYXljb25uZWN0aW9uOjE="))) ~
-        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName)
+      ("query" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.query) ~
+        ("operationName" -> DepositPropertiesServiceFactory.Sword2UploadedDeposits.operationName) ~
+        ("variables" -> (("count" -> 10) ~ ("after" -> "YXJyYXljb25uZWN0aW9uOjE=")))
     }
   }
 }
