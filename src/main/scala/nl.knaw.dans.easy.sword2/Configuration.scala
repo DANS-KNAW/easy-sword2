@@ -16,15 +16,18 @@
 package nl.knaw.dans.easy.sword2
 
 import java.io.File
-import java.net.URI
+import java.net.{ URI, URL }
 import java.nio.file.{ Files, Path, Paths }
 import java.util.regex.Pattern
 
 import javax.servlet.ServletException
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
+import nl.knaw.dans.easy.sword2.properties._
+import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
+import org.json4s.{ DefaultFormats, Formats }
 import resource.managed
+import scalaj.http.BaseHttp
 
 import scala.io.Source
 import scala.util.{ Success, Try }
@@ -33,11 +36,36 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   private val bagStoreBaseUri = properties.getString("bag-store.base-url") // TODO: make File, check existence
   private val bagStoreBaseDir = properties.getString("bag-store.base-dir") // TODO: make File, check existence
 
+  private val tempDir = new File(properties.getString("tempdir"))
+  private val depositRootDir = new File(properties.getString("deposits.rootdir"))
+  private val archivedDepositRootDir = properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead)
+  implicit private val http: BaseHttp = HttpContext(version).Http
+  implicit private val jsonFormats: Formats = new DefaultFormats {}
+
+  private lazy val depositPropertiesFileFactory = new FileDepositPropertiesRepository(tempDir, depositRootDir, archivedDepositRootDir)
+  private lazy val depositPropertiesServiceFactory = new ServiceDepositPropertiesRepository(
+    new GraphQLClient(
+      url = new URL(properties.getString("easy-deposit-properties.url")),
+      credentials = for {
+        username <- Option(properties.getString("easy-deposit-properties.username"))
+        password <- Option(properties.getString("easy-deposit-properties.password"))
+      } yield (username, password),
+      timeout = for {
+        conn <- Option(properties.getInt("easy-deposit-properties.conn-timeout-ms"))
+        read <- Option(properties.getInt("easy-deposit-properties.read-timeout-ms"))
+      } yield (conn, read),
+    ))
+
+  private val propertiesFactory = DepositMode.withName(properties.getString("easy-deposit-properties.mode")) match {
+    case DepositMode.FILE => depositPropertiesFileFactory
+    case DepositMode.SERVICE => depositPropertiesServiceFactory
+    case DepositMode.BOTH => new CompoundDepositPropertiesRepository(depositPropertiesFileFactory, depositPropertiesServiceFactory)
+  }
+
   val settings: Settings = Settings(
-    depositRootDir = new File(properties.getString("deposits.rootdir")),
-    archivedDepositRootDir = properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead),
+    depositRootDir = depositRootDir,
     depositPermissions = properties.getString("deposits.permissions"),
-    tempDir = new File(properties.getString("tempdir")),
+    tempDir = tempDir,
     serviceBaseUrl = properties.getString("base-url"),
     collectionPath = properties.getString("collection.path"),
     auth = properties.getString("auth.mode") match {
@@ -68,11 +96,11 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
       .toMap,
     rescheduleDelaySeconds = properties.getInt("reschedule-delay-seconds"),
     serverPort = properties.getInt("daemon.http.port"),
-    depositPropertiesFactory = DepositPropertiesFile,
+    depositPropertiesFactory = propertiesFactory,
   )
 
-  if (!settings.depositRootDir.canRead) throw new ServletException("Cannot read deposits dir")
-  if (!settings.tempDir.canRead) throw new ServletException("Cannot read tempdir")
+  if (!depositRootDir.canRead) throw new ServletException("Cannot read deposits dir")
+  if (!tempDir.canRead) throw new ServletException("Cannot read tempdir")
 }
 
 object Configuration {

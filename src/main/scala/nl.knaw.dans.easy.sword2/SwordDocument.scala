@@ -65,9 +65,7 @@ object SwordDocument {
       val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
       archivalResource.setMediaType("multipart/related")
 
-      doi.foreach(doi => {
-        archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
-      })
+      doi.foreach(doi => archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString))
 
       addResource(archivalResource)
     }

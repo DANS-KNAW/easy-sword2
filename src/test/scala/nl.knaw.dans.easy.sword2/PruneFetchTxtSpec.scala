@@ -31,7 +31,6 @@ class PruneFetchTxtSpec extends Sword2Fixture {
   val CHECKSUM_FETCH_TXT_WITH_BOTH_FETCH_ITEMS = "7f8df7b79eb3f21cab593b214e0a3b2a"
   val CHECKSUM_FETCH_TXT_WITH_ONLY_FETCH_ITEM_2 = "0b571b37d35e7b519d647068b5971fee"
 
-
   def getFetchTxtSrc = Source.fromFile(new File(targetBagDir, "fetch.txt")).mkString
 
   def getTagManifestSrc = Source.fromFile(new File(targetBagDir, "tagmanifest-md5.txt")).mkString

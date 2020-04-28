@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.easy.sword2.properties.graphql.error.GraphQLError
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
@@ -33,10 +34,15 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     SwordID.extract(editIRI) match {
       case Success(id) =>
-        DepositPropertiesFactory.load(id) match {
-          case Success(props) if props.exists => SwordDocument.createDepositReceipt(id)
-          case Success(_) => throw new SwordError(404)
-          case Failure(_) => throw new SwordError(500)
+        DepositProperties.load(id).flatMap(_.exists) match {
+          case Success(true) => SwordDocument.createDepositReceipt(id)
+          case Success(false) => throw new SwordError(404)
+          case Failure(e: GraphQLError) =>
+            logger.error(s"Failed to retrieve the entry for $editIRI: ${ e.getMessage }", e)
+            throw e.toSwordError
+          case Failure(e) =>
+            logger.error(s"Failed to retrieve the entry for $editIRI: ${ e.getMessage }", e)
+            throw new SwordError(500)
         }
       case _ => throw new SwordError(500)
     }
@@ -80,7 +86,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
       id <- SwordID.extract(editIRI)
       _ <- authenticate(id, auth)
       _ = debug(s"[$id] Continued deposit")
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       (label, _) <- props.getState
       _ <- if (label == State.DRAFT) Success(())
            else Failure(new SwordError(UriRegistry.ERROR_METHOD_NOT_ALLOWED, s"Deposit $id is not in DRAFT state."))
@@ -89,7 +95,8 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
     } yield depositReceipt
 
     result
-      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
+      .doIfFailure { case e => logger.error(s"Failed to add resources to $editIRI: ${ e.getMessage }", e) }
+      .recoverWith { case e: GraphQLError => Failure(e.toSwordError) }
       .unsafeGetOrThrow
   }
 

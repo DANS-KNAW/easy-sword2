@@ -17,13 +17,13 @@ package nl.knaw.dans.easy.sword2
 
 import better.files.File
 import better.files.File.currentWorkingDirectory
-import nl.knaw.dans.easy.sword2.properties.DepositPropertiesFile
-import org.scalatest.OptionValues
+import nl.knaw.dans.easy.sword2.properties.FileDepositPropertiesRepository
 import org.scalatest.enablers.Existence
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import org.scalatest.{ Inside, OptionValues }
 
-trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
+trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues with Inside {
   implicit def existenceOfFile[FILE <: better.files.File]: Existence[FILE] = _.exists
 
   lazy val testDir: File = {
@@ -35,21 +35,21 @@ trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
 
   def createMinimalSettings(bag: File): SwordConfig = {
     new SwordConfig {
-      settings = Settings(depositRootDir = bag.toJava,
-        archivedDepositRootDir = Option.empty,
-        "rwxrwxrwx",
-        new java.io.File("dummy"),
-        "",
-        "",
-        null,
-        null,
-        None,
-        "does.not.exists@dans.knaw.nl",
-        9090000L,
-        Map(),
-        90000,
+      settings = Settings(
+        depositRootDir = bag.toJava,
+        depositPermissions = "rwxrwxrwx",
+        tempDir = new java.io.File("dummy"),
+        serviceBaseUrl = "",
+        collectionPath = "",
+        auth = null,
+        urlPattern = null,
+        bagStoreSettings = None,
+        supportMailAddress = "does.not.exists@dans.knaw.nl",
+        marginDiskSpace = 9090000L,
+        cleanup = Map(),
+        rescheduleDelaySeconds = 90000,
         serverPort = 12345,
-        depositPropertiesFactory = DepositPropertiesFile,
+        depositPropertiesFactory = new FileDepositPropertiesRepository(new java.io.File("dummy"), bag.toJava, Option.empty),
       )
     }
   }

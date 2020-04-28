@@ -37,7 +37,7 @@ object DepositProcessor extends DebugEnhancedLogging {
   }
 
   def startUploadedDeposits()(implicit settings: Settings): Unit = {
-    DepositPropertiesFactory.getSword2UploadedDeposits
+    DepositProperties.getSword2UploadedDeposits
       .doIfFailure {
         case e => logger.warn(s"Count not fetch uploaded deposits: ${ e.getMessage }", e)
       }

@@ -18,10 +18,12 @@ package nl.knaw.dans.easy.sword2.managers
 import java.util.{ Map => JMap }
 
 import nl.knaw.dans.easy.sword2._
+import nl.knaw.dans.easy.sword2.properties.graphql.error.GraphQLError
+import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.swordapp.server._
 
-import scala.util.{ Success, Try }
+import scala.util.{ Failure, Success, Try }
 
 class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
@@ -40,7 +42,10 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       statement <- createStatement(id, statementIri)
     } yield statement
 
-    result.getOrElse { throw new SwordError(404) }
+    result
+      .doIfFailure { case e => logger.error(s"Failed to retrieve statement for $iri: ${ e.getMessage }", e) }
+      .recoverWith { case e: GraphQLError => Failure(e.toSwordError) }
+      .getOrElse { throw new SwordError(404) }
   }
 
   private def authenticate(id: DepositId, auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
@@ -52,7 +57,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def createStatement(id: DepositId, statementIri: String)(implicit settings: Settings): Try[AtomStatement] = {
     for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       (label, descr) <- props.getState
       _ = debug(s"State = $label")
       _ = debug(s"State desc = $descr")

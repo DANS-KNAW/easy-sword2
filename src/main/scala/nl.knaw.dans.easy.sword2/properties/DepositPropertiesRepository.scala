@@ -15,36 +15,16 @@
  */
 package nl.knaw.dans.easy.sword2.properties
 
-import java.nio.file.attribute.FileTime
-
-import nl.knaw.dans.easy.sword2.DepositId
-import nl.knaw.dans.easy.sword2.State.State
+import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
 import scala.util.Try
 
-trait DepositProperties {
+trait DepositPropertiesRepository extends DebugEnhancedLogging {
 
-  def save(): Try[Unit]
+  def load(depositId: DepositId): Try[DepositProperties]
 
-  def exists: Try[Boolean]
+  def create(depositId: DepositId, depositorId: String): Try[DepositProperties]
 
-  def getDepositId: DepositId
-
-  def setState(state: State, descr: String): Try[DepositProperties]
-
-  def getState: Try[(State, String)]
-
-  def setBagName(bagName: String): Try[DepositProperties]
-
-  def setClientMessageContentType(contentType: String): Try[DepositProperties]
-
-  def removeClientMessageContentType(): Try[DepositProperties]
-
-  def getClientMessageContentType: Try[String]
-
-  def getDepositorId: Try[String]
-
-  def getDoi: Try[Option[String]]
-
-  def getLastModifiedTimestamp: Try[Option[FileTime]]
+  def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]]
 }

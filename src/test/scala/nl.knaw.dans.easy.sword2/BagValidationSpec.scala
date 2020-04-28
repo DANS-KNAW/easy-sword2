@@ -49,7 +49,7 @@ class BagValidationSpec extends TestSupportFixture
     val testBag = bagFactory.createBag(shaDir.toJava)
     implicit val depositId: DepositId = "1234566"
     BagValidation.verifyBagIsValid(testBag) should matchPattern {
-      case Failure(e: InvalidDepositException)  if e.getMessage.contains(s"Unrecognized algorithm for manifest: manifest-sha384.txt. Supported algorithms are: ${ BagValidation.acceptedValues }.") =>
+      case Failure(e: InvalidDepositException) if e.getMessage.contains(s"Unrecognized algorithm for manifest: manifest-sha384.txt. Supported algorithms are: ${ BagValidation.acceptedValues }.") =>
     }
   }
 

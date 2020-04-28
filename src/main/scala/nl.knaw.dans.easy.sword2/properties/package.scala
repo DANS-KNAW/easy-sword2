@@ -13,18 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2.properties
+package nl.knaw.dans.easy.sword2
 
-import nl.knaw.dans.easy.sword2.{ DepositId, Settings }
-import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+package object properties {
 
-import scala.util.Try
-
-trait DepositPropertiesFactory extends DebugEnhancedLogging {
-
-  def load(depositId: DepositId)(implicit settings: Settings): Try[DepositProperties]
-
-  def create(depositId: DepositId, depositorId: String)(implicit settings: Settings): Try[DepositProperties]
-
-  def getSword2UploadedDeposits(implicit settings: Settings): Try[Iterator[(DepositId, String)]]
+  case class DepositDoesNotExist(depositId: DepositId) extends Exception(s"Deposit $depositId does not exist")
+  case class NoStateForDeposit(depositId: DepositId) extends Exception(s"No state available for deposit $depositId")
+  case class NoContentTypeForDeposit(depositId: DepositId) extends Exception(s"No content type available for deposit $depositId")
 }

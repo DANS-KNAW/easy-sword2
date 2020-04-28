@@ -15,14 +15,11 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import org.swordapp.server.SwordConfigurationDefault
+import scalaj.http.BaseHttp
 
-class SwordConfig extends SwordConfigurationDefault {
-  override def getAuthType: String = "Basic"
+case class HttpContext(applicationVersion: String) {
 
-  override def returnStackTraceInError(): Boolean = false
+  lazy val userAgent: String = s"easy-sword2/$applicationVersion"
 
-  override def getMaxUploadSize: Int = -1
-
-  var settings: Settings = _
+  object Http extends BaseHttp(userAgent = userAgent)
 }

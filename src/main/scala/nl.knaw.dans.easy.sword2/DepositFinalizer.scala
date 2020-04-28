@@ -39,14 +39,14 @@ object DepositFinalizer extends DebugEnhancedLogging {
     lazy val storageDir = new JFile(settings.depositRootDir, id)
 
     val result = for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       _ <- props.setState(State.FINALIZING, "Finalizing deposit")
       _ <- props.save()
       _ <- BagExtractor.extractBag(depositDir, mimetype)
       bagDir <- getBagDir(depositDir)
       _ <- BagValidation.checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- BagValidation.checkBagVirtualValidity(bagDir)
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir.getName)
       _ <- props.save()
@@ -83,7 +83,7 @@ object DepositFinalizer extends DebugEnhancedLogging {
 
     // Ignoring result; it would probably not be possible to change the state in the deposit.properties anyway.
     for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       _ <- props.setState(State.UPLOADED, "Rescheduled, waiting for more disk space")
       _ <- props.save()
       _ = Observable.timer(settings.rescheduleDelaySeconds seconds)
@@ -94,7 +94,7 @@ object DepositFinalizer extends DebugEnhancedLogging {
   private def recoverNonFatalException(e: Throwable, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     logger.error(s"[$id] Internal failure in deposit service", e)
     for {
-      props <- DepositPropertiesFactory.load(id)
+      props <- DepositProperties.load(id)
       _ <- props.setState(FAILED, genericErrorMessage)
       _ <- props.save()
       _ <- DepositCleaner.cleanupFiles(depositDir, FAILED)

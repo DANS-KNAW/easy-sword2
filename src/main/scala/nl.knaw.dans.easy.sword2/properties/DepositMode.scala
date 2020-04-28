@@ -13,16 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package nl.knaw.dans.easy.sword2
+package nl.knaw.dans.easy.sword2.properties
 
-import org.swordapp.server.SwordConfigurationDefault
-
-class SwordConfig extends SwordConfigurationDefault {
-  override def getAuthType: String = "Basic"
-
-  override def returnStackTraceInError(): Boolean = false
-
-  override def getMaxUploadSize: Int = -1
-
-  var settings: Settings = _
+object DepositMode extends Enumeration {
+  type DepositMode = Value
+  val FILE, SERVICE, BOTH = Value
 }
