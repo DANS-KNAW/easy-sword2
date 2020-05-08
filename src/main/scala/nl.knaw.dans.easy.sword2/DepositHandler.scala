@@ -41,11 +41,11 @@ object DepositHandler extends DebugEnhancedLogging {
     val payload = Paths.get(settings.tempDir.toString, id, deposit.getFilename.split("/").last).toFile
     val depositDir = Paths.get(settings.tempDir.toString, id).toFile
     for {
-      _ <- verifyDiskspace(contentLength, depositDir)
+      _ <- verifyDiskspace(contentLength)
       _ <- copyPayloadToFile(deposit, payload, depositDir)
       _ <- doesHashMatch(payload, deposit.getMd5, depositDir)
       _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
-        .recoverWith { case e => recoverDepositSetState(e, depositDir, State.FAILED, "Failed to change file permissions").flatMap(_ => Failure(e)) }
+        .recoverWith { case e => recoverDepositSetState(e, State.FAILED, "Failed to change file permissions").flatMap(_ => Failure(e)) }
       _ <- handleDepositAsync(deposit)
       // Attention: do not access the deposit after this call. handleDepositAsync will finalize the deposit on a different thread than this one and so we cannot know if the
       // deposit is still in the easy-sword2 temp directory.
@@ -54,10 +54,10 @@ object DepositHandler extends DebugEnhancedLogging {
     } yield dr
   }
 
-  private def verifyDiskspace(contentLength: Long, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def verifyDiskspace(contentLength: Long)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     if (contentLength > -1)
       assertTempDirHasEnoughDiskspaceMarginForFile(contentLength)
-        .recoverWith { case e => recoverDepositSetState(e, depositDir, State.FAILED, "Not enough disk space available to store payload").flatMap(_ => Failure(e)) }
+        .recoverWith { case e => recoverDepositSetState(e, State.FAILED, "Not enough disk space available to store payload").flatMap(_ => Failure(e)) }
     else Success(())
   }
 
@@ -91,13 +91,13 @@ object DepositHandler extends DebugEnhancedLogging {
 
   def recoverInvalidDeposit(e: Throwable, depositDir: JFile, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     for {
-      _ <- recoverDepositSetState(e, depositDir, State.INVALID, errorMsg)
+      _ <- recoverDepositSetState(e, State.INVALID, errorMsg)
       _ <- DepositCleaner.cleanupFiles(depositDir, State.INVALID)
     } yield ()
   }
 
-  private def recoverDepositSetState(e: Throwable, depositDir: JFile, errorState: State, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
-    logger.error(s"[$id] ${ errorState.toString.toLowerCase.capitalize } deposit: ${ errorMsg }", e)
+  private def recoverDepositSetState(e: Throwable, errorState: State, errorMsg: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+    logger.error(s"[$id] ${ errorState.toString.toLowerCase.capitalize } deposit: $errorMsg", e)
     for {
       props <- DepositProperties.load(id)
       _ <- props.setState(errorState, errorMsg)
