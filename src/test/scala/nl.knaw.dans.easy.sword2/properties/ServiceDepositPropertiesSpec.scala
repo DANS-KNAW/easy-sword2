@@ -210,11 +210,17 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfte
     }
   }
 
-  "setClientMessageContentType" should "call the GraphQL service to set the client-message-content-type" in {
+  "setStateAndClientMessageContentType" should "call the GraphQL service to set the client-message-content-type" in {
     val contentType = "application/zip"
     val response =
       """{
         |  "data": {
+        |    "updateState": {
+        |      "state": {
+        |        "label": "UPLOADED",
+        |        "description": "Deposit upload has been completed."
+        |      }
+        |    },
         |    "setContentType": {
         |      "contentType": {
         |        "value": "application/zip"
@@ -224,13 +230,15 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfte
         |}""".stripMargin
     server.enqueue(new MockResponse().setBody(response))
 
-    properties.setClientMessageContentType(contentType) shouldBe a[Success[_]]
+    properties.setStateAndClientMessageContentType(State.UPLOADED, "Deposit upload has been completed.", contentType) shouldBe a[Success[_]]
 
     server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
       ("query" -> ServiceDepositProperties.SetContentType.query) ~
         ("operationName" -> ServiceDepositProperties.SetContentType.operationName) ~
         ("variables" -> Map(
           "depositId" -> depositId,
+          "stateLabel" -> "UPLOADED",
+          "stateDescription" -> "Deposit upload has been completed.",
           "contentType" -> contentType,
         ))
     }

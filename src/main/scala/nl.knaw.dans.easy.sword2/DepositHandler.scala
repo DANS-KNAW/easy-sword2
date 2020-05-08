@@ -136,8 +136,7 @@ object DepositHandler extends DebugEnhancedLogging {
       logger.info(s"[$id] Scheduling deposit to be finalized")
       for {
         props <- DepositProperties.load(id)
-        _ <- props.setState(State.UPLOADED, "Deposit upload has been completed.")
-        _ <- props.setClientMessageContentType(deposit.getMimeType)
+        _ <- props.setStateAndClientMessageContentType(State.UPLOADED, "Deposit upload has been completed.", deposit.getMimeType)
         _ <- props.save()
       } yield DepositProcessor.processDeposit(id, deposit.getMimeType)
     }
