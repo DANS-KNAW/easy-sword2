@@ -31,17 +31,15 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats
     new ServiceDepositProperties(depositId, client)
   }
 
-  override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
+  override def create(depositId: DepositId, depositorId: String): Try[Unit] = {
     val registerDepositVariables = Map(
       "depositId" -> depositId,
       "depositorId" -> depositorId,
       "bagId" -> depositId,
     )
 
-    for {
-      _ <- client.doQuery(CreateDeposit.query, CreateDeposit.operationName, registerDepositVariables).toTry
-      properties <- load(depositId)
-    } yield properties
+    client.doQuery(CreateDeposit.query, CreateDeposit.operationName, registerDepositVariables).toTry
+      .map(_ => ())
   }
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {

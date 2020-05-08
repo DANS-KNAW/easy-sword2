@@ -30,11 +30,11 @@ class CompoundDepositPropertiesRepository(file: FileDepositPropertiesRepository,
     } yield new CompoundDepositProperties(propsFile, propsService)
   }
 
-  override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
+  override def create(depositId: DepositId, depositorId: String): Try[Unit] = {
     for {
-      propsService <- service.create(depositId, depositorId)
-      propsFile <- file.create(depositId, depositorId)
-    } yield new CompoundDepositProperties(propsFile, propsService)
+      _ <- service.create(depositId, depositorId)
+      _ <- file.create(depositId, depositorId)
+    } yield ()
   }
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {

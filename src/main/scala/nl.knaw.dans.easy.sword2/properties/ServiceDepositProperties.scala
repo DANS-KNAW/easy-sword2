@@ -39,7 +39,7 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
 
   override def getDepositId: DepositId = depositId
 
-  override def setState(state: State, descr: String): Try[DepositProperties] = {
+  override def setState(state: State, descr: String): Try[Unit] = {
     val updateStateVariables = Map(
       "depositId" -> depositId,
       "stateLabel" -> state.toString,
@@ -47,7 +47,7 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     )
 
     client.doQuery(UpdateState.query, UpdateState.operationName, updateStateVariables)
-      .map(_ => this)
+      .map(_ => ())
       .toTry
   }
 
@@ -62,29 +62,29 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     } yield state
   }
 
-  override def setBagName(bagName: String): Try[DepositProperties] = {
+  override def setBagName(bagName: String): Try[Unit] = {
     val setBagNameVariables = Map(
       "depositId" -> depositId,
       "bagName" -> bagName,
     )
 
     client.doQuery(SetBagName.query, SetBagName.operationName, setBagNameVariables)
-      .map(_ => this)
+      .map(_ => ())
       .toTry
   }
 
-  override def setClientMessageContentType(contentType: String): Try[DepositProperties] = {
+  override def setClientMessageContentType(contentType: String): Try[Unit] = {
     val setContentTypeVariables = Map(
       "depositId" -> depositId,
       "contentType" -> contentType,
     )
 
     client.doQuery(SetContentType.query, SetContentType.operationName, setContentTypeVariables)
-      .map(_ => this)
+      .map(_ => ())
       .toTry
   }
 
-  override def removeClientMessageContentType(): Try[DepositProperties] = Success(this)
+  override def removeClientMessageContentType(): Try[Unit] = Success(())
 
   override def getClientMessageContentType: Try[String] = {
     for {

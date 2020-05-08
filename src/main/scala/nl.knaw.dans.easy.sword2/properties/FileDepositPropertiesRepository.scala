@@ -57,7 +57,7 @@ class FileDepositPropertiesRepository(tempDir: File,
     }
   }
 
-  override def create(depositId: DepositId, depositorId: String): Try[DepositProperties] = {
+  override def create(depositId: DepositId, depositorId: String): Try[Unit] = {
     for {
       props <- from(depositId) {
         case (_, file) if Files.exists(file) => throw new Exception(s"deposit $file already exists")
@@ -70,7 +70,7 @@ class FileDepositPropertiesRepository(tempDir: File,
           props.setProperty(DEPOSITOR_USERID_KEY, depositorId)
       }
       _ <- props.save()
-    } yield props
+    } yield ()
   }
 
   override def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]] = {

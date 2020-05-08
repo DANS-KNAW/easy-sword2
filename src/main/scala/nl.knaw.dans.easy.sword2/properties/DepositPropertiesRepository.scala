@@ -24,7 +24,7 @@ trait DepositPropertiesRepository extends DebugEnhancedLogging {
 
   def load(depositId: DepositId): Try[DepositProperties]
 
-  def create(depositId: DepositId, depositorId: String): Try[DepositProperties]
+  def create(depositId: DepositId, depositorId: String): Try[Unit]
 
   def getSword2UploadedDeposits: Try[Iterator[(DepositId, MimeType)]]
 }

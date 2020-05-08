@@ -46,11 +46,11 @@ class CompoundDepositProperties(file: DepositProperties,
     depositIdFile
   }
 
-  override def setState(state: State, descr: String): Try[DepositProperties] = {
+  override def setState(state: State, descr: String): Try[Unit] = {
     for {
       _ <- service.setState(state, descr)
       _ <- file.setState(state, descr)
-    } yield this
+    } yield ()
   }
 
   override def getState: Try[(State, String)] = {
@@ -60,25 +60,25 @@ class CompoundDepositProperties(file: DepositProperties,
     } yield stateFile
   }
 
-  override def setBagName(bagName: String): Try[DepositProperties] = {
+  override def setBagName(bagName: String): Try[Unit] = {
     for {
       _ <- service.setBagName(bagName)
       _ <- file.setBagName(bagName)
-    } yield this
+    } yield ()
   }
 
-  override def setClientMessageContentType(contentType: String): Try[DepositProperties] = {
+  override def setClientMessageContentType(contentType: String): Try[Unit] = {
     for {
       _ <- service.setClientMessageContentType(contentType)
       _ <- file.setClientMessageContentType(contentType)
-    } yield this
+    } yield ()
   }
 
-  override def removeClientMessageContentType(): Try[DepositProperties] = {
+  override def removeClientMessageContentType(): Try[Unit] = {
     for {
       _ <- service.removeClientMessageContentType()
       _ <- file.removeClientMessageContentType()
-    } yield this
+    } yield ()
   }
 
   override def getClientMessageContentType: Try[String] = {

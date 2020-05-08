@@ -30,15 +30,15 @@ trait DepositProperties {
 
   def getDepositId: DepositId
 
-  def setState(state: State, descr: String): Try[DepositProperties]
+  def setState(state: State, descr: String): Try[Unit]
 
   def getState: Try[(State, String)]
 
-  def setBagName(bagName: String): Try[DepositProperties]
+  def setBagName(bagName: String): Try[Unit]
 
-  def setClientMessageContentType(contentType: String): Try[DepositProperties]
+  def setClientMessageContentType(contentType: String): Try[Unit]
 
-  def removeClientMessageContentType(): Try[DepositProperties]
+  def removeClientMessageContentType(): Try[Unit]
 
   def getClientMessageContentType: Try[String]
 

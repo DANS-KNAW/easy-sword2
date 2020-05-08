@@ -56,10 +56,9 @@ class FileDepositProperties(properties: PropertiesConfiguration) extends Deposit
     properties.getFile.getParentFile.getName
   }
 
-  override def setState(state: State, descr: String): Try[DepositProperties] = Try {
+  override def setState(state: State, descr: String): Try[Unit] = Try {
     properties.setProperty(STATE_LABEL_KEY, state)
     properties.setProperty(STATE_DESCRIPTION_KEY, descr)
-    this
   }
 
   /**
@@ -77,20 +76,17 @@ class FileDepositProperties(properties: PropertiesConfiguration) extends Deposit
     } yield result
   }
 
-  override def setBagName(bagName: String): Try[DepositProperties] = Try {
+  override def setBagName(bagName: String): Try[Unit] = Try {
     properties.setProperty(BAGSTORE_BAGNAME_KEY, bagName)
-    this
   }
 
-  override def setClientMessageContentType(contentType: String): Try[DepositProperties] = Try {
+  override def setClientMessageContentType(contentType: String): Try[Unit] = Try {
     properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, contentType)
-    this
   }
 
-  override def removeClientMessageContentType(): Try[DepositProperties] = Try {
+  override def removeClientMessageContentType(): Try[Unit] = Try {
     properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY)
     properties.clearProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY_OLD) // Also clean up old contentType property if still found
-    this
   }
 
   override def getClientMessageContentType: Try[String] = {
