@@ -36,7 +36,7 @@ trait DepositProperties {
 
   def setBagName(bagName: String): Try[Unit]
 
-  def setClientMessageContentType(contentType: String): Try[Unit]
+  def setStateAndClientMessageContentType(stateLabel: State, stateDescription: String, contentType: String): Try[Unit]
 
   def removeClientMessageContentType(): Try[Unit]
 

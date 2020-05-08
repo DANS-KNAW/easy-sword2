@@ -80,8 +80,9 @@ class FileDepositProperties(properties: PropertiesConfiguration) extends Deposit
     properties.setProperty(BAGSTORE_BAGNAME_KEY, bagName)
   }
 
-  override def setClientMessageContentType(contentType: String): Try[Unit] = Try {
-    properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, contentType)
+  override def setStateAndClientMessageContentType(stateLabel: State, stateDescription: String, contentType: String): Try[Unit] = {
+    setState(stateLabel, stateDescription)
+      .map(_ => properties.setProperty(CLIENT_MESSAGE_CONTENT_TYPE_KEY, contentType))
   }
 
   override def removeClientMessageContentType(): Try[Unit] = Try {

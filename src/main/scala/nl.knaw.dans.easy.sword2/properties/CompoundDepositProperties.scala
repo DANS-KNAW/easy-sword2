@@ -67,10 +67,10 @@ class CompoundDepositProperties(file: DepositProperties,
     } yield ()
   }
 
-  override def setClientMessageContentType(contentType: String): Try[Unit] = {
+  override def setStateAndClientMessageContentType(stateLabel: State, stateDescription: String, contentType: String): Try[Unit] = {
     for {
-      _ <- service.setClientMessageContentType(contentType)
-      _ <- file.setClientMessageContentType(contentType)
+      _ <- service.setStateAndClientMessageContentType(stateLabel, stateDescription, contentType)
+      _ <- file.setStateAndClientMessageContentType(stateLabel, stateDescription, contentType)
     } yield ()
   }
 

@@ -73,13 +73,15 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
       .toTry
   }
 
-  override def setClientMessageContentType(contentType: String): Try[Unit] = {
-    val setContentTypeVariables = Map(
+  override def setStateAndClientMessageContentType(stateLabel: State, stateDescription: String, contentType: String): Try[Unit] = {
+    val setStateAndClientMessageContentTypeVariables = Map(
       "depositId" -> depositId,
+      "stateLabel" -> stateLabel.toString,
+      "stateDescription" -> stateDescription,
       "contentType" -> contentType,
     )
 
-    client.doQuery(SetContentType.query, SetContentType.operationName, setContentTypeVariables)
+    client.doQuery(SetContentType.query, SetContentType.operationName, setStateAndClientMessageContentTypeVariables)
       .map(_ => ())
       .toTry
   }
@@ -187,15 +189,22 @@ object ServiceDepositProperties {
   }
 
   object SetContentType {
-    val operationName = "SetContentType"
+    val operationName = "SetStateAndClientMessageContentType"
     val query: String =
-      """mutation SetContentType($depositId: UUID!, $contentType: String!) {
-        |  setContentType(input: { depositId: $depositId, value: $contentType }) {
+      """mutation SetStateAndClientMessageContentType($depositId: UUID!, $stateLabel: StateLabel!, $stateDescription: String!, $contentType: String!) {
+        |  updateState(input: {depositId: $depositId, label: $stateLabel, description: $stateDescription}) {
+        |    state {
+        |      label
+        |      description
+        |    }
+        |  }
+        |  setContentType(input: {depositId: $depositId, value: $contentType}) {
         |    contentType {
         |      value
         |    }
         |  }
-        |}""".stripMargin
+        |}
+        |""".stripMargin
   }
 
   object GetContentType {
