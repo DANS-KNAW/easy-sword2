@@ -21,13 +21,22 @@ import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.easy.sword2.properties.ServiceDepositProperties._
 import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.{ DepositId, State }
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import nl.knaw.dans.lib.error._
 import org.joda.time.DateTime
-import org.json4s.Formats
+import org.json4s.{ Formats, JValue }
 import org.json4s.JsonDSL.string2jvalue
+import org.json4s.native.JsonMethods
 
 import scala.util.{ Failure, Success, Try }
 
-class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties {
+class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties with DebugEnhancedLogging {
+
+  private def format(json: JValue): String = JsonMethods.compact(JsonMethods.render(json))
+
+  private def logMutationOutput(operationName: String)(json: JValue): Unit = {
+    logger.debug(s"Mutation $operationName returned ${ format(json) }")
+  }
 
   override def save(): Try[Unit] = Success(())
 
@@ -47,8 +56,9 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     )
 
     client.doQuery(UpdateState.query, UpdateState.operationName, updateStateVariables)
-      .map(_ => ())
       .toTry
+      .doIfSuccess(logMutationOutput(UpdateState.operationName))
+      .map(_ => ())
   }
 
   override def getState: Try[(State, String)] = {
@@ -69,8 +79,9 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     )
 
     client.doQuery(SetBagName.query, SetBagName.operationName, setBagNameVariables)
-      .map(_ => ())
       .toTry
+      .doIfSuccess(logMutationOutput(SetBagName.operationName))
+      .map(_ => ())
   }
 
   override def setStateAndClientMessageContentType(stateLabel: State, stateDescription: String, contentType: String): Try[Unit] = {
@@ -82,8 +93,9 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     )
 
     client.doQuery(SetContentType.query, SetContentType.operationName, setStateAndClientMessageContentTypeVariables)
-      .map(_ => ())
       .toTry
+      .doIfSuccess(logMutationOutput(SetContentType.operationName))
+      .map(_ => ())
   }
 
   override def removeClientMessageContentType(): Try[Unit] = Success(())

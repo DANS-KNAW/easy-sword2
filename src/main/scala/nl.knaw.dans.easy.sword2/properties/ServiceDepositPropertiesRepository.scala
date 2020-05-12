@@ -19,13 +19,22 @@ import nl.knaw.dans.easy.sword2.properties.ServiceDepositPropertiesRepository.{ 
 import nl.knaw.dans.easy.sword2.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.sword2.properties.graphql.direction.Forwards
 import nl.knaw.dans.easy.sword2.{ DepositId, MimeType }
+import nl.knaw.dans.lib.error._
+import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.JsonAST.{ JInt, JString }
 import org.json4s.JsonDSL.string2jvalue
+import org.json4s.native.JsonMethods
 import org.json4s.{ Formats, JValue }
 
 import scala.util.Try
 
-class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats: Formats) extends DepositPropertiesRepository {
+class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats: Formats) extends DepositPropertiesRepository with DebugEnhancedLogging {
+
+  private def format(json: JValue): String = JsonMethods.compact(JsonMethods.render(json))
+
+  private def logMutationOutput(operationName: String)(json: JValue): Unit = {
+    logger.debug(s"Mutation $operationName returned ${ format(json) }")
+  }
 
   override def load(depositId: DepositId): Try[DepositProperties] = Try {
     new ServiceDepositProperties(depositId, client)
@@ -38,7 +47,9 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats
       "bagId" -> depositId,
     )
 
-    client.doQuery(CreateDeposit.query, CreateDeposit.operationName, registerDepositVariables).toTry
+    client.doQuery(CreateDeposit.query, CreateDeposit.operationName, registerDepositVariables)
+      .toTry
+      .doIfSuccess(logMutationOutput(CreateDeposit.operationName))
       .map(_ => ())
   }
 
