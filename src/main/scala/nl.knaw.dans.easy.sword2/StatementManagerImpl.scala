@@ -59,6 +59,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       stateDesc <- props.getStateDescription
       _ = debug(s"State desc = $stateDesc")
       optDoi = props.getDoi
+      optUrn = props.getUrn
     } yield new AtomStatement(statementIri, "DANS-EASY", s"Deposit $id", props.getLastModifiedTimestamp.get.toString) {
       addState(state.toString, stateDesc)
       val archivalResource = new ResourcePart(new URI(s"urn:uuid:$id").toASCIIString)
@@ -66,6 +67,9 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
       optDoi.foreach(doi => {
         archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
+      })
+      optUrn.foreach(urn => {
+        archivalResource.addSelfLink(new URI(s"http://www.persistent-identifier.nl?identifier=$urn").toASCIIString)
       })
 
       addResource(archivalResource)
