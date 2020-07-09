@@ -142,6 +142,11 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
       .map(_.toString)
   }
 
+  def getUrn: Option[String] = {
+    Option(properties.getProperty("identifier.urn"))
+      .map(_.toString)
+  }
+
   /**
    * Returns the last modified timestamp when the properties were loaded.
    *
