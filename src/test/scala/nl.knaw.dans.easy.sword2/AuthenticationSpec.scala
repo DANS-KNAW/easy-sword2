@@ -128,7 +128,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
       Failure(new AuthenticationException())
     }
 
-    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings, getFailedLdapContext) should matchPattern {
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }

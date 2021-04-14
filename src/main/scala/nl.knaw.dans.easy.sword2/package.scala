@@ -30,6 +30,7 @@ package object sword2 {
 
   sealed abstract class AuthenticationSettings()
   case class LdapAuthSettings(ldapUrl: URI, usersParentEntry: String, swordEnabledAttributeName: String, swordEnabledAttributeValue: String) extends AuthenticationSettings
+  case class FileAuthSettings(usersPropertiesFile: String, users: Map[String, String]) extends AuthenticationSettings
   case class SingleUserAuthSettings(user: String, password: String) extends AuthenticationSettings
 
   case class Settings(depositRootDir: File,

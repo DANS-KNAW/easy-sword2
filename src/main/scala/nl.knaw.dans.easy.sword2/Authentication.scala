@@ -15,19 +15,18 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.net.URI
-import java.util
-import java.util.Base64
-
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-import javax.naming.ldap.{ InitialLdapContext, LdapContext }
-import javax.naming.{ AuthenticationException, Context }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
 import resource.{ ManagedResource, managed }
 
+import java.net.URI
+import java.util
+import java.util.Base64
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import javax.naming.ldap.{ InitialLdapContext, LdapContext }
+import javax.naming.{ AuthenticationException, Context }
 import scala.util.{ Failure, Success, Try }
 
 object Authentication extends DebugEnhancedLogging {
@@ -47,7 +46,7 @@ object Authentication extends DebugEnhancedLogging {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]] = getInitialContext): Try[Unit] = {
+  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf))
       Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
@@ -63,19 +62,37 @@ object Authentication extends DebugEnhancedLogging {
             logger.info("Single user log in SUCCESS")
             Success(())
           }
-        case authSettings: LdapAuthSettings =>
-          authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext)
-            .map {
-              case false =>
-                logger.warn("LDAP user FAILED log-in attempt")
-                throw new SwordAuthException
-              case true =>
-                logger.info(s"User ${ auth.getUsername } authentication through LDAP successful")
-                debug("LDAP log in SUCCESS")
-                Success(())
-            }
+        case ldapAuthSettings: LdapAuthSettings =>
+          checkLdapAuthentication(auth, ldapAuthSettings)
+        case fileAuthSettings: FileAuthSettings =>
+          checkFileAuthentication(auth, fileAuthSettings)
         case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
       }
+    }
+  }
+
+  @throws(classOf[SwordAuthException])
+  def checkLdapAuthentication(auth: AuthCredentials, authSettings: LdapAuthSettings)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]] = getInitialContext): Try[Unit] = {
+    authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext)
+      .map {
+        case false =>
+          logger.warn("LDAP user FAILED log-in attempt")
+          throw new SwordAuthException
+        case true =>
+          logger.info(s"User ${ auth.getUsername } authentication through LDAP successful")
+          debug("LDAP log in SUCCESS")
+          Success(())
+      }
+  }
+
+  def checkFileAuthentication(auth: AuthCredentials, authSettings: FileAuthSettings): Try[Unit] = Try {
+    val password = authSettings.users.getOrElse(auth.getUsername, { logger.warn(s"user ${ auth.getUsername } not found in ${ authSettings.usersPropertiesFile } file"); throw new SwordAuthException })
+    if (password == auth.getPassword) {
+      logger.info(s"User ${ auth.getUsername } authentication through ${ authSettings.usersPropertiesFile } file successful")
+      debug(s"${ authSettings.usersPropertiesFile } log in SUCCESS")
+    } else {
+      logger.warn(s"authentication through ${ authSettings.usersPropertiesFile } file FAILED")
+      throw new SwordAuthException
     }
   }
 
