@@ -29,7 +29,7 @@ import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 import javax.naming.{ AuthenticationException, Context }
 import scala.util.{ Failure, Success, Try }
 
-object Authentication extends DebugEnhancedLogging {
+case class Authentication(authSettings: AuthenticationSettings) extends DebugEnhancedLogging {
 
   type UserName = String
   type Password = String
@@ -46,13 +46,13 @@ object Authentication extends DebugEnhancedLogging {
 
   @throws(classOf[SwordError])
   @throws(classOf[SwordAuthException])
-  def checkAuthentication(auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
+  def checkAuthentication(auth: AuthCredentials)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]] = getInitialContext): Try[Unit] = {
     debug("Checking that onBehalfOf is not specified")
     if (isNotBlank(auth.getOnBehalfOf))
       Failure(new SwordError("http://purl.org/net/sword/error/MediationNotAllowed"))
     else {
       debug(s"Checking credentials for user ${ auth.getUsername }")
-      settings.auth match {
+      authSettings match {
         case SingleUserAuthSettings(user, password) =>
           if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
             logger.warn("Single user FAILED log-in attempt")
@@ -72,7 +72,7 @@ object Authentication extends DebugEnhancedLogging {
   }
 
   @throws(classOf[SwordAuthException])
-  def checkLdapAuthentication(auth: AuthCredentials, authSettings: LdapAuthSettings)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]] = getInitialContext): Try[Unit] = {
+  def checkLdapAuthentication(auth: AuthCredentials, authSettings: LdapAuthSettings)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]]): Try[Unit] = {
     authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext)
       .map {
         case false =>
@@ -85,7 +85,7 @@ object Authentication extends DebugEnhancedLogging {
       }
   }
 
-  def checkFileAuthentication(auth: AuthCredentials, authSettings: FileAuthSettings): Try[Unit] = Try {
+  def checkFileAuthentication(auth: AuthCredentials, authSettings: FileAuthSettings)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]]): Try[Unit] = Try {
     val password = authSettings.users.getOrElse(auth.getUsername, { logger.warn(s"user ${ auth.getUsername } not found in ${ authSettings.usersPropertiesFile } file"); throw new SwordAuthException })
     if (password == auth.getPassword) {
       logger.info(s"User ${ auth.getUsername } authentication through ${ authSettings.usersPropertiesFile } file successful")
@@ -122,13 +122,16 @@ object Authentication extends DebugEnhancedLogging {
   }
 
   private def getInitialContext(userName: UserName, password: Password, providerUrl: ProviderUrl, usersParentEntry: UsersParentEntry): Try[ManagedResource[InitialLdapContext]] = Try {
-    val env = new util.Hashtable[String, String]() {
-      put(Context.PROVIDER_URL, providerUrl.toASCIIString)
-      put(Context.SECURITY_AUTHENTICATION, "simple")
-      put(Context.SECURITY_PRINCIPAL, s"uid=$userName, $usersParentEntry")
-      put(Context.SECURITY_CREDENTIALS, password)
-      put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
+    if (authSettings.isInstanceOf[LdapAuthSettings]) {
+      val env = new util.Hashtable[String, String]() {
+        put(Context.PROVIDER_URL, providerUrl.toASCIIString)
+        put(Context.SECURITY_AUTHENTICATION, "simple")
+        put(Context.SECURITY_PRINCIPAL, s"uid=$userName, $usersParentEntry")
+        put(Context.SECURITY_CREDENTIALS, password)
+        put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory")
+      }
+      managed(new InitialLdapContext(env, null))
     }
-    managed(new InitialLdapContext(env, null))
+    else null
   }
 }

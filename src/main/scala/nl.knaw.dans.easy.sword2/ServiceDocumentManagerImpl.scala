@@ -29,7 +29,7 @@ class ServiceDocumentManagerImpl extends ServiceDocumentManager with DebugEnhanc
     val username = if (authCredentials.getUsername.isEmpty) "Anonymous user"
                    else authCredentials.getUsername
     logger.info(s"Service document retrieved by $username")
-    if (Authentication.checkAuthentication(authCredentials).isFailure) throw new SwordAuthException()
+    if (Authentication(settings.auth).checkAuthentication(authCredentials).isFailure) throw new SwordAuthException()
 
     new ServiceDocument {
       addWorkspace(new SwordWorkspace {
