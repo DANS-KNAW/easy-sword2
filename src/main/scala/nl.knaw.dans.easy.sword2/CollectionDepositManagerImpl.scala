@@ -35,7 +35,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
   def createNew(collectionURI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
-      _ <- Authentication(settings.auth).checkAuthentication(auth)
+      _ <- Authentication.checkAuthentication(auth)
       _ <- checkValidCollectionId(collectionURI)
       maybeSlug = if (isNotBlank(deposit.getSlug)) Some(deposit.getSlug)
                   else None

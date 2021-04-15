@@ -76,7 +76,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
   def addResources(editIRI: String, deposit: Deposit, auth: AuthCredentials, config: SwordConfiguration): DepositReceipt = {
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
-      _ <- Authentication(settings.auth).checkAuthentication(auth)
+      _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(editIRI)
       _ <- authenticate(id, auth)
       _ = debug(s"[$id] Continued deposit")
@@ -92,7 +92,7 @@ class ContainerManagerImpl extends ContainerManager with DebugEnhancedLogging {
 
   private def authenticate(id: DepositId, auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     settings.auth match {
-      case _: LdapAuthSettings => Authentication(settings.auth).checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to continue deposit for other user")
+      case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to continue deposit for other user")
       case _ => Success(())
     }
   }

@@ -32,7 +32,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
     trace(iri, accept, auth, config)
     implicit val settings: Settings = config.asInstanceOf[SwordConfig].settings
     val result = for {
-      _ <- Authentication(settings.auth).checkAuthentication(auth)
+      _ <- Authentication.checkAuthentication(auth)
       id <- SwordID.extract(iri)
       _ = debug(s"id = $id")
       _ <- authenticate(id, auth)
@@ -45,7 +45,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
   private def authenticate(id: DepositId, auth: AuthCredentials)(implicit settings: Settings): Try[Unit] = {
     settings.auth match {
-      case _: LdapAuthSettings => Authentication(settings.auth).checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to retrieve statement for other user.")
+      case _: LdapAuthSettings => Authentication.checkThatUserIsOwnerOfDeposit(id, auth.getUsername, "Not allowed to retrieve statement for other user.")
       case _ => Success(())
     }
   }

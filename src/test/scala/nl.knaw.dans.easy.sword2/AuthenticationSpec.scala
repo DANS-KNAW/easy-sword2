@@ -22,6 +22,7 @@ import java.util.regex.Pattern
 import javax.naming.AuthenticationException
 import javax.naming.directory.{ Attribute, Attributes }
 import javax.naming.ldap.LdapContext
+import nl.knaw.dans.easy.sword2.Authentication._
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
 import org.scalatest.flatspec.AnyFlatSpec
@@ -32,10 +33,6 @@ import resource.{ ManagedResource, managed }
 import scala.util.{ Failure, Success, Try }
 
 class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with OneInstancePerTest {
-  type UserName = String
-  type Password = String
-  type ProviderUrl = URI
-  type UsersParentEntry = String
 
   implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
@@ -77,15 +74,15 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
   val output = "WjYViDQOdGR8V1kkTs900ZfoLXU="
 
   "hash" should s"return same as: $command" in {
-    Authentication(settings.auth).hash("SomePassword", "someUserNameAsSalt") shouldBe output
+    Authentication.hash("SomePassword", "someUserNameAsSalt") shouldBe output
   }
 
   it should s"return something else than: $command" in {
-    Authentication(settings.auth).hash("somePassword", "someUserNameAsSalt") should not be output
+    Authentication.hash("somePassword", "someUserNameAsSalt") should not be output
   }
 
   it should s"not return same as: $command" in {
-    Authentication(settings.auth).hash("SomePassword", "SomeUserNameAsSalt") should not be output
+    Authentication.hash("SomePassword", "SomeUserNameAsSalt") should not be output
   }
 
   "checkAuthentication" should "return Success if correct credentials + swordEnabled attribute are provided " in {
@@ -93,7 +90,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
 
-    Authentication(settings.auth).checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) shouldBe a[Success[_]]
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) shouldBe a[Success[_]]
   }
 
   it should "return Failure if swordEnabled set to false" in {
@@ -101,7 +98,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("false")
 
-    Authentication(settings.auth).checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
@@ -110,7 +107,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectSwordEnabledAttributePresent(false)
     expectNumberOfSwordEnabledAttributeValues(1)
 
-    Authentication(settings.auth).checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
@@ -119,7 +116,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(0)
 
-    Authentication(settings.auth).checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null)) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
@@ -132,7 +129,53 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
       Failure(new AuthenticationException())
     }
 
-    Authentication(settings.auth).checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(getFailedLdapContext) should matchPattern {
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings, getFailedLdapContext) should matchPattern {
+      case Failure(_: SwordAuthException) =>
+    }
+  }
+
+  it should "return Success when auth=FileAuthSettings and userid and password are found in users.properties" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "testPassword")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) shouldBe a[Success[_]]
+  }
+
+  it should "return Failure when auth=FileAuthSettings and the userid is not found in users.properties" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser2" -> "testPassword")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) should matchPattern {
+      case Failure(_: SwordAuthException) =>
+    }
+  }
+
+  it should "return Failure when auth=FileAuthSettings and the user password does not match in users.properties" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "testPassword2")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) should matchPattern {
+      case Failure(_: SwordAuthException) =>
+    }
+  }
+
+  it should "return Success when auth=SingleUserAuthSettings and userid and password match" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    val settings2 = settings.copy(auth = SingleUserAuthSettings("testUser", Authentication.hash("testPassword", "testUser")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) shouldBe a[Success[_]]
+  }
+
+  it should "return Failure when auth=SingleUserAuthSettings and userid and password don't match" in {
+    expectSwordEnabledAttributePresent(true)
+    expectNumberOfSwordEnabledAttributeValues(1)
+    expectSwordEnabledAttributeValue("true")
+    val settings2 = settings.copy(auth = SingleUserAuthSettings("testUser", Authentication.hash("testPassword", "testUser")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword2", null))(settings2) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
