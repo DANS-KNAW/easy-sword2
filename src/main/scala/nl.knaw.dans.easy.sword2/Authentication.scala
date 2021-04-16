@@ -67,8 +67,8 @@ object Authentication extends DebugEnhancedLogging {
           checkSingleUserAuthentication(auth, user, password)
         case ldapAuthSettings: LdapAuthSettings =>
           checkLdapAuthentication(auth, ldapAuthSettings)
-        case fileAuthSettings: FileAuthSettings =>
-          checkFileAuthentication(auth, fileAuthSettings)
+        case FileAuthSettings(usersPropertiesFile, usersProperties) =>
+          checkFileAuthentication(auth, usersPropertiesFile, usersProperties)
         case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
       }
     }
@@ -101,15 +101,15 @@ object Authentication extends DebugEnhancedLogging {
   }
 
   @throws(classOf[SwordAuthException])
-  def checkFileAuthentication(auth: AuthCredentials, authSettings: FileAuthSettings): Try[Unit] = Try {
-    val password = authSettings.users.getOrElse(auth.getUsername, { logger.warn(s"user ${ auth.getUsername } not found in ${ authSettings.usersPropertiesFile } file"); throw new SwordAuthException })
-    if (password == auth.getPassword) {
-      logger.info(s"User ${ auth.getUsername } authentication through ${ authSettings.usersPropertiesFile } file successful")
-      debug(s"${ authSettings.usersPropertiesFile } log in SUCCESS")
+  def checkFileAuthentication(auth: AuthCredentials, usersPropertiesFile: String, usersProperties: Map[String, String]): Try[Unit] = Try {
+    val password = usersProperties.getOrElse(auth.getUsername, { logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file"); throw new SwordAuthException })
+    if (password != hash(auth.getPassword, auth.getUsername)) {
+      logger.warn(s"Authentication for user ${ auth.getUsername } through ${ usersPropertiesFile } file FAILED")
+      throw new SwordAuthException
     }
     else {
-      logger.warn(s"authentication through ${ authSettings.usersPropertiesFile } file FAILED")
-      throw new SwordAuthException
+      logger.info(s"User ${ auth.getUsername } authentication through ${ usersPropertiesFile } file successful")
+      debug(s"${ usersPropertiesFile } log in SUCCESS")
     }
   }
 

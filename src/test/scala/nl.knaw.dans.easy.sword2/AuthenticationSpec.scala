@@ -138,7 +138,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
-    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "testPassword")))
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "7ctU8FOw9E1qFOZ9fDT5Zn4u4UY=")))
     Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) shouldBe a[Success[_]]
   }
 
@@ -146,8 +146,8 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
-    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser2" -> "testPassword")))
-    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) should matchPattern {
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "7ctU8FOw9E1qFOZ9fDT5Zn4u4UY=")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser2", "testPassword", null))(settings2) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
@@ -156,8 +156,8 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
     expectSwordEnabledAttributePresent(true)
     expectNumberOfSwordEnabledAttributeValues(1)
     expectSwordEnabledAttributeValue("true")
-    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "testPassword2")))
-    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword", null))(settings2) should matchPattern {
+    val settings2 = settings.copy(auth = FileAuthSettings("users.properties", Map("testUser" -> "7ctU8FOw9E1qFOZ9fDT5Zn4u4UY=")))
+    Authentication.checkAuthentication(new AuthCredentials("testUser", "testPassword2", null))(settings2) should matchPattern {
       case Failure(_: SwordAuthException) =>
     }
   }
