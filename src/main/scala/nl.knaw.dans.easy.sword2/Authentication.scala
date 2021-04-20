@@ -17,14 +17,12 @@ package nl.knaw.dans.easy.sword2
 
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
+import org.mindrot.jbcrypt.BCrypt
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
 import resource.{ ManagedResource, managed }
 
 import java.net.URI
 import java.util
-import java.util.Base64
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
 import javax.naming.ldap.{ InitialLdapContext, LdapContext }
 import javax.naming.{ AuthenticationException, Context }
 import scala.util.{ Failure, Success, Try }
@@ -35,14 +33,6 @@ object Authentication extends DebugEnhancedLogging {
   type Password = String
   type ProviderUrl = URI
   type UsersParentEntry = String
-
-  def hash(password: String, userName: String): String = {
-    val signingKey = new SecretKeySpec(userName.getBytes(), "HmacSHA1")
-    val mac = Mac.getInstance("HmacSHA1")
-    mac.init(signingKey)
-    val rawHmac = mac.doFinal(password.getBytes())
-    Base64.getEncoder.encodeToString(rawHmac)
-  }
 
   @throws(classOf[SwordAuthException])
   def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
@@ -75,8 +65,8 @@ object Authentication extends DebugEnhancedLogging {
   }
 
   @throws(classOf[SwordAuthException])
-  def checkSingleUserAuthentication(auth: AuthCredentials,user: String, password: String): Try[Unit] = Try {
-    if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
+  def checkSingleUserAuthentication(auth: AuthCredentials, user: String, hashed: String): Try[Unit] = Try {
+    if (user != auth.getUsername || !BCrypt.checkpw(auth.getPassword, hashed)) {
       logger.warn("Single user FAILED log-in attempt")
       throw new SwordAuthException
     }
@@ -102,8 +92,8 @@ object Authentication extends DebugEnhancedLogging {
 
   @throws(classOf[SwordAuthException])
   def checkFileAuthentication(auth: AuthCredentials, usersPropertiesFile: String, usersProperties: Map[String, String]): Try[Unit] = Try {
-    val password = usersProperties.getOrElse(auth.getUsername, { logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file"); throw new SwordAuthException })
-    if (password != hash(auth.getPassword, auth.getUsername)) {
+    val hashed = usersProperties.getOrElse(auth.getUsername, { logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file"); throw new SwordAuthException })
+    if (!BCrypt.checkpw(auth.getPassword, hashed)) {
       logger.warn(s"Authentication for user ${ auth.getUsername } through ${ usersPropertiesFile } file FAILED")
       throw new SwordAuthException
     }
