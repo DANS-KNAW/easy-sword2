@@ -34,6 +34,7 @@ package object sword2 {
 
   case class Settings(depositRootDir: File,
                       archivedDepositRootDir: Option[File],
+                      outboxDir: Option[File],
                       depositPermissions: String,
                       tempDir: File,
                       serviceBaseUrl: String, // TODO: refactor to URL?

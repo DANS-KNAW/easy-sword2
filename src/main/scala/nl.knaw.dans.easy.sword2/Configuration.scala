@@ -35,6 +35,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
   val settings: Settings = Settings(
     depositRootDir = new File(properties.getString("deposits.rootdir")),
     archivedDepositRootDir = properties.getString("deposits.archived-rootdir").toOption.map(new File(_)).filter(d => d.exists && d.canRead),
+    outboxDir = properties.getString("deposits.outbox").toOption.map(new File(_)).filter(d => d.exists() && d.canRead),
     depositPermissions = properties.getString("deposits.permissions"),
     tempDir = new File(properties.getString("tempdir")),
     serviceBaseUrl = properties.getString("base-url"),
