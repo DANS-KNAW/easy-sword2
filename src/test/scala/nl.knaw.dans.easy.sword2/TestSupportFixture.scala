@@ -36,6 +36,7 @@ trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues {
     new SwordConfig {
       settings = Settings(depositRootDir = bag.toJava,
         archivedDepositRootDir = Option.empty,
+        outboxDir = Option.empty,
         "rwxrwxrwx",
         new java.io.File("dummy"),
         "",

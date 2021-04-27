@@ -37,6 +37,7 @@ class AuthenticationSpec extends AnyFlatSpec with Matchers with MockFactory with
   implicit val settings: Settings = Settings(
     depositRootDir = new File("dummy"),
     archivedDepositRootDir = Option(new File("dummy")),
+    outboxDir = None,
     depositPermissions = "dummy",
     tempDir = new File("dummy"),
     serviceBaseUrl = "dummy",
