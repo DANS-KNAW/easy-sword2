@@ -45,7 +45,7 @@ class ReadmeSpec extends TestSupportFixture with CustomMatchers {
     setProperty("cleanup.REJECTED", "no")
     setProperty("cleanup.FAILED", "no")
   }
-  private val clo = new CommandLineOptions(Array[String](), Configuration("1.0.0-SNAPSHOT", properties)) {
+  private val clo = new CommandLineOptions(Array[String](), Configuration("1.0.0-SNAPSHOT", properties, "users.properties", null)) {
     // avoids System.exit() in case of invalid arguments or "--help"
     override def verify(): Unit = {}
   }

@@ -15,19 +15,16 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.net.URI
-import java.util
-import java.util.Base64
-
-import javax.crypto.Mac
-import javax.crypto.spec.SecretKeySpec
-import javax.naming.ldap.{ InitialLdapContext, LdapContext }
-import javax.naming.{ AuthenticationException, Context }
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.lang.StringUtils._
+import org.mindrot.jbcrypt.BCrypt
 import org.swordapp.server.{ AuthCredentials, SwordAuthException, SwordError }
 import resource.{ ManagedResource, managed }
 
+import java.net.URI
+import java.util
+import javax.naming.ldap.{ InitialLdapContext, LdapContext }
+import javax.naming.{ AuthenticationException, Context }
 import scala.util.{ Failure, Success, Try }
 
 object Authentication extends DebugEnhancedLogging {
@@ -37,12 +34,14 @@ object Authentication extends DebugEnhancedLogging {
   type ProviderUrl = URI
   type UsersParentEntry = String
 
-  def hash(password: String, userName: String): String = {
-    val signingKey = new SecretKeySpec(userName.getBytes(), "HmacSHA1")
-    val mac = Mac.getInstance("HmacSHA1")
-    mac.init(signingKey)
-    val rawHmac = mac.doFinal(password.getBytes())
-    Base64.getEncoder.encodeToString(rawHmac)
+  @throws(classOf[SwordAuthException])
+  def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
+    for {
+      props <- DepositProperties(id)
+      depositor <- props.getDepositorId
+      _ <- if (depositor == user) Success(())
+           else Failure(new SwordAuthException(msg))
+    } yield ()
   }
 
   @throws(classOf[SwordError])
@@ -55,38 +54,53 @@ object Authentication extends DebugEnhancedLogging {
       debug(s"Checking credentials for user ${ auth.getUsername }")
       settings.auth match {
         case SingleUserAuthSettings(user, password) =>
-          if (user != auth.getUsername || password != hash(auth.getPassword, auth.getUsername)) {
-            logger.warn("Single user FAILED log-in attempt")
-            throw new SwordAuthException
-          }
-          else {
-            logger.info("Single user log in SUCCESS")
-            Success(())
-          }
-        case authSettings: LdapAuthSettings =>
-          authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext)
-            .map {
-              case false =>
-                logger.warn("LDAP user FAILED log-in attempt")
-                throw new SwordAuthException
-              case true =>
-                logger.info(s"User ${ auth.getUsername } authentication through LDAP successful")
-                debug("LDAP log in SUCCESS")
-                Success(())
-            }
+          checkSingleUserAuthentication(auth, user, password)
+        case ldapAuthSettings: LdapAuthSettings =>
+          checkLdapAuthentication(auth, ldapAuthSettings)
+        case FileAuthSettings(usersPropertiesFile, usersProperties) =>
+          checkFileAuthentication(auth, usersPropertiesFile, usersProperties)
         case _ => Failure(new RuntimeException("Authentication not properly configured. Contact service admin"))
       }
     }
   }
 
   @throws(classOf[SwordAuthException])
-  def checkThatUserIsOwnerOfDeposit(id: DepositId, user: String, msg: String)(implicit settings: Settings): Try[Unit] = {
-    for {
-      props <- DepositProperties(id)
-      depositor <- props.getDepositorId
-      _ <- if (depositor == user) Success(())
-           else Failure(new SwordAuthException(msg))
-    } yield ()
+  def checkSingleUserAuthentication(auth: AuthCredentials, user: String, hashed: String): Try[Unit] = Try {
+    if (user != auth.getUsername || !BCrypt.checkpw(auth.getPassword, hashed)) {
+      logger.warn("Single user FAILED log-in attempt")
+      throw new SwordAuthException
+    }
+    else {
+      logger.info("Single user log in SUCCESS")
+      Success(())
+    }
+  }
+
+  @throws(classOf[SwordAuthException])
+  def checkLdapAuthentication(auth: AuthCredentials, authSettings: LdapAuthSettings)(implicit getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]]): Try[Unit] = {
+    authenticateThroughLdap(auth.getUsername, auth.getPassword, authSettings, getLdapContext)
+      .map {
+        case false =>
+          logger.warn("LDAP user FAILED log-in attempt")
+          throw new SwordAuthException
+        case true =>
+          logger.info(s"User ${ auth.getUsername } authentication through LDAP successful")
+          debug("LDAP log in SUCCESS")
+          Success(())
+      }
+  }
+
+  @throws(classOf[SwordAuthException])
+  def checkFileAuthentication(auth: AuthCredentials, usersPropertiesFile: String, usersProperties: Map[String, String]): Try[Unit] = Try {
+    val hashed = usersProperties.getOrElse(auth.getUsername, { logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file"); throw new SwordAuthException })
+    if (!BCrypt.checkpw(auth.getPassword, hashed)) {
+      logger.warn(s"Authentication for user ${ auth.getUsername } through ${ usersPropertiesFile } file FAILED")
+      throw new SwordAuthException
+    }
+    else {
+      logger.info(s"User ${ auth.getUsername } authentication through ${ usersPropertiesFile } file successful")
+      debug(s"${ usersPropertiesFile } log in SUCCESS")
+    }
   }
 
   private def authenticateThroughLdap(user: String, password: String, authSettings: LdapAuthSettings, getLdapContext: (UserName, Password, ProviderUrl, UsersParentEntry) => Try[ManagedResource[LdapContext]]): Try[Boolean] = {

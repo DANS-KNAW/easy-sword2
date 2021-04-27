@@ -15,20 +15,21 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.File
-import java.net.URI
-import java.nio.file.{ Files, Path, Paths }
-import java.util.regex.Pattern
-
-import javax.servlet.ServletException
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
 import resource.managed
 
+import java.io.{ File, FileInputStream }
+import java.net.URI
+import java.nio.file.{ Files, Path, Paths }
+import java.util.Properties
+import java.util.regex.Pattern
+import javax.servlet.ServletException
 import scala.io.Source
 import scala.util.{ Success, Try }
+import scala.collection.JavaConverters._
 
-case class Configuration(version: String, properties: PropertiesConfiguration) {
+case class Configuration(version: String, properties: PropertiesConfiguration, usersPropertiesFile: String, users: Map[String, String]) {
   private val bagStoreBaseUri = properties.getString("bag-store.base-url") // TODO: make File, check existence
   private val bagStoreBaseDir = properties.getString("bag-store.base-dir") // TODO: make File, check existence
 
@@ -44,6 +45,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration) {
         properties.getString("auth.ldap.users.parent-entry"),
         properties.getString("auth.ldap.sword-enabled-attribute-name"),
         properties.getString("auth.ldap.sword-enabled-attribute-value"))
+      case "file" => FileAuthSettings(usersPropertiesFile, users)
       case "single" => SingleUserAuthSettings(properties.getString("auth.single.user"), properties.getString("auth.single.password"))
       case _ => throw new RuntimeException(s"Invalid authentication settings: ${ properties.getString("auth.mode") }")
     },
@@ -82,13 +84,25 @@ object Configuration {
       .find(Files.exists(_))
       .getOrElse { throw new IllegalStateException("No configuration directory found") }
 
+    val version = managed(Source.fromFile(home.resolve("bin/version").toFile)).acquireAndGet(_.mkString)
+    val properties = new PropertiesConfiguration() {
+      // Needed, because we need values with comma's in them, such as LDAP names
+      setDelimiterParsingDisabled(true)
+      load(cfgPath.resolve("application.properties").toFile)
+    }
+
+    val usersPropertiesFile = "users.properties"
+    val users = if (properties.getString("auth.mode") == "file")
+                  new Properties() {
+                    load(new FileInputStream(cfgPath.resolve(usersPropertiesFile).toString))
+                  }.asScala.toMap
+                else null
+
     new Configuration(
-      version = managed(Source.fromFile(home.resolve("bin/version").toFile)).acquireAndGet(_.mkString),
-      properties = new PropertiesConfiguration() {
-        // Needed, because we need values with comma's in them, such as LDAP names
-        setDelimiterParsingDisabled(true)
-        load(cfgPath.resolve("application.properties").toFile)
-      }
+      version,
+      properties,
+      usersPropertiesFile,
+      users
     )
   }
 }
