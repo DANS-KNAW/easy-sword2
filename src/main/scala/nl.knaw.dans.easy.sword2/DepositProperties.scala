@@ -18,7 +18,6 @@ package nl.knaw.dans.easy.sword2
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
-
 import nl.knaw.dans.easy.sword2.DepositProperties._
 import nl.knaw.dans.easy.sword2.State.State
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -26,6 +25,8 @@ import org.apache.commons.configuration.PropertiesConfiguration
 import org.apache.commons.lang.StringUtils
 import org.joda.time.{ DateTime, DateTimeZone }
 
+import scala.::
+import scala.collection.mutable.ListBuffer
 import scala.util.{ Failure, Success, Try }
 
 /**
@@ -44,7 +45,18 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     val props = new PropertiesConfiguration()
     props.setDelimiterParsingDisabled(true)
 
-    val file = (settings.tempDir #:: settings.depositRootDir #:: settings.archivedDepositRootDir.toStream)
+    val searchPath = ListBuffer[File]()
+    searchPath.append(settings.tempDir)
+    searchPath.append(settings.depositRootDir)
+    settings.archivedDepositRootDir.foreach(f => searchPath.append(f))
+    settings.outboxDir.foreach {
+      f =>
+        searchPath.append(new File(f, "processed"))
+        searchPath.append(new File(f, "rejected"))
+        searchPath.append(new File(f, "failed"))
+    }
+
+    val file = searchPath
       .map(_.toPath.resolve(depositId))
       .collectFirst { case path if Files.exists(path) => path.resolve(FILENAME) }
       .getOrElse { settings.tempDir.toPath.resolve(depositId).resolve(FILENAME) }

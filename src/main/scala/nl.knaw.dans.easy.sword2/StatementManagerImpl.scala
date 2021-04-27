@@ -55,10 +55,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
       props <- DepositProperties(id)
       _ = debug(s"Read ${ DepositProperties.FILENAME }")
       outbox = settings.outboxDir
-      state <- if (outbox.isDefined)
-                 getDepositStateForDataverseIngest(id, outbox.get)
-               else
-                 props.getState
+      state <- props.getState
       _ = debug(s"State = $state")
       stateDesc <- props.getStateDescription
       _ = debug(s"State desc = $stateDesc")
@@ -78,23 +75,5 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
 
       addResource(archivalResource)
     }
-  }
-
-  /**
-   * When a deposit is ingested into Dataverse the deposit state is derived from the outbox subdirectory in which the deposit is placed.
-   * This can be 'archived', 'rejected' or 'failed'.
-   * If the deposit is not found in one of the above directories it is still being processed and the state is set to 'submitted'.
-   *
-   * @param id
-   * @param outboxDir
-   * @return the state of the deposit
-   */
-  def getDepositStateForDataverseIngest(id: DepositId, outboxDir: File): Try[State.Value] = Try {
-    outboxDir.listFiles()
-      .flatMap(_.listFiles())
-      .collectFirst { case d if d.getName == id => d }
-      .map(_.getParentFile.getName)
-      .map(s => State.withName(s.toUpperCase))
-      .getOrElse(State.SUBMITTED)
   }
 }
