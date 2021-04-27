@@ -54,7 +54,6 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
     for {
       props <- DepositProperties(id)
       _ = debug(s"Read ${ DepositProperties.FILENAME }")
-      outbox = settings.outboxDir
       state <- props.getState
       _ = debug(s"State = $state")
       stateDesc <- props.getStateDescription
@@ -70,7 +69,7 @@ class StatementManagerImpl extends StatementManager with DebugEnhancedLogging {
         archivalResource.addSelfLink(new URI(s"https://doi.org/$doi").toASCIIString)
       })
       optUrn.foreach(urn => {
-        archivalResource.addSelfLink(new URI(s"http://www.persistent-identifier.nl?identifier=$urn").toASCIIString)
+        archivalResource.addSelfLink(new URI(s"https://www.persistent-identifier.nl?identifier=$urn").toASCIIString)
       })
 
       addResource(archivalResource)
