@@ -97,6 +97,12 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     this
   }
 
+  def setSwordToken(token: String): Try[DepositProperties] = Try {
+    properties.setProperty("dataverse.sword-token", token)
+    this
+  }
+
+
   /**
    * Returns the state when the properties were loaded.
    *

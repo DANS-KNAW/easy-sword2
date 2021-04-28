@@ -47,7 +47,7 @@ class CollectionDepositManagerImpl extends CollectionDepositManager with DebugEn
     } yield depositReceipt
     
     result
-      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }") }
+      .doIfFailure { case e => logger.warn(s"Returning error to client: ${ e.getMessage }", e) }
       .unsafeGetOrThrow
   }
 

@@ -92,7 +92,9 @@ object Authentication extends DebugEnhancedLogging {
 
   @throws(classOf[SwordAuthException])
   def checkFileAuthentication(auth: AuthCredentials, usersPropertiesFile: String, usersProperties: Map[String, String]): Try[Unit] = Try {
-    val hashed = usersProperties.getOrElse(auth.getUsername, { logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file"); throw new SwordAuthException })
+    val hashed = usersProperties.getOrElse(auth.getUsername, {
+      logger.warn(s"User ${ auth.getUsername } not found in ${ usersPropertiesFile } file")
+      throw new SwordAuthException })
     if (!BCrypt.checkpw(auth.getPassword, hashed)) {
       logger.warn(s"Authentication for user ${ auth.getUsername } through ${ usersPropertiesFile } file FAILED")
       throw new SwordAuthException

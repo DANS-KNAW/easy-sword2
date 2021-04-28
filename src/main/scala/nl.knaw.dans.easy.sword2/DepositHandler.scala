@@ -162,6 +162,8 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       props <- DepositProperties(id)
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir)
+      token <- getSwordToken(bagDir, id)
+      _ <- props.setSwordToken(token)
       _ <- props.save()
       _ <- removeZipFiles(depositDir)
       // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
@@ -176,6 +178,13 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
         case e: NotEnoughDiskSpaceException => recoverNotEnoughDiskSpace(e, mimetype)
         case NonFatal(e) => recoverNonFatalException(e, depositDir)
       }
+  }
+
+  private def getSwordToken(bagDir: JFile, defaultToken: String): Try[String]  = {
+    for {
+      bag <- getBag(bagDir)
+      token = s"sword:${Option(bag.getBagInfoTxt.get("Is-Version-Of")).getOrElse(defaultToken)}"
+    } yield token
   }
 
   private def recoverInvalidDeposit(e: InvalidDepositException, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
