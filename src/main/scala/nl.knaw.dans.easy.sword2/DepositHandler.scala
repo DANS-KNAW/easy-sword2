@@ -183,7 +183,10 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
   private def getSwordToken(bagDir: JFile, defaultToken: String): Try[String]  = {
     for {
       bag <- getBag(bagDir)
-      token = s"sword:${Option(bag.getBagInfoTxt.get("Is-Version-Of")).getOrElse(defaultToken)}"
+      token <- Option(bag.getBagInfoTxt.get("Is-Version-Of")).map { ivo =>
+        if (ivo.startsWith("urn:uuid:")) Try { s"sword:${ivo.split(":").last}" }
+        else Failure(new IllegalArgumentException("Is-Version-Of not a urn:uuid value"))
+      }.getOrElse(Success(s"sword:$defaultToken"))
     } yield token
   }
 
