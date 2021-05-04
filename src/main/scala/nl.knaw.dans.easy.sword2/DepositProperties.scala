@@ -65,6 +65,7 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     if (Files.exists(file)) props.load(file.toFile)
     else {
       props.setProperty("bag-store.bag-id", depositId)
+      props.setProperty("dataverse.bag-id", depositId) // Necessary for dd-dans-deposit-to-dataverse to process deposit correctly
       props.setProperty("creation.timestamp", DateTime.now(DateTimeZone.UTC).toString(dateTimeFormatter))
       props.setProperty("deposit.origin", "SWORD2")
     }
