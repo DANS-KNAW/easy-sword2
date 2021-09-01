@@ -15,19 +15,19 @@
  */
 package nl.knaw.dans.easy.sword2
 
-import java.io.{ File => JFile }
-import java.nio.charset.{ Charset, StandardCharsets }
-import java.nio.file.Files
-
+import better.files.{FileExtensions, ZipInputStreamExtensions}
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
+import java.io.{File => JFile}
+import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.file.Files
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
-import scala.util.{ Failure, Success, Try }
+import scala.util.{Failure, Success, Try}
 
 object BagExtractor extends DebugEnhancedLogging {
 
@@ -39,13 +39,13 @@ object BagExtractor extends DebugEnhancedLogging {
       case _ => Failure(InvalidDepositException(id, s"Invalid content type: $mimeType"))
     })
       .map(_ => depositDir)
-      .recoverWith { case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${ e.getMessage }")) }
+      .recoverWith { case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${e.getMessage}")) }
   }
 
   private def extractZip(files: Array[JFile], depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
     for (file <- files) {
       if (!file.isFile)
-        throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${ file.getName }")
+        throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
       checkAvailableDiskspace(file)
         .flatMap(_ => extract(file, depositDir))
         .unsafeGetOrThrow
@@ -68,10 +68,10 @@ object BagExtractor extends DebugEnhancedLogging {
         val availableDiskSize = Files.getFileStore(f.toPath).getUsableSpace
         val sumOfChunks = files.map(_.length).sum
         val required = sumOfChunks + settings.marginDiskSpace
-        logger.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Sum of chunk sizes: $sumOfChunks bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+        logger.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Sum of chunk sizes: $sumOfChunks bytes. Margin required: ${settings.marginDiskSpace} bytes.")
         if (sumOfChunks + settings.marginDiskSpace > availableDiskSize) {
           val diskSizeShort = sumOfChunks + settings.marginDiskSpace - availableDiskSize
-          Failure(NotEnoughDiskSpaceException(id, s"Required disk space for concatenating: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort."))
+          Failure(NotEnoughDiskSpaceException(id, s"Required disk space for concatenating: $required (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize. Short: $diskSizeShort."))
         }
         else Success(())
       })
@@ -84,15 +84,15 @@ object BagExtractor extends DebugEnhancedLogging {
       val seqNumber = f.getName
         .split('.')
         .lastOption
-        .getOrElse(throw InvalidDepositException(id, s"Partial file ${ f.getName } has no extension. It should be a positive sequence number."))
+        .getOrElse(throw InvalidDepositException(id, s"Partial file ${f.getName} has no extension. It should be a positive sequence number."))
         .toInt
 
       if (seqNumber > 0) seqNumber
-      else throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
+      else throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. It should be a positive sequence number (> 0), but was: $seqNumber")
     }
     catch {
       case _: NumberFormatException =>
-        throw InvalidDepositException(id, s"Partial file ${ f.getName } has an incorrect extension. Should be a positive sequence number.")
+        throw InvalidDepositException(id, s"Partial file ${f.getName} has an incorrect extension. Should be a positive sequence number.")
     }
   }
 
@@ -102,10 +102,10 @@ object BagExtractor extends DebugEnhancedLogging {
     val uncompressedSize = headers.map(_.getUncompressedSize).sum
     val availableDiskSize = Files.getFileStore(file.toPath).getUsableSpace
     val required = uncompressedSize + settings.marginDiskSpace
-    logger.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${ settings.marginDiskSpace } bytes.")
+    logger.debug(s"[$id] Available (usable) disk space currently $availableDiskSize bytes. Uncompressed bag size: $uncompressedSize bytes. Margin required: ${settings.marginDiskSpace} bytes.")
     if (uncompressedSize + settings.marginDiskSpace > availableDiskSize) {
       val diskSizeShort = uncompressedSize + settings.marginDiskSpace - availableDiskSize
-      throw NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${ settings.marginDiskSpace } margin). Available: $availableDiskSize. Short: $diskSizeShort.")
+      throw NotEnoughDiskSpaceException(id, s"Required disk space for unzipping: $required (including ${settings.marginDiskSpace} margin). Available: $availableDiskSize. Short: $diskSizeShort.")
     }
   }
 
@@ -113,8 +113,36 @@ object BagExtractor extends DebugEnhancedLogging {
     implicit val charset: Charset = StandardCharsets.UTF_8
     import better.files._
     for {
-      _ <- Try { file.toScala unzipTo depositDir.toScala }
+      _ <-
+        if (settings.filepathMappingDepositors.contains(id)) extractWithFilepathMapping(file)
+        else Try {
+          file.toScala unzipTo depositDir.toScala
+        }
       _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
     } yield ()
   }
+
+  private def extractWithFilepathMapping(zipFile: JFile): Try[Unit] = Try {
+     // 1. Extract all entries not in data/
+
+    //https://github.com/pathikrit/better-files/#zip-apis
+//    zipFile.toScala.newZipInputStream.mapEntries {
+//      case e if e.getName.startsWith("data") =>
+//      case e => zipFil
+//
+//    }
+
+    // 2. Create data/ folder
+
+
+    // 3. Read as bag?
+
+
+    //
+
+
+
+    ???
+  }
+
 }
