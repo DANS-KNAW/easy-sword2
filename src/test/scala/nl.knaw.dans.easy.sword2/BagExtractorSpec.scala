@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils
 import org.scalatest.BeforeAndAfterEach
 
 import java.io.{File => JFile}
+import scala.util.Success
 
 class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
 
@@ -36,41 +37,52 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
     new JFile("src/test/resources/zips", name)
   }
 
+  "createFilePathMapping" should "generate empty map for empty zip" in {
+    val maybeMap = createFilePathMapping(getZipFile("empty.zip"), "")
+    maybeMap shouldBe a[Success[_]]
+    maybeMap.get shouldBe empty
+  }
+
+  it should "generate mappings for files under prefix" in {
+    val maybeMap = createFilePathMapping(getZipFile("mix.zip"), "subfolder")
+    maybeMap shouldBe a[Success[_]]
+    maybeMap.get.keySet should contain("subfolder/test.txt")
+  }
+
   "unzipWithMappedFilePaths" should "unzip empty zip" in {
-    unzipWithMappedFilePaths(getZipFile("empty.zip"), outDir, Map[String, String]())
+    unzipWithMappedFilePaths(getZipFile("empty.zip"), outDir, Map[String, String]()) shouldBe a[Success[_]]
     outDir.list() shouldBe empty
   }
 
   it should "unzip zip with one unmapped root entry" in {
-    unzipWithMappedFilePaths(getZipFile("one-entry.zip"), outDir, Map[String, String]())
+    unzipWithMappedFilePaths(getZipFile("one-entry.zip"), outDir, Map[String, String]()) shouldBe a[Success[_]]
     outDir.list().length shouldBe 1
     FileUtils.readFileToString((outDir.toScala / "test.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with one mapped root entry" in {
-    unzipWithMappedFilePaths(getZipFile("one-entry.zip"), outDir, Map("test.txt" -> "renamed.txt"))
+    unzipWithMappedFilePaths(getZipFile("one-entry.zip"), outDir, Map("test.txt" -> "renamed.txt")) shouldBe a[Success[_]]
     outDir.list().length shouldBe 1
     FileUtils.readFileToString((outDir.toScala / "renamed.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with one unmapped entry in subfolder" in {
-    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map[String, String]())
+    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map[String, String]()) shouldBe a[Success[_]]
     outDir.list().length shouldBe 1
     FileUtils.readFileToString((outDir.toScala / "subfolder" / "test.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with one mapped entry in subfolder" in {
-    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map("subfolder/test.txt" -> "renamed.txt"))
+    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map("subfolder/test.txt" -> "renamed.txt")) shouldBe a[Success[_]]
     outDir.list().length shouldBe 1
     FileUtils.readFileToString((outDir.toScala / "renamed.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with several entries some in subfolders, some mapped" in {
-
+    unzipWithMappedFilePaths(getZipFile("mix.zip"), outDir, Map("subfolder/test.txt" -> "renamed.txt", "subfolder2/subsubfolder/leaf.txt" -> "renamed2.txt")) shouldBe a[Success[_]]
+    outDir.list().length shouldBe 3
+    FileUtils.readFileToString((outDir.toScala / "root.txt").toJava, "UTF-8").trim shouldBe "in root"
+    FileUtils.readFileToString((outDir.toScala / "renamed.txt").toJava, "UTF-8").trim shouldBe "test"
+    FileUtils.readFileToString((outDir.toScala / "renamed2.txt").toJava, "UTF-8").trim shouldBe "in leaf"
   }
-
-  it should "unzip zip with mapping, directory entries that end up empty are not created on disk" in {
-
-  }
-
 }

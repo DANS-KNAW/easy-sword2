@@ -25,7 +25,8 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 
 import java.io.{FileOutputStream, File => JFile}
 import java.nio.charset.{Charset, StandardCharsets}
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
+import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
 import scala.util.{Failure, Success, Try}
@@ -126,23 +127,29 @@ object BagExtractor extends DebugEnhancedLogging {
   def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
     for {
       mapping <- createFilePathMapping(zipFile, "data/")
-      //      _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
-      // _ <- writeOriginalFilePaths(depositDir, mapping)
-      // _ <- renamePayloadManifestEntries(depositDir, mapping)
-      // _ <- addOriginalFilePathsToTagManifests(depositDir, mapping)
-      // _ <- updateTagManifests(depositDir)
+      _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
+      bagDir <- findBagDir(depositDir)
+      _ <- writeOriginalFilePaths(bagDir, mapping)
+      // _ <- renamePayloadManifestEntries(bagDir, mapping)
+      // _ <- addOriginalFilePathsToTagManifests(bagDir, mapping)
+      // _ <- updateTagManifests(bagDir)
     } yield ()
   }
 
   /**
    * Creates a mapping from old to new name for file entries with the given prefix (e.g. "data/")
    *
-   * @param zipFile      the zip file to create the mapping for
-   * @param prefixFilter only create mappings for file entries whose name starts with this prefix
+   * @param zip    the zip file to create the mapping for
+   * @param prefix only create mappings for file entries whose name starts with this prefix
    * @return a map from old to new entry name
    */
-  def createFilePathMapping(zipFile: JFile, prefixFilter: String): Try[Map[String, String]] = Try {
-    ???
+  def createFilePathMapping(zip: JFile, prefix: String): Try[Map[String, String]] = Try {
+    val zis = zip.toScala.newZipInputStream
+    zis.mapEntries(identity)
+      .filter(_.getName.startsWith(prefix))
+      .map {
+        e => (e.getName, Paths.get(prefix, UUID.randomUUID().toString).toString)
+      }.toList.toMap
   }
 
   /**
@@ -154,7 +161,7 @@ object BagExtractor extends DebugEnhancedLogging {
    * @param outDir          the output directory
    * @param mappedFilePaths the mapping from old to new filepath
    */
-  def unzipWithMappedFilePaths(zip: JFile, outDir: JFile, mappedFilePaths: Map[String, String]): Unit = {
+  def unzipWithMappedFilePaths(zip: JFile, outDir: JFile, mappedFilePaths: Map[String, String]): Try[Unit] = Try {
     FileUtils.forceMkdir(outDir)
     val zis = zip.toScala.newZipInputStream
     zis.mapEntries {
@@ -174,6 +181,18 @@ object BagExtractor extends DebugEnhancedLogging {
         }
       }
     }.toList
+  }
+
+  def findBagDir(depositDir: JFile): Try[JFile] = Try {
+    val dirs = depositDir.listFiles().filter(_.isDirectory)
+    if (dirs.length != 1) throw new IllegalStateException(s"Deposit has ${dirs.length} directories, but have exactly 1")
+    dirs.head
+  }
+
+  def writeOriginalFilePaths(bagDir: JFile, mappings: Map[String, String]): Try[Unit] = Try {
+    FileUtils.write(new JFile(bagDir, "original-filepaths.txt"), mappings.map {
+      case (orgName, newName) => s"$newName  $orgName"
+    }.toList.mkString("\n"), StandardCharsets.UTF_8)
   }
 
 }
