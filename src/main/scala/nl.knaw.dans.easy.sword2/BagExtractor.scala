@@ -21,8 +21,9 @@ import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import org.apache.commons.io.{FileUtils, IOUtils}
 
-import java.io.{File => JFile}
+import java.io.{FileOutputStream, File => JFile}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.Files
 import scala.collection.JavaConverters._
@@ -114,7 +115,7 @@ object BagExtractor extends DebugEnhancedLogging {
     import better.files._
     for {
       _ <-
-        if (settings.filepathMappingDepositors.contains(id)) extractWithFilepathMapping(file)
+        if (settings.filepathMappingDepositors.contains(id)) extractWithFilepathMapping(file, depositDir)
         else Try {
           file.toScala unzipTo depositDir.toScala
         }
@@ -122,27 +123,50 @@ object BagExtractor extends DebugEnhancedLogging {
     } yield ()
   }
 
-  private def extractWithFilepathMapping(zipFile: JFile): Try[Unit] = Try {
-     // 1. Extract all entries not in data/
+  def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
+    for {
+      mapping <- createFilePathMapping(zipFile, "data/")
+      _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
+    } yield ()
+  }
 
-    //https://github.com/pathikrit/better-files/#zip-apis
-//    zipFile.toScala.newZipInputStream.mapEntries {
-//      case e if e.getName.startsWith("data") =>
-//      case e => zipFil
-//
-//    }
-
-    // 2. Create data/ folder
-
-
-    // 3. Read as bag?
-
-
-    //
-
-
-
+  /**
+   * Creates a mapping from old to new name for file entries with the given prefix (e.g. "data/")
+   *
+   * @param zipFile      the zip file to create the mapping for
+   * @param prefixFilter only create mappings for file entries whose name starts with this prefix
+   * @return a map from old to new entry name
+   */
+  def createFilePathMapping(zipFile: JFile, prefixFilter: String): Try[Map[String, String]] = Try {
     ???
+  }
+
+  /**
+   * Unzips file `zip` to directory `outDir`. Entries whose name is in the keys of mappedFilesPaths are stored under the name
+   * stored in corresponding value. Other entries are stored under the name provided in the entry. Empty directories are not
+   * recreated.
+   *
+   * @param zip             the zip file
+   * @param outDir          the output directory
+   * @param mappedFilePaths the mapping from old to new filepath
+   */
+  def unzipWithMappedFilePaths(zip: JFile, outDir: JFile, mappedFilePaths: Map[String, String]): Unit = {
+    val zis = zip.toScala.newZipInputStream
+    zis.mapEntries {
+      e => {
+        val filePath =
+          if (mappedFilePaths.keySet.contains(e.getName)) (outDir.toScala / mappedFilePaths(e.getName)).path
+          else (outDir.toScala / e.getName).path
+        FileUtils.forceMkdirParent(filePath.toFile)
+        val newFile = Files.createFile(filePath)
+        val fos = new FileOutputStream(newFile.toFile)
+        try {
+          IOUtils.copyLarge(zis, fos, 0, e.getSize)
+        } finally {
+          fos.close()
+        }
+      }
+    }.toList
   }
 
 }
