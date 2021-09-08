@@ -54,16 +54,23 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
   }
 
   it should "unzip zip with one unmapped entry in subfolder" in {
-
+    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map[String, String]())
+    outDir.list().length shouldBe 1
+    FileUtils.readFileToString((outDir.toScala / "subfolder" / "test.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with one mapped entry in subfolder" in {
-
+    unzipWithMappedFilePaths(getZipFile("one-entry-in-subfolder.zip"), outDir, Map("subfolder/test.txt" -> "renamed.txt"))
+    outDir.list().length shouldBe 1
+    FileUtils.readFileToString((outDir.toScala / "renamed.txt").toJava, "UTF-8").trim shouldBe "test"
   }
 
   it should "unzip zip with several entries some in subfolders, some mapped" in {
 
   }
 
+  it should "unzip zip with mapping, directory entries that end up empty are not created on disk" in {
+
+  }
 
 }
