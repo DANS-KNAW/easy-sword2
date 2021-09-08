@@ -20,6 +20,7 @@ import org.apache.commons.io.FileUtils
 import org.scalatest.BeforeAndAfterEach
 
 import java.io.{File => JFile}
+import java.util.regex.Pattern
 import scala.util.Success
 
 class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
@@ -38,13 +39,13 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
   }
 
   "createFilePathMapping" should "generate empty map for empty zip" in {
-    val maybeMap = createFilePathMapping(getZipFile("empty.zip"), "")
+    val maybeMap = createFilePathMapping(getZipFile("empty.zip"), Pattern.compile(""))
     maybeMap shouldBe a[Success[_]]
     maybeMap.get shouldBe empty
   }
 
   it should "generate mappings for files under prefix" in {
-    val maybeMap = createFilePathMapping(getZipFile("mix.zip"), "subfolder")
+    val maybeMap = createFilePathMapping(getZipFile("mix.zip"), Pattern.compile("subfolder/"))
     maybeMap shouldBe a[Success[_]]
     maybeMap.get.keySet should contain("subfolder/test.txt")
   }
@@ -85,4 +86,9 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
     FileUtils.readFileToString((outDir.toScala / "renamed.txt").toJava, "UTF-8").trim shouldBe "test"
     FileUtils.readFileToString((outDir.toScala / "renamed2.txt").toJava, "UTF-8").trim shouldBe "in leaf"
   }
+
+  "extractWithFilepathMapping" should "correctly unzip medium bag and leave it valid" in {
+    extractWithFilepathMapping(getZipFile("medium.zip"), outDir)
+  }
+
 }

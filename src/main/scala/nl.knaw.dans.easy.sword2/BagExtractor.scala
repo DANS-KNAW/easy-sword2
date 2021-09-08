@@ -27,6 +27,7 @@ import java.io.{FileOutputStream, File => JFile}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.nio.file.{Files, Paths}
 import java.util.UUID
+import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 import scala.collection.convert.Wrappers.JListWrapper
 import scala.util.{Failure, Success, Try}
@@ -124,31 +125,37 @@ object BagExtractor extends DebugEnhancedLogging {
     } yield ()
   }
 
+  private lazy val prefixPattern = Pattern.compile("^[^/]+/data/")
+
   def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
     for {
-      mapping <- createFilePathMapping(zipFile, "data/")
+      mapping <- createFilePathMapping(zipFile, prefixPattern)
       _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
       bagDir <- findBagDir(depositDir)
       _ <- writeOriginalFilePaths(bagDir, mapping)
-      // _ <- renamePayloadManifestEntries(bagDir, mapping)
+      _ <- renameAllPayloadManifestEntries(bagDir, mapping)
       // _ <- addOriginalFilePathsToTagManifests(bagDir, mapping)
       // _ <- updateTagManifests(bagDir)
     } yield ()
   }
 
   /**
-   * Creates a mapping from old to new name for file entries with the given prefix (e.g. "data/")
+   * Creates a mapping from old to new name for file entries with the given pattern
    *
    * @param zip    the zip file to create the mapping for
-   * @param prefix only create mappings for file entries whose name starts with this prefix
+   * @param prefixPattern only create mappings for file entries whose name matches this pattern
    * @return a map from old to new entry name
    */
-  def createFilePathMapping(zip: JFile, prefix: String): Try[Map[String, String]] = Try {
+  def createFilePathMapping(zip: JFile, prefixPattern: Pattern): Try[Map[String, String]] = Try {
     val zis = zip.toScala.newZipInputStream
     zis.mapEntries(identity)
-      .filter(_.getName.startsWith(prefix))
+      .filter(e => prefixPattern.matcher(e.getName).find())
       .map {
-        e => (e.getName, Paths.get(prefix, UUID.randomUUID().toString).toString)
+        e =>
+          val m = prefixPattern.matcher(e.getName)
+          m.find()
+          val prefix = m.group()
+          (e.getName, Paths.get(prefix, UUID.randomUUID().toString).toString)
       }.toList.toMap
   }
 
@@ -193,6 +200,38 @@ object BagExtractor extends DebugEnhancedLogging {
     FileUtils.write(new JFile(bagDir, "original-filepaths.txt"), mappings.map {
       case (orgName, newName) => s"$newName  $orgName"
     }.toList.mkString("\n"), StandardCharsets.UTF_8)
+  }
+
+  def renameAllPayloadManifestEntries(bagDir: JFile, mappings: Map[String, String]): Try[Unit] = Try {
+    bagDir
+      .listFiles()
+      .filter(_.isFile)
+      .filter(_.getName.startsWith("manifest-"))
+      .map(renamePayloadManifestEntries(mappings))
+  }
+
+  def renamePayloadManifestEntries(mappings: Map[String, String])(manifestFile: JFile): Try[Unit] = {
+    for {
+      checksum2Path <- readManifest(manifestFile)
+      newChecksum2Path = checksum2Path.map {
+        case (cs, p) => (cs, mappings.getOrElse(p, p))
+      }
+      _ <- writeManifest(manifestFile, newChecksum2Path)
+    } yield ()
+  }
+
+  def readManifest(manifestFile: JFile): Try[Map[String, String]] = Try {
+    FileUtils.readFileToString(manifestFile, StandardCharsets.UTF_8).split("\n")
+      .map(_.split("""\s+""", 2))
+      .map {
+        case Array(checksum, path) => (checksum, path)
+      }.toMap
+  }
+
+  def writeManifest(manifestFile: JFile, map: Map[String, String]): Try[Unit] = Try {
+    FileUtils.writeStringToFile(manifestFile, map.map {
+      case (checksum, path) => s"$checksum  $path"
+    }.mkString("\n"), StandardCharsets.UTF_8)
   }
 
 }
