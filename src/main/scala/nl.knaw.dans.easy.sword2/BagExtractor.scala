@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.sword2
 
 import better.files.{FileExtensions, ZipInputStreamExtensions}
+import ch.qos.logback.core.rolling.helper.FileStoreUtil
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
@@ -126,7 +127,11 @@ object BagExtractor extends DebugEnhancedLogging {
   def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
     for {
       mapping <- createFilePathMapping(zipFile, "data/")
-      _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
+//      _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
+      // _ <- writeOriginalFilePaths(depositDir, mapping)
+      // _ <- renamePayloadManifestEntries(depositDir, mapping)
+      // _ <- addOriginalFilePathsToTagManifests(depositDir, mapping)
+      // _ <- updateTagManifests(depositDir)
     } yield ()
   }
 
@@ -151,6 +156,7 @@ object BagExtractor extends DebugEnhancedLogging {
    * @param mappedFilePaths the mapping from old to new filepath
    */
   def unzipWithMappedFilePaths(zip: JFile, outDir: JFile, mappedFilePaths: Map[String, String]): Unit = {
+    FileUtils.forceMkdir(outDir)
     val zis = zip.toScala.newZipInputStream
     zis.mapEntries {
       e => {
