@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.sword2
 
 import better.files.{FileExtensions, ZipInputStreamExtensions}
+import gov.loc.repository.bagit.BagFactory
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
@@ -33,6 +34,7 @@ import scala.collection.convert.Wrappers.JListWrapper
 import scala.util.{Failure, Success, Try}
 
 object BagExtractor extends DebugEnhancedLogging {
+  private val bagFactory: BagFactory = new BagFactory
 
   def extractBag(depositDir: JFile, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     lazy val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
@@ -49,6 +51,7 @@ object BagExtractor extends DebugEnhancedLogging {
     for (file <- files) {
       if (!file.isFile)
         throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
+      verifyValid(id, file).get
       checkAvailableDiskspace(file)
         .flatMap(_ => extract(file, depositDir))
         .unsafeGetOrThrow
@@ -61,9 +64,18 @@ object BagExtractor extends DebugEnhancedLogging {
       _ <- checkDiskspaceForMerging(files)
       _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
       _ <- checkAvailableDiskspace(mergedZip)
+      _ <- verifyValid(id, mergedZip)
       _ <- extract(mergedZip, depositDir)
     } yield ()
   }
+
+  private def verifyValid(id: DepositId, zippedBag: JFile): Try[Unit] = {
+    val result = bagFactory.createBag(zippedBag).verifyValid()
+    if (result.isSuccess) Success(())
+    else Failure(InvalidDepositException(id, result.messagesToString()))
+  }
+
+
 
   private def checkDiskspaceForMerging(files: Seq[JFile])(implicit settings: Settings, id: DepositId): Try[Unit] = {
     files.headOption
@@ -132,8 +144,9 @@ object BagExtractor extends DebugEnhancedLogging {
       mapping <- createFilePathMapping(zipFile, prefixPattern)
       _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
       bagDir <- findBagDir(depositDir)
-      _ <- writeOriginalFilePaths(bagDir, mapping)
-      _ <- renameAllPayloadManifestEntries(bagDir, mapping)
+      bagRelativeMapping <- toBagRelativeMapping(mapping, bagDir.getName)
+      _ <- writeOriginalFilePaths(bagDir, bagRelativeMapping)
+      _ <- renameAllPayloadManifestEntries(bagDir, bagRelativeMapping)
       // _ <- addOriginalFilePathsToTagManifests(bagDir, mapping)
       // _ <- updateTagManifests(bagDir)
     } yield ()
@@ -149,6 +162,7 @@ object BagExtractor extends DebugEnhancedLogging {
   def createFilePathMapping(zip: JFile, prefixPattern: Pattern): Try[Map[String, String]] = Try {
     val zis = zip.toScala.newZipInputStream
     zis.mapEntries(identity)
+      .filterNot(_.isDirectory)
       .filter(e => prefixPattern.matcher(e.getName).find())
       .map {
         e =>
@@ -194,6 +208,12 @@ object BagExtractor extends DebugEnhancedLogging {
     val dirs = depositDir.listFiles().filter(_.isDirectory)
     if (dirs.length != 1) throw new IllegalStateException(s"Deposit has ${dirs.length} directories, but have exactly 1")
     dirs.head
+  }
+
+  def toBagRelativeMapping(zipRelativeMapping: Map[String, String], bagName: String): Try[Map[String, String]] = Try {
+    zipRelativeMapping.map {
+      case (orgName, newName) =>  (Paths.get(bagName).relativize(Paths.get(orgName)).toString, Paths.get(bagName).relativize(Paths.get(newName)).toString)
+    }
   }
 
   def writeOriginalFilePaths(bagDir: JFile, mappings: Map[String, String]): Try[Unit] = Try {
