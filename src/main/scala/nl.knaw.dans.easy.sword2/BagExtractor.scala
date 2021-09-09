@@ -37,6 +37,7 @@ import scala.util.{Failure, Success, Try}
 
 object BagExtractor extends DebugEnhancedLogging {
   private val bagFactory: BagFactory = new BagFactory
+  private lazy val prefixPattern = Pattern.compile("^[^/]+/data/")
 
   def extractBag(depositDir: JFile, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     lazy val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
@@ -136,8 +137,6 @@ object BagExtractor extends DebugEnhancedLogging {
       _ <- FilesPermission.changePermissionsRecursively(depositDir, settings.depositPermissions, id)
     } yield ()
   }
-
-  private lazy val prefixPattern = Pattern.compile("^[^/]+/data/")
 
   def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
     for {
