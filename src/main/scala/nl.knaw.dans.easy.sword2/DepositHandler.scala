@@ -155,7 +155,8 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       props <- DepositProperties(id)
       _ <- props.setState(State.FINALIZING, "Finalizing deposit")
       _ <- props.save()
-      _ <- BagExtractor.extractBag(depositDir, mimetype)
+      depositor <- props.getDepositorId
+      _ <- BagExtractor.extractBag(depositDir, mimetype, depositor)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)

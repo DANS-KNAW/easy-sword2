@@ -39,36 +39,36 @@ object BagExtractor extends DebugEnhancedLogging {
   private val bagFactory: BagFactory = new BagFactory
   private lazy val prefixPattern = Pattern.compile("^[^/]+/data/")
 
-  def extractBag(depositDir: JFile, mimeType: MimeType)(implicit settings: Settings, id: DepositId): Try[JFile] = {
+  def extractBag(depositDir: JFile, mimeType: MimeType, depositor: String)(implicit settings: Settings, id: DepositId): Try[JFile] = {
     lazy val files = depositDir.listFilesSafe.filter(isPartOfDeposit)
     (mimeType match {
-      case "application/zip" => extractZip(files, depositDir)
-      case "application/octet-stream" => extractOctetStream(files, depositDir)
+      case "application/zip" => extractZip(files, depositDir, depositor)
+      case "application/octet-stream" => extractOctetStream(files, depositDir, depositor)
       case _ => Failure(InvalidDepositException(id, s"Invalid content type: $mimeType"))
     })
       .map(_ => depositDir)
       .recoverWith { case e: ZipException => Failure(InvalidDepositException(id, s"Invalid bag: ${e.getMessage}")) }
   }
 
-  private def extractZip(files: Array[JFile], depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
+  private def extractZip(files: Array[JFile], depositDir: JFile, depositor: String)(implicit settings: Settings, id: DepositId): Try[Unit] = Try {
     for (file <- files) {
       if (!file.isFile)
         throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
-      verifyValid(id, file).get
+//      verifyValid(id, file).get
       checkAvailableDiskspace(file)
-        .flatMap(_ => extract(file, depositDir))
+        .flatMap(_ => extract(file, depositDir, depositor))
         .unsafeGetOrThrow
     }
   }
 
-  private def extractOctetStream(files: Array[JFile], depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def extractOctetStream(files: Array[JFile], depositDir: JFile, depositor: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     val mergedZip = new JFile(depositDir, "merged.zip")
     for {
       _ <- checkDiskspaceForMerging(files)
       _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
       _ <- checkAvailableDiskspace(mergedZip)
-      _ <- verifyValid(id, mergedZip)
-      _ <- extract(mergedZip, depositDir)
+//      _ <- verifyValid(id, mergedZip)
+      _ <- extract(mergedZip, depositDir, depositor)
     } yield ()
   }
 
@@ -125,12 +125,12 @@ object BagExtractor extends DebugEnhancedLogging {
     }
   }
 
-  private def extract(file: JFile, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
+  private def extract(file: JFile, depositDir: JFile, depositor: String)(implicit settings: Settings, id: DepositId): Try[Unit] = {
     implicit val charset: Charset = StandardCharsets.UTF_8
     import better.files._
     for {
       _ <-
-        if (settings.filepathMappingDepositors.contains(id)) extractWithFilepathMapping(file, depositDir)
+        if (settings.filepathMappingDepositors.contains(depositor)) extractWithFilepathMapping(file, depositDir)
         else Try {
           file.toScala unzipTo depositDir.toScala
         }
