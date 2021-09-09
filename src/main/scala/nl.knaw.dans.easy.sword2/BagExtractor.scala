@@ -16,7 +16,9 @@
 package nl.knaw.dans.easy.sword2
 
 import better.files.{FileExtensions, ZipInputStreamExtensions}
-import gov.loc.repository.bagit.BagFactory
+import gov.loc.repository.bagit.transformer.impl.TagManifestCompleter
+import gov.loc.repository.bagit.writer.impl.FileSystemWriter
+import gov.loc.repository.bagit.{Bag, BagFactory}
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.exception.ZipException
 import net.lingala.zip4j.model.FileHeader
@@ -26,7 +28,7 @@ import org.apache.commons.io.{FileUtils, IOUtils}
 
 import java.io.{FileOutputStream, File => JFile}
 import java.nio.charset.{Charset, StandardCharsets}
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import java.util.UUID
 import java.util.regex.Pattern
 import scala.collection.JavaConverters._
@@ -74,8 +76,6 @@ object BagExtractor extends DebugEnhancedLogging {
     if (result.isSuccess) Success(())
     else Failure(InvalidDepositException(id, result.messagesToString()))
   }
-
-
 
   private def checkDiskspaceForMerging(files: Seq[JFile])(implicit settings: Settings, id: DepositId): Try[Unit] = {
     files.headOption
@@ -147,15 +147,14 @@ object BagExtractor extends DebugEnhancedLogging {
       bagRelativeMapping <- toBagRelativeMapping(mapping, bagDir.getName)
       _ <- writeOriginalFilePaths(bagDir, bagRelativeMapping)
       _ <- renameAllPayloadManifestEntries(bagDir, bagRelativeMapping)
-      // _ <- addOriginalFilePathsToTagManifests(bagDir, mapping)
-      // _ <- updateTagManifests(bagDir)
+      _ <- updateTagManifests(bagDir)
     } yield ()
   }
 
   /**
    * Creates a mapping from old to new name for file entries with the given pattern
    *
-   * @param zip    the zip file to create the mapping for
+   * @param zip           the zip file to create the mapping for
    * @param prefixPattern only create mappings for file entries whose name matches this pattern
    * @return a map from old to new entry name
    */
@@ -212,7 +211,7 @@ object BagExtractor extends DebugEnhancedLogging {
 
   def toBagRelativeMapping(zipRelativeMapping: Map[String, String], bagName: String): Try[Map[String, String]] = Try {
     zipRelativeMapping.map {
-      case (orgName, newName) =>  (Paths.get(bagName).relativize(Paths.get(orgName)).toString, Paths.get(bagName).relativize(Paths.get(newName)).toString)
+      case (orgName, newName) => (Paths.get(bagName).relativize(Paths.get(orgName)).toString, Paths.get(bagName).relativize(Paths.get(newName)).toString)
     }
   }
 
@@ -254,4 +253,21 @@ object BagExtractor extends DebugEnhancedLogging {
     }.mkString("\n"), StandardCharsets.UTF_8)
   }
 
+  def updateTagManifests(bagDir: JFile): Try[Unit] = Try {
+    getBag(bagDir)
+      .map(bag => {
+        bag.getTagManifests.asScala.map(_.getAlgorithm).foreach(a => {
+          val completer = new TagManifestCompleter(bagFactory)
+          completer.setTagManifestAlgorithm(a)
+          completer complete bag
+        })
+        val writer = new FileSystemWriter(bagFactory)
+        writer.setTagFilesOnly(true)
+        bag.write(writer, bagDir)
+      }).getOrElse(Success(()))
+  }
+
+  private def getBag(bagDir: JFile): Try[Bag] = Try {
+    bagFactory.createBag(bagDir, BagFactory.Version.V0_97, BagFactory.LoadOption.BY_MANIFESTS)
+  }
 }
