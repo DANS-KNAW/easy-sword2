@@ -88,7 +88,7 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
   }
 
   "extractWithFilepathMapping" should "correctly unzip medium bag and leave it valid" in {
-    extractWithFilepathMapping(getZipFile("medium.zip"), outDir)
+    extractWithFilepathMapping(getZipFile("medium.zip"), outDir, "dummyId")
   }
 
 }

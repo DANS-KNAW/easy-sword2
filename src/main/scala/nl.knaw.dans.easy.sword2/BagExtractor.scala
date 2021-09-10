@@ -54,7 +54,6 @@ object BagExtractor extends DebugEnhancedLogging {
     for (file <- files) {
       if (!file.isFile)
         throw InvalidDepositException(id, s"Inconsistent dataset: non-file object found: ${file.getName}")
-//      verifyValid(id, file).get
       checkAvailableDiskspace(file)
         .flatMap(_ => extract(file, depositDir, depositor))
         .unsafeGetOrThrow
@@ -67,15 +66,8 @@ object BagExtractor extends DebugEnhancedLogging {
       _ <- checkDiskspaceForMerging(files)
       _ <- MergeFiles.merge(mergedZip, files.sortBy(getSequenceNumber))
       _ <- checkAvailableDiskspace(mergedZip)
-//      _ <- verifyValid(id, mergedZip)
       _ <- extract(mergedZip, depositDir, depositor)
     } yield ()
-  }
-
-  private def verifyValid(id: DepositId, zippedBag: JFile): Try[Unit] = {
-    val result = bagFactory.createBag(zippedBag).verifyValid()
-    if (result.isSuccess) Success(())
-    else Failure(InvalidDepositException(id, result.messagesToString()))
   }
 
   private def checkDiskspaceForMerging(files: Seq[JFile])(implicit settings: Settings, id: DepositId): Try[Unit] = {
@@ -130,7 +122,7 @@ object BagExtractor extends DebugEnhancedLogging {
     import better.files._
     for {
       _ <-
-        if (settings.filepathMappingDepositors.contains(depositor)) extractWithFilepathMapping(file, depositDir)
+        if (settings.filepathMappingDepositors.contains(depositor)) extractWithFilepathMapping(file, depositDir, id)
         else Try {
           file.toScala unzipTo depositDir.toScala
         }
@@ -138,16 +130,27 @@ object BagExtractor extends DebugEnhancedLogging {
     } yield ()
   }
 
-  def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile): Try[Unit] = {
+  def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile, id: DepositId): Try[Unit] = {
     for {
       mapping <- createFilePathMapping(zipFile, prefixPattern)
       _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
       bagDir <- findBagDir(depositDir)
+      /*
+       * We are recalculating the tag manifests later on, so that the checksums of the payload manifests and the original-filepaths.txt file
+       * are included. The tag manifest entries that are not supposed to change (e.g. metadata) we check here.
+       */
+      - <- verifyTagManifests(bagDir, id)
       bagRelativeMapping <- toBagRelativeMapping(mapping, bagDir.getName)
       _ <- writeOriginalFilePaths(bagDir, bagRelativeMapping)
       _ <- renameAllPayloadManifestEntries(bagDir, bagRelativeMapping)
       _ <- updateTagManifests(bagDir)
     } yield ()
+  }
+
+  def verifyTagManifests(bagDir: JFile, id: DepositId): Try[Unit] = {
+    val result = bagFactory.createBag(bagDir).verifyTagManifests()
+    if (result.isSuccess) Success(())
+    else Failure(InvalidDepositException(id, result.messagesToString()))
   }
 
   /**
