@@ -48,6 +48,7 @@ package object sword2 {
                       cleanup: Map[State, Boolean],
                       rescheduleDelaySeconds: Int,
                       serverPort: Int,
+                      filepathMappingDepositors: List[String] = List.empty,
                      )
 
   case class BagStoreSettings(baseDir: String, baseUrl: String)

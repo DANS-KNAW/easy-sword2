@@ -70,6 +70,7 @@ case class Configuration(version: String, properties: PropertiesConfiguration, u
       .toMap,
     rescheduleDelaySeconds = properties.getInt("reschedule-delay-seconds"),
     serverPort = properties.getInt("daemon.http.port"),
+    filepathMappingDepositors = properties.getStringArray("filepath-mapping-depositors").toList,
   )
 
   if (!settings.depositRootDir.canRead) throw new ServletException("Cannot read deposits dir")
