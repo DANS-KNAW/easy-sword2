@@ -131,6 +131,7 @@ object BagExtractor extends DebugEnhancedLogging {
   }
 
   def extractWithFilepathMapping(zipFile: JFile, depositDir: JFile, id: DepositId): Try[Unit] = {
+    trace(zipFile, depositDir, id)
     for {
       mapping <- createFilePathMapping(zipFile, prefixPattern)
       _ <- unzipWithMappedFilePaths(zipFile, depositDir, mapping)
