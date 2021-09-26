@@ -103,6 +103,11 @@ class DepositProperties(depositId: DepositId, depositorId: Option[String] = None
     this
   }
 
+  def setOtherIdentifier(id: String, version: String): Try[DepositProperties] = Try {
+    if (id.nonEmpty) properties.setProperty("dataverse.other-id", id)
+    if (version.nonEmpty) properties.setProperty("dataverse.other-id-version", version)
+    this
+  }
 
   /**
    * Returns the state when the properties were loaded.

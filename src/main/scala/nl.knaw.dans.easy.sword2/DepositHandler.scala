@@ -155,7 +155,8 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       props <- DepositProperties(id)
       _ <- props.setState(State.FINALIZING, "Finalizing deposit")
       _ <- props.save()
-      _ <- BagExtractor.extractBag(depositDir, mimetype)
+      depositor <- props.getDepositorId
+      _ <- BagExtractor.extractBag(depositDir, mimetype, depositor)
       bagDir <- getBagDir(depositDir)
       _ <- checkFetchItemUrls(bagDir, settings.urlPattern)
       _ <- checkBagVirtualValidity(bagDir)
@@ -163,7 +164,9 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
       _ <- props.setState(SUBMITTED, "Deposit is valid and ready for post-submission processing")
       _ <- props.setBagName(bagDir)
       token <- getSwordToken(bagDir, id)
+      (otherId, otherIdVersion) <- getOtherIdentifierAndItsVersion(bagDir)
       _ <- props.setSwordToken(token)
+      _ <- props.setOtherIdentifier(otherId, otherIdVersion)
       _ <- props.save()
       _ <- removeZipFiles(depositDir)
       // ATTENTION: first remove content-type property and THEN move bag to ingest-flow-inbox!!
@@ -188,6 +191,14 @@ object DepositHandler extends BagValidationExtension with DebugEnhancedLogging {
         else Failure(new IllegalArgumentException("Is-Version-Of not a urn:uuid value"))
       }.getOrElse(Success(s"sword:$defaultToken"))
     } yield token
+  }
+
+  private def getOtherIdentifierAndItsVersion(bagDir: JFile): Try[(String, String)]  = {
+    for {
+      bag <- getBag(bagDir)
+      id = Option(bag.getBagInfoTxt.get("Has-Organizational-Identifier")).getOrElse("")
+      version = Option(bag.getBagInfoTxt.get("Has-Organizational-Identifier-Version")).getOrElse("")
+    } yield (id, version)
   }
 
   private def recoverInvalidDeposit(e: InvalidDepositException, depositDir: JFile)(implicit settings: Settings, id: DepositId): Try[Unit] = {
