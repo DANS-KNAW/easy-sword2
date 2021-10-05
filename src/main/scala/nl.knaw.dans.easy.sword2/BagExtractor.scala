@@ -237,21 +237,21 @@ object BagExtractor extends DebugEnhancedLogging {
       checksum2Path <- readManifest(manifestFile)
       newChecksum2Path = checksum2Path.map {
         case (cs, p) => (cs, mappings.getOrElse(p, p))
-      }
+      } // NOTE: must not be a map, as there may be multiple files with the same checksum
       _ <- writeManifest(manifestFile, newChecksum2Path)
     } yield ()
   }
 
-  def readManifest(manifestFile: JFile): Try[Map[String, String]] = Try {
+  def readManifest(manifestFile: JFile): Try[Array[(String, String)]] = Try {
     FileUtils.readFileToString(manifestFile, StandardCharsets.UTF_8).split("\n")
       .map(_.split("""\s+""", 2))
       .map {
         case Array(checksum, path) => (checksum, path)
-      }.toMap
+      }
   }
 
-  def writeManifest(manifestFile: JFile, map: Map[String, String]): Try[Unit] = Try {
-    FileUtils.writeStringToFile(manifestFile, map.map {
+  def writeManifest(manifestFile: JFile, pairs: Array[(String, String)]): Try[Unit] = Try {
+    FileUtils.writeStringToFile(manifestFile, pairs.map {
       case (checksum, path) => s"$checksum  $path"
     }.mkString("\n"), StandardCharsets.UTF_8)
   }
