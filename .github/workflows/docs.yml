@@ -1,0 +1,28 @@
+name: Build documentation site
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  mkdocs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.7.1
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7.1
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+      - name: Run script
+        run: bash .github/workflows/mkdocs/mkdocs.sh
+        shell: bash

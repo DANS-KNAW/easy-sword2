@@ -91,4 +91,7 @@ class BagExtractorSpec extends TestSupportFixture with BeforeAndAfterEach {
     extractWithFilepathMapping(getZipFile("medium.zip"), outDir, "dummyId")
   }
 
+  it should "accept multiple payload files with the same checksum" in {
+    extractWithFilepathMapping(getZipFile("double-image.zip"), outDir, "dummyId")
+  }
 }
